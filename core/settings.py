@@ -124,3 +124,44 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Modelo personalizado de usuarios
 AUTH_USER_MODEL = "gestion_usuarios.Usuario"
+
+
+# Configuración de Jazzmin
+JAZZMIN_SETTINGS = {
+    # título de la ventana (por defecto usará current_admin_site.site_title si está ausente o es None)
+    "site_title": "Administración de Bomberil",
+
+    # Título en la pantalla de inicio de sesión (máximo 19 caracteres) (por defecto usará current_admin_site.site_header si está ausente o es None)  
+    "site_header": "Bomberil",  
+
+    # Título en la marca (máximo 19 caracteres) (por defecto usará current_admin_site.site_header si está ausente o es None)  
+    "site_brand": "Bomberil",  
+
+    # Logo para tu sitio, debe estar en los archivos estáticos, se usa como marca en la esquina superior izquierda  
+    "site_logo": os.path.join(BASE_DIR, "static/imagenes/bomberil_logo_circle_white(100x100).png"),  
+
+    # Logo para el formulario de inicio de sesión, debe estar en los archivos estáticos (por defecto usa site_logo)  
+    "login_logo": None,  
+
+    # Logo para el formulario de inicio de sesión en temas oscuros (por defecto usa login_logo)  
+    "login_logo_dark": None,  
+
+    # Clases CSS aplicadas al logo anterior  
+    "site_logo_classes": "img-circle",  
+
+    # Ruta relativa al favicon de tu sitio, por defecto usará site_logo si está ausente (idealmente 32x32 px)  
+    "site_icon": None,  
+
+    # Texto de bienvenida en la pantalla de inicio de sesión  
+    "welcome_sign": "Bienvenido a la biblioteca",  
+
+    # Copyright en el pie de página  
+    "copyright": "Acme Library Ltd",  
+
+    # Lista de modelos de administración para buscar desde la barra de búsqueda, se omite la barra si no se incluye  
+    # Si quieres usar un solo campo de búsqueda, no necesitas una lista, puedes usar un string simple  
+    "search_model": ["auth.User", "auth.Group"],  
+
+    # Nombre del campo en el modelo de usuario que contiene el avatar (ImageField/URLField/CharField) o un objeto llamable que recibe el usuario  
+    "user_avatar": "avatar"  
+}
