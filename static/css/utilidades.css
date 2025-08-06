@@ -15,3 +15,7 @@
 .rotate180 {
     transform: rotate(180deg);
 }
+
+.alerta {
+    z-index: var(--flash-message-z-index);
+}
