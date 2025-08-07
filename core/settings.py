@@ -27,11 +27,11 @@ DJANGO_APPS = [
 # Aplicaciones del proyecto
 PROJECT_APPS = [
     'apps.utilidades',
-    'apps.gestion_usuarios',
     'apps.gestion_inventario',
     'apps.gestion_mantenimiento',
     'apps.gestion_voluntarios',
     'apps.gestion_medica',
+    'apps.gestion_usuarios',
     'apps.portal'
 ]
 # Aplicaciones de terceros

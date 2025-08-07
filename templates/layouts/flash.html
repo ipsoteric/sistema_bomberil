@@ -10,7 +10,7 @@
 
 {% if messages  %}
     {% for msg in messages  %}
-        <div class="alerta alert alert-{{msg.level_tag}} alert-dismissible fade show" role="alert">
+        <div class="alerta alert alert-{{msg.level_tag}} alert-dismissible fade show fs_normal" role="alert">
             <button type="button" class="btn-close" data-bs-dismiss="alert" arial-label="Close"></button>
             {{msg.message}}
         </div>
