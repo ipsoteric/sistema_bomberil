@@ -40,6 +40,7 @@
     --color-gris: rgb(94, 94, 94);
     --color-gris-claro: rgb(180, 180, 180);
     --color-naranjo: rgb(255, 144, 39);
+    --color-naranjo-claro: rgb(255, 193, 134);
     --color-rojo: rgb(245, 60, 60);
     --color-blanco: rgb(255, 255, 255);
     --color-blanco-variante: rgb(245, 245, 245);
@@ -75,10 +76,13 @@
     
     /* Z-index */
     --background-z-index: 0;
-    --portal-menu-z-index: 10;
-    --header-z-index: 100;
-    --navbar-z-index: 99;
-    --dropdown-user-menu-z-index: 101;
+    --title-page-z-index: 2;
+    --portal-menu-z-index: 1;
+    --panel-z-index: 3;
+    --navbar-z-index: 4;
+    --header-z-index: 5;
+    --dropdown-user-menu-z-index: 6;
+    --flash-message-z-index: 200;
 }
 
 

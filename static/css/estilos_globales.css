@@ -42,6 +42,9 @@
 /* Paneles de información */
 @import url("componentes/paneles.css");
 
+/* Botones */
+@import url("componentes/entrada.css");
+
 
 
 /* ---------- ESTILOS EXTRA ---------- */

@@ -62,6 +62,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.modulo_actual',
             ],
         },
     },
@@ -124,6 +125,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Modelo personalizado de usuarios
 AUTH_USER_MODEL = "gestion_usuarios.Usuario"
+
+
+# Ruta del login
+LOGIN_URL = 'portal:ruta_login'
 
 
 # Configuración de Jazzmin

@@ -1,0 +1,39 @@
+{# Plantilla base #}{% extends 'portal/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Título de la ventana #} {% block titulo_ventana %}Iniciar sesión{% endblock %}
+{# Módulo #} {% block modulo %}Bomberil{% endblock  %}
+
+{% block contenido %}
+<img class="portal__imagen_fondo" src="{% static 'portal/imagenes/bomberil_portal_background_v2.jpg' %}" alt="">
+<div class="portal_login__container fondo_secundario">
+    <h1 class="main__titulo_pagina fs_grande color_primario">
+        Iniciar sesión
+    </h1>
+
+    <form class="portal_login__formulario" name="LoginForm" method="post" action="{% url 'portal:ruta_login' %}">
+        {% csrf_token %}
+
+        <div class="input_box">
+            <label class="fs_normal color_primario" for="LoginInputCorreo">Correo Electrónico</label>
+            <!--
+                <input class="fs_normal color_primario fondo_secundario_variante" name="LoginInputCorreo" type="text" placeholder="alguien@ejemplo.com">
+                <input class="fs_normal color_primario fondo_secundario_variante" name="LoginInputPassword" type="password">
+            
+            -->
+            {{formulario.correo}}
+        </div>
+        <div class="input_box">
+            <label class="fs_normal color_primario" for="LoginInputPassword">Contraseña</label>
+            {{formulario.password}}
+        </div>
+        <div class="input_box">
+            <button class="fs_normal boton_flex fondo_azul color_blanco hover_color" type="submit">Entrar</button>
+        </div>
+    </form>
+
+    <div class="portal_login__enlaces">
+        <a class="fs_normal color_primario hover_color" href="">¿Olvidaste tu contraseña?</a>
+    </div>
+
+</div>
+{% endblock  %}
