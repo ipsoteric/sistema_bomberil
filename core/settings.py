@@ -131,6 +131,17 @@ AUTH_USER_MODEL = "gestion_usuarios.Usuario"
 LOGIN_URL = 'portal:ruta_login'
 
 
+# Mapeo de nombres de apps a nombres legibles para el usuario (Aparecerán en el Header)
+MODULOS = {
+    'gestion_inventario': 'Inventario',
+    'gestion_mantenimiento': 'Mantenimiento de Herramientas',
+    'gestion_medica': 'Gestión Médica',
+    'gestion_usuarios': 'Usuarios y Permisos',
+    'gestion_voluntarios': 'Gestión Voluntarios',
+    'portal': 'Bomberil',
+}
+
+
 # Configuración de Jazzmin
 JAZZMIN_SETTINGS = {
     # título de la ventana (por defecto usará current_admin_site.site_title si está ausente o es None)

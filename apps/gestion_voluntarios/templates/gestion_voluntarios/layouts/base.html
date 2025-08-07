@@ -25,49 +25,7 @@
     <div id="root">
 
         {# Header/Encabezado #}
-        <header class="header fondo_header">
-
-
-            {# Sección para nombre del módulo, sistema y compañía #}
-            <section class="header__seccion_compania">
-                {# Importar ícono de menú hamburguesa para mostrar/ocultar la barra lateral en resolución móvil #}
-                {% include 'layouts/boton_toggle_sidebar.html' %}
-                {# Logo/Ícono de la compañía #}
-                <img class="header__logo" src="{% static 'imagenes/bomberil_logo_circle_white(100x100).png' %}" alt="">
-                {# Nombre de la compañía #}
-                <div class="header__titulo">
-                    <h3 class="header__compania fs_pequena color_primario_variante">Segunda Compañía de Bomberos de Iquique</h3>
-                    {# Nombre del módulo #}
-                    <h2 class="header__modulo fs_header_titulo color_primario">Gestión de Voluntarios</h2>
-                </div>
-            </section>
-
-
-
-            {# Sección para opciones de usuario #}
-            <section class="header__seccion_menu_usuario">
-                <div id="MenuUsuarioPerfil" class="menu_usuario__usuario">
-                    <div class="menu_usuario__nombre_usuario fs_normal color_primario">
-                        <div class="menu_usuario__nombre_email">
-                            <span class="menu_usuario__nombre">
-                                Mauricio Alejandro Paredes Bugueño
-                            </span>
-                            <span class="menu_usuario__email fs_pequena color_primario_variante">
-                                admin@admin.cl
-                            </span>
-                        </div>
-                        <div class="menu_usuario__flecha">
-                            <i class="fa-solid fa-chevron-down color_primario"></i>
-                        </div>
-                    </div>
-                    <div class="menu_usuario__avatar_usuario">
-                        <img src="{% static 'imagenes/user_avatar.png' %}" alt="">
-                    </div>
-                </div>
-            </section>
-
-
-        </header>
+        {% include "layouts/header.html" %}
 
         {# Menú desplegable con más opciones de cuenta/usuario. Por defecto está oculto #}
         {% include "layouts/menu_desplegable_usuario.html" %}
