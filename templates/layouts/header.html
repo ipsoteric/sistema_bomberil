@@ -16,7 +16,7 @@
         <h3 class="header__compania fs_pequena color_primario_variante">
         {% if user.is_authenticated %}
             {% if user.estacion %}
-                {{request.user.estacion.nombre}}
+                {{request.user.estacion.nombre|title}}
             {% else %}
                 Sin compañía asignada
             {% endif %}
