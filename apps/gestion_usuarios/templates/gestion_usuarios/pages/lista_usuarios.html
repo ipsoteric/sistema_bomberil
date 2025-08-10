@@ -1,0 +1,81 @@
+{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Título de la ventana #} {% block titulo_ventana %}Lista de usuarios{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Lista de usuarios{% endblock %}
+
+{% block contenido %}
+
+<table id="myTable" class="display tabla_1">
+    <thead class="color_blanco fondo_negro">
+        <tr>
+            <th>ID</th>
+            <th>Usuario</th>
+            <th>Correo Electrónico</th>
+            <th>Estado</th>
+            <th>Roles</th>
+            <th>Fecha creación</th>
+        </tr>
+    </thead>
+    <tbody class="fondo_secundario_variante">
+        {% if usuarios %}
+        {% for usuario in usuarios %}
+        <tr>
+            {# ID #}
+            <td>{{usuario.id}}</td>
+            
+            {# Avatar + Nombre completo + verificado #}
+            <td>
+            {% if usuario.avatar_thumb_small %}
+                <img 
+                class="avatar_small" 
+                src="{{ usuario.avatar_thumb_small.url|default:'/static/imagenes/default_avatar.png' }}" 
+                >
+            {% else %}
+                <img 
+                class="avatar_small" 
+                src="{% static 'imagenes/default_avatar.png' %}"
+                >
+            {% endif %}
+                
+                <span class="tabla_1__nombre_usuario">{{usuario.get_full_name|title}}</span>
+                
+            {% if usuario.is_verified %}
+                <span title="Usuario verificado" class="etiqueta_icono">
+                    <i class="fa-solid fa-circle-check color_azul"></i>
+                </span>
+            {% endif %}
+
+            {% if usuario.is_superuser %}
+                <span title="Administrador" class="etiqueta_icono">
+                    <i class="fa-solid fa-shield-halved color_primario"></i>
+                </span>
+            {% endif %}
+
+            {% if usuario.is_staff %}
+                <span title="Staff" class="etiqueta_icono">
+                    <i class="fa-solid fa-clipboard-user color_naranjo"></i>
+                </span>
+            {% endif %}
+                
+            </td>
+            
+            
+            {# Correo #}
+            <td>{{usuario.email}}</td>
+
+            <td>
+            {% if usuario.is_active %}
+            <span title="El usuario puede iniciar sesión" class="etiqueta fondo_verde color_blanco">Activo</span>
+            {% else %}
+            <span title="El usuario no puede iniciar sesión" class="etiqueta color_primario">Inactivo</span>
+            {% endif %}
+            </td>
+            <td>{{usuario.groups}}</td>
+            <td>{{usuario.created_at}}</td>
+        </tr>
+            {% endfor %}
+        {% endif %}
+    </tbody>
+</table>
+    
+{% endblock  %}

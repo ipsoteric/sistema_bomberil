@@ -11,11 +11,22 @@
                 <i class="fa-solid fa-truck-ramp-box"></i> 
                 <span>Usuarios</span>
             </a>
-            <i class="fa-solid fa-chevron-down color_primario fs_nav_seccion barra_lateral__flecha_modulo"></i>
+            <i class="fa-solid fa-chevron-down color_primario barra_lateral__flecha_modulo"></i>
         </div>
 
         <ul class="barra_lateral__lista_opciones oculto">
-            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="">Pendiente</a></li>
+            <li class="fondo_opcion_nav hover_color">
+                <a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_usuarios:ruta_lista_usuarios' %}">
+                    <i class="fa-solid fa-clipboard-list color_naranjo_claro"></i>
+                    Lista de usuarios
+                </a>
+            </li>
+            <li class="fondo_opcion_nav hover_color">
+                <a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_usuarios:ruta_crear_usuario' %}">
+                    <i class="fa-solid fa-user-plus color_verde"></i>
+                    Crear usuario
+                </a>
+            </li>
         </ul>
     </section>
 
