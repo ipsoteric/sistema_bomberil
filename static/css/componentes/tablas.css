@@ -9,3 +9,10 @@
     margin-left: 10px;
     margin-right: 5px;
 }
+
+.tabla_1__caja_botones {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    gap: 8px;
+}

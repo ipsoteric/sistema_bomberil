@@ -14,6 +14,7 @@
             <th>Estado</th>
             <th>Roles</th>
             <th>Fecha creación</th>
+            <th>Acciones</th>
         </tr>
     </thead>
     <tbody class="fondo_secundario_variante">
@@ -72,6 +73,19 @@
             </td>
             <td>{{usuario.groups}}</td>
             <td>{{usuario.created_at}}</td>
+            <td>
+                <div class="tabla_1__caja_botones">
+                    <span class="boton_icono fondo_morado hover_color">
+                        <i class="fa-solid fa-eye color_blanco"></i>
+                    </span>
+                    <span class="boton_icono fondo_naranjo hover_color">
+                        <i class="fa-solid fa-pen-to-square color_blanco"></i>
+                    </span>
+                    <span class="boton_icono fondo_rojo hover_scale">
+                        <i class="fa-solid fa-trash color_blanco"></i>
+                    </span>
+                </div>
+            </td>
         </tr>
             {% endfor %}
         {% endif %}

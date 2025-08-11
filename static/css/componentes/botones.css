@@ -9,6 +9,13 @@
 }
 
 .boton {
+    cursor: pointer;
     padding: 10px 30px;
+    border-radius: 5px;
+}
+
+.boton_icono {
+    cursor: pointer;
+    padding: 5px 7px;
     border-radius: 5px;
 }

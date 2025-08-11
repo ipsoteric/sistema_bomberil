@@ -40,11 +40,11 @@ class LoginView(View):
         if not formulario.is_valid():
             return render(request, self.template_name, {'formulario': formulario})
 
-        data = formulario.cleaned_data
+        datos_limpios = formulario.cleaned_data
         user = authenticate(
             request, 
-            email=data.get('correo'), 
-            password=data.get('password')
+            email=datos_limpios.get('correo'), 
+            password=datos_limpios.get('password')
         )
 
         if user is None:

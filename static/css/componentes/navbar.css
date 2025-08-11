@@ -59,6 +59,7 @@
 /* Lista de opciones*/
 .barra_lateral__lista_opciones {
     padding-left:0; /* Quita estilo de bootstrap */
+    margin-bottom: 0; /* Quitar estilo de bootstrap */
 }
 /* Contenedor de la opción */
 .barra_lateral__lista_opciones li {
