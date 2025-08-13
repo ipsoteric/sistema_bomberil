@@ -187,3 +187,7 @@
 .color_naranjo_claro {
     color: var(--color-naranjo-claro);
 }
+
+.color_negro {
+    color: var(--color-negro);
+}

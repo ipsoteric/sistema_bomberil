@@ -14,7 +14,7 @@
             <th>Estado</th>
             <th>Roles</th>
             <th>Fecha creación</th>
-            <th>Acciones</th>
+            <th></th>
         </tr>
     </thead>
     <tbody class="fondo_secundario_variante">
@@ -74,24 +74,10 @@
             <td>{{usuario.groups}}</td>
             <td>{{usuario.created_at}}</td>
             <td>
-                <div class="tabla_1__caja_botones">
-                {% if usuario.is_active %}
-                    {# Botón para ver #}
-                    <span class="boton_icono fondo_morado hover_color">
-                        <i class="fa-solid fa-eye color_blanco"></i>
-                    </span>
-                    {# Botón para Modificar #}
-                    <span class="boton_icono fondo_naranjo hover_color">
-                        <i class="fa-solid fa-pen-to-square color_blanco"></i>
-                    </span>
-                    {# Botón para Desactivar #}
-                    <button type=button data-form-action="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=usuario.id %}" class="boton_icono fondo_rojo hover_scale boton-desactivar-usuario color_blanco">
-                        <i class="fa-solid fa-ban"></i>
-                    </button>
-                {% else %}
-                <!--Botón para activar-->
-                {% endif %}
-                </div>
+                <button class="boton_s boton-menu-acciones fondo_transparente">
+                    <i class="fa-solid fa-ellipsis-vertical color_primario"></i>
+                </button>
+                {% include 'gestion_usuarios/partials/_menu_acciones_usuarios.html' with usuario=usuario %}
             </td>
         </tr>
             {% endfor %}

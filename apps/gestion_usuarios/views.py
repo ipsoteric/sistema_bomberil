@@ -3,7 +3,7 @@ from django.views import View
 from django.contrib import messages
 from django.db import IntegrityError
 from django.urls import reverse, reverse_lazy
-from django.http import HttpResponseNotAllowed
+from django.http import HttpResponseNotAllowed, HttpResponse
 
 from .models import Usuario
 from .forms import FormularioCrearUsuario
@@ -31,8 +31,8 @@ class UsuarioListaView(View):
 class UsuarioObtenerView(View):
     '''Vista para obtener el detalle de un usuario'''
 
-    def get(self, request):
-        pass
+    def get(self, request, id):
+        return HttpResponse("VER USUARIO")
 
 
 
@@ -86,14 +86,14 @@ class UsuarioCrearView(View):
 class UsuarioEditarView(View):
     '''Vista para editar usuarios'''
 
-    def get(self, request):
-        pass
+    def get(self, request, id):
+        return HttpResponse("EDITAR USUARIO")
 
     def post(self, request):
         pass
 
 
-
+# ESTA FUNCIONALIDAD DEBE IMPLEMENTARSE DE OTRA FORMA
 class UsuarioDesactivarView(View):
     '''Vista para desactivar usuarios'''
 

@@ -1,0 +1,33 @@
+<div class="menu-acciones-usuarios">
+
+    {# Ver usuario #}
+    <a 
+    class="menu-acciones-usuarios__accion acciones-usuarios-ver color_negro" 
+    href="{% url 'gestion_usuarios:ruta_ver_usuario' id=usuario.id %}"
+    >
+        <i class="fa-solid fa-eye"></i> 
+        Ver
+    </a>
+
+    {# Modificar información personal de usuario #}
+    <a 
+    class="menu-acciones-usuarios__accion acciones-usuarios-editar color_negro" 
+    href="{% url 'gestion_usuarios:ruta_editar_usuario' id=usuario.id %}"
+    >
+        <i class="fa-solid fa-pen-to-square"></i> 
+        Modificar información
+    </a>
+
+    {# Desactivar usuario #}
+    {% if usuario.is_active %}
+    <button 
+    type="button" 
+    class="menu-acciones-usuarios__accion boton-desactivar-usuari fondo_transparente color_rojo"
+    data-form-action="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=usuario.id %}"
+    >
+        <i class="fa-solid fa-ban"></i>
+        Desactivar
+    </button>
+    {% endif %}
+
+</div>
