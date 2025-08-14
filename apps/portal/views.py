@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .forms import FormularioLogin
+from apps.gestion_usuarios.models import Membresia
 
 
 
@@ -49,10 +50,29 @@ class LoginView(View):
 
         if user is None:
             messages.add_message(request, messages.WARNING, "Usuario y/o contraseña incorrectos")
-            return render(request, self.template_name, {'formulario': formulario})
+            return redirect(reverse('portal:ruta_login'))
             
+
+        # Iniciar sesión
         login(request, user)
-        return redirect(reverse('portal:ruta_inicio'))
+
+        # Obtener membresía activa (acceso)
+        membresia_activa = Membresia.objects.filter(usuario=user, estado='ACTIVO').select_related('estacion').first()
+
+        # Verificar membresía
+        if membresia_activa:
+            # ÉXITO: Guarda los datos de la estación en la sesión.
+            request.session['active_estacion_id'] = membresia_activa.estacion.id
+            request.session['active_estacion_nombre'] = membresia_activa.estacion.nombre
+            messages.success(request, f"Bienvenido, {user.first_name.title()}!")
+            return redirect(reverse('portal:ruta_inicio'))
+        
+        else:
+            # FALLO: El usuario es válido, pero no tiene acceso activo.
+            # Se cierra su sesión y se le notifica.
+            logout(request)
+            messages.error(request, "No tienes una membresía activa en ninguna estación. Contacta a un administrador.")
+            return redirect(reverse('portal:ruta_login'))
 
 
 

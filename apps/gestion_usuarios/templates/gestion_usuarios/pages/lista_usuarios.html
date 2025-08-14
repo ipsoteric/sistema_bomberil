@@ -18,18 +18,18 @@
         </tr>
     </thead>
     <tbody class="fondo_secundario_variante">
-        {% if usuarios %}
-        {% for usuario in usuarios %}
+        {% if membresias %}
+        {% for membresia in membresias %}
         <tr>
             {# ID #}
-            <td>{{usuario.id}}</td>
+            <td>{{membresia.usuario.id}}</td>
             
             {# Avatar + Nombre completo + verificado #}
             <td>
-            {% if usuario.avatar_thumb_small %}
+            {% if membresia.usuario.avatar_thumb_small %}
                 <img 
                 class="avatar_small" 
-                src="{{ usuario.avatar_thumb_small.url|default:'/static/imagenes/default_avatar.png' }}" 
+                src="{{ membresia.usuario.avatar_thumb_small.url|default:'/static/imagenes/default_avatar.png' }}" 
                 >
             {% else %}
                 <img 
@@ -38,21 +38,23 @@
                 >
             {% endif %}
                 
-                <span class="tabla_1__nombre_usuario">{{usuario.get_full_name|title}}</span>
+                <span class="tabla_1__nombre_usuario">
+                    {{membresia.usuario.get_full_name|title}}
+                </span>
                 
-            {% if usuario.is_verified %}
+            {% if membresia.usuario.is_verified %}
                 <span title="Usuario verificado" class="etiqueta_icono">
                     <i class="fa-solid fa-circle-check color_azul"></i>
                 </span>
             {% endif %}
 
-            {% if usuario.is_superuser %}
+            {% if membresia.usuario.is_superuser %}
                 <span title="Administrador" class="etiqueta_icono">
                     <i class="fa-solid fa-shield-halved color_primario"></i>
                 </span>
             {% endif %}
 
-            {% if usuario.is_staff %}
+            {% if membresia.usuario.is_staff %}
                 <span title="Staff" class="etiqueta_icono">
                     <i class="fa-solid fa-clipboard-user color_naranjo"></i>
                 </span>
@@ -62,13 +64,15 @@
             
             
             {# Correo #}
-            <td>{{usuario.email}}</td>
+            <td>{{membresia.usuario.email}}</td>
 
             <td>
-            {% if usuario.is_active %}
-            <span title="El usuario puede iniciar sesión" class="etiqueta fondo_verde color_blanco">Activo</span>
-            {% else %}
-            <span title="El usuario no puede iniciar sesión" class="etiqueta color_primario">Inactivo</span>
+            {% if membresia.estado == 'ACTIVO' %}
+                <span title="El usuario puede iniciar sesión" class="etiqueta fondo_verde color_blanco">Activo</span>
+            {% elif membresia.estado == 'INACTIVO' %}
+            <span title="El usuario no puede iniciar sesión" class="etiqueta color_primario">Desactivado</span>
+            {% elif membresia.estado == 'FINALIZADO' %}
+            <span title="El usuario no puede iniciar sesión" class="etiqueta fondo_negro color_blanco">Finalizado</span>
             {% endif %}
             </td>
             <td>{{usuario.groups}}</td>
@@ -77,7 +81,7 @@
                 <button class="boton_s boton-menu-acciones fondo_transparente">
                     <i class="fa-solid fa-ellipsis-vertical color_primario"></i>
                 </button>
-                {% include 'gestion_usuarios/partials/_menu_acciones_usuarios.html' with usuario=usuario %}
+                {% include 'gestion_usuarios/partials/_menu_acciones_usuarios.html' with membresia=membresia %}
             </td>
         </tr>
             {% endfor %}

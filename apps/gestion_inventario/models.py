@@ -84,6 +84,7 @@ class Estacion(models.Model):
     class Meta:
         verbose_name = "Estación"
         verbose_name_plural = "Estaciones"
+        ordering = ['nombre']
 
     def __str__(self):
         return self.nombre

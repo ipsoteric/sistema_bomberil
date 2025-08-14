@@ -5,7 +5,7 @@ from django.db import IntegrityError
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseNotAllowed, HttpResponse
 
-from .models import Usuario
+from .models import Usuario, Membresia
 from .forms import FormularioCrearUsuario
 from .funciones import generar_contraseña_segura
 
@@ -23,8 +23,14 @@ class UsuarioListaView(View):
     '''Vista para listar usuarios'''
     
     def get(self, request):
-        usuarios = Usuario.objects.filter(estacion=request.user.estacion)
-        return render(request, "gestion_usuarios/pages/lista_usuarios.html", context={'usuarios':usuarios})
+        active_estacion_id = request.session.get('active_estacion_id')
+        
+        # Filtra el modelo Membresia, no Usuario
+        membresias = Membresia.objects.filter(
+            estacion_id=active_estacion_id
+        ).select_related('usuario')
+        
+        return render(request, "gestion_usuarios/pages/lista_usuarios.html", context={'membresias': membresias})
 
 
 
@@ -101,19 +107,29 @@ class UsuarioDesactivarView(View):
         return HttpResponseNotAllowed(['POST'])
 
     def post(self, request, id, *args, **kwargs):
-        usuario = get_object_or_404(Usuario, pk=id)
+        active_estacion_id = request.session.get('active_estacion_id')
+        if not active_estacion_id:
+            messages.error(request, "No se pudo determinar la estación activa. Por favor, inicie sesión de nuevo.")
+            return redirect(reverse("gestion_usuarios:ruta_lista_usuarios"))
+
         
         try:
-            # Cambia el estado y guarda el objeto
-            usuario.is_active = False
-            usuario.save()
+            membresia = get_object_or_404(
+                Membresia, 
+                usuario_id=id, 
+                estacion_id=active_estacion_id
+            )
+
+            membresia.estado = 'INACTIVO'
+            membresia.save()
 
             # Mensaje de éxito para el usuario
-            messages.success(request, f"El usuario '{usuario.get_full_name}' ha sido desactivado correctamente.")
+            messages.success(request, f"El usuario '{membresia.usuario.get_full_name}' ha sido desactivado correctamente.")
 
+        except Membresia.DoesNotExist:
+            messages.error(request, "El usuario no tiene acceso a esta estación.")
         except Exception as e:
-            # Captura cualquier otro error inesperado
-            messages.error(request, f"Ocurrió un error inesperado al desactivar el usuario: {e}")
+            messages.error(request, f"Ocurrió un error inesperado: {e}")
 
         # Redirige a la lista de usuarios (asegúrate que esta URL exista)
         return redirect(reverse("gestion_usuarios:ruta_lista_usuarios"))

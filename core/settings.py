@@ -106,6 +106,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'apps.gestion_usuarios.backends.RolBackend',
+]
+
+
 # Internacionalización
 LANGUAGE_CODE = 'es-es'
 TIME_ZONE = 'America/Santiago'
@@ -181,10 +187,13 @@ JAZZMIN_SETTINGS = {
 
     # Lista de modelos de administración para buscar desde la barra de búsqueda, se omite la barra si no se incluye  
     # Si quieres usar un solo campo de búsqueda, no necesitas una lista, puedes usar un string simple  
-    "search_model": ["auth.User", "auth.Group"],  
+    "search_model": ["gestion_usuarios.Usuario", "gestion_usuarios.Rol"],  
 
     # Nombre del campo en el modelo de usuario que contiene el avatar (ImageField/URLField/CharField) o un objeto llamable que recibe el usuario  
-    "user_avatar": "avatar"  
+    "user_avatar": "avatar",
+
+    "hide_apps": ["auth"],
+    "hide_models": ["auth.Group", "auth.User"],
 }
 
 

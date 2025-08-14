@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group, Permission
 from PIL import Image
+from django.utils.translation import gettext_lazy as _
+from django.db.models import Q
 
 from .manager import CustomUserManager
 from .funciones import generar_ruta_subida_avatar, recortar_y_redimensionar_avatar, generar_avatar_thumbnail
@@ -23,7 +25,6 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     avatar = models.ImageField(upload_to=generar_ruta_subida_avatar, null=True, blank=True)
     avatar_thumb_small = models.ImageField(null=True, blank=True)
     avatar_thumb_medium = models.ImageField(null=True, blank=True)
-    estacion = models.ForeignKey(Estacion, on_delete=models.CASCADE, blank=True, null=True, verbose_name="Estación correspondiente")
     
     # Campos automáticos de fecha
     created_at = models.DateTimeField(auto_now_add=True)
@@ -124,3 +125,94 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 #            # 4. Actualiza los campos con las nuevas rutas y guarda todo
 #            self.avatar.name = f"usuarios/avatar/user_{self.id}/avatar.jpg"
 #            super().save(update_fields=['avatar', 'avatar_thumb_small', 'avatar_thumb_medium'])
+
+
+
+
+
+
+class Rol(models.Model):
+    """
+    Define un rol dentro del sistema. Puede ser universal (compartido por todas
+    las compañías) o específico de una sola compañía.
+    """
+    nombre = models.CharField(_("nombre"), max_length=150)
+    
+    # La clave del modelo híbrido. Si es Null, el rol es universal.
+    estacion = models.ForeignKey(
+        Estacion, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True,
+        help_text=_("Dejar en blanco para crear un rol universal.")
+    )
+
+    # Vinculamos directamente a los permisos de Django
+    permisos = models.ManyToManyField(
+        Permission,
+        verbose_name=_("permisos"),
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "rol"
+        verbose_name_plural = "roles"
+        ordering = ['nombre']
+        constraints = [
+            # Regla 1: El par (nombre, estacion) debe ser único si la estación no es nula.
+            models.UniqueConstraint(
+                fields=['nombre', 'estacion'], 
+                name='rol_unico_por_estacion'
+            ),
+            # Regla 2: El 'nombre' debe ser único SI la estación ES nula.
+            models.UniqueConstraint(
+                fields=['nombre'], 
+                condition=Q(estacion__isnull=True), 
+                name='rol_global_unico'
+            )
+        ]
+
+    def __str__(self):
+        if self.estacion:
+            return f'{self.nombre} ({self.estacion.nombre})'
+        return f'{self.nombre} (Universal)'
+
+
+
+
+
+
+class Membresia(models.Model):
+    """
+    Este modelo es el corazón del sistema.
+    Vincula un Usuario a una Compañía y define sus roles dentro de esa compañía.
+    """
+
+    class Estado(models.TextChoices):
+        ACTIVO = 'ACTIVO', 'Activo'
+        INACTIVO = 'INACTIVO', 'Inactivo'
+        FINALIZADO = 'FINALIZADO', 'Finalizado'
+
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='membresias')
+    estacion = models.ForeignKey(Estacion, on_delete=models.CASCADE, related_name='miembros')
+    roles = models.ManyToManyField(Rol, related_name='asignaciones') 
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.ACTIVO)
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("Membresía")
+        verbose_name_plural = _("Membresías")
+        # Restricción para evitar múltiples membresías activas del mismo usuario en la misma compañía
+        constraints = [
+            models.UniqueConstraint(
+                fields=['usuario'], 
+                condition=Q(estado='ACTIVO'), 
+                name='membresia_activa_unica_por_usuario'
+            )
+        ]
+
+    
+    def __str__(self):
+        return f'{self.usuario.get_full_name} en {self.estacion.nombre} ({self.estado})'
