@@ -19,7 +19,7 @@
                     <div class="caja_flex_column">
                         <label class="fs_mediana" for="">Buscar usuario</label>
                         <br>
-                        <span>Ingresa el correo electrónico del usuario que deseas agregar a la compañía</span>
+                        <span>Ingresa el RUT del usuario que deseas agregar a la compañía</span>
                     </div>
                 </div>
                 <input id="BuscarInputRUT" class="input_box__input fs_normal color_primario fondo_secundario" type="text">
@@ -144,7 +144,7 @@
             else if (data.status === 'NO_EXISTE') {
             // Caso 3: Usuario no encontrado
             content = `
-                <div class="alerta_especial_js color_blanco fondo_gris_oscuro fs_normal">${data.mensaje}</div>
+                <div class="alerta_especial_js color_primario fs_normal">${data.mensaje}</div>
                 <div class="panel_base fondo_secundario" style="text-align: center; padding: 20px;">
                     <a href="${crearUsuarioUrl}" class="boton_flex fondo_verde color_blanco fs_mediana">
                         Crear Usuario
