@@ -1,9 +1,15 @@
 from django.shortcuts import redirect
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from PIL import Image
+
 from apps.gestion_usuarios.models import Usuario, Membresia
+
+
 
 class BuscarUsuarioAPIView(APIView):
     """
@@ -79,3 +85,25 @@ def alternar_tema_oscuro(request):
     current = request.session.get('dark_mode', False)
     request.session['dark_mode'] = not current
     return redirect(request.META.get('HTTP_REFERER', '/'))
+
+
+
+def editar_avatar_usuario(request, id):
+    # Solo aceptamos peticiones POST para esta vista de API
+    if request.method == 'POST':
+        usuario = get_object_or_404(Usuario, pk=id)
+        nuevo_avatar = request.FILES.get('nuevo_avatar')
+
+        if nuevo_avatar:
+            # Intenta abrir la imagen para validarla
+            try:
+                img = Image.open(nuevo_avatar)
+                img.verify()  # Verifica que no sea un archivo corrupto
+            except (IOError, SyntaxError) as e:
+                return JsonResponse({'success': False, 'error': 'El archivo de imagen no es válido.'}, status=400)
+            
+            usuario.avatar = nuevo_avatar
+            usuario.save()
+            return JsonResponse({'success': True, 'new_avatar_url': usuario.avatar.url})
+
+    return JsonResponse({'success': False, 'error': 'Petición inválida'})
