@@ -104,7 +104,7 @@
 /*-------------------*/
 
 /* Laptops pequeñas */
-@media (max-width: 1300px) {
+@media (max-width: 1400px) {
     .barra_lateral__modulo_nombre {
         padding: 0 20px;
     }
