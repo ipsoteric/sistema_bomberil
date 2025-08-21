@@ -7,7 +7,7 @@ from django.http import HttpResponseNotAllowed, HttpResponse
 from django.utils import timezone
 
 from .models import Usuario, Membresia
-from .forms import FormularioCrearUsuario
+from .forms import FormularioCrearUsuario, FormularioEditarUsuario
 from .mixins import UsuarioDeMiEstacionMixin
 from .funciones import generar_contraseña_segura
 from apps.gestion_inventario.models import Estacion
@@ -183,14 +183,37 @@ class UsuarioCrearView(View):
 
 
 
-class UsuarioEditarView(View):
+class UsuarioEditarView(UsuarioDeMiEstacionMixin, View):
     '''Vista para editar usuarios'''
 
-    def get(self, request, id):
-        return HttpResponse("EDITAR USUARIO")
+    template_name = "gestion_usuarios/pages/editar_usuario.html"
 
-    def post(self, request):
-        pass
+
+    def get(self, request, id):
+        # Obtiene el usuario o retorna un 404 si no existe
+        usuario = get_object_or_404(Usuario, id=id)
+        
+        # Instancia el formulario con los datos del usuario
+        formulario = FormularioEditarUsuario(instance=usuario)
+        
+        return render(request, self.template_name, {'formulario': formulario, 'usuario': usuario})
+
+
+    def post(self, request, id):
+        usuario = get_object_or_404(Usuario, id=id)
+        
+        # Instancia el formulario con los datos de la petición y los datos del usuario
+        formulario = FormularioEditarUsuario(request.POST, request.FILES, instance=usuario)
+
+        if formulario.is_valid():
+            # El formulario se encarga de guardar los cambios en el objeto 'usuario'
+            formulario.save()
+            messages.success(request, f"Usuario {usuario.get_full_name.title()} actualizado exitosamente.")
+            return redirect(reverse('gestion_usuarios:ruta_lista_usuarios'))
+        else:
+            print("FORMULARIO NO VALIDO")
+            messages.error(request, "Formulario no válido. Por favor, revisa los datos.")
+            return render(request, self.template_name, {'formulario': formulario, 'usuario': usuario})
 
 
 

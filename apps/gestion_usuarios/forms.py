@@ -80,6 +80,48 @@ class FormularioCrearUsuario(forms.Form):
 
 
 
+class FormularioEditarUsuario(forms.ModelForm):
+    class Meta:
+        model = Usuario
+        # Campos editables
+        fields = ['first_name', 'last_name', 'phone', 'birthdate', 'avatar']
+
+    # Campos de solo lectura
+    rut = forms.CharField(
+        label='RUT',
+        widget=forms.TextInput(attrs={
+                'id':'UsuarioInputRut',
+                'class':'input_box__input fs_normal color_primario_variante fondo_secundario',
+                'autocomplete':'off',
+                'readonly':'readonly'
+            })
+    )
+    email = forms.EmailField(
+        label='Correo electrónico',
+        widget=forms.EmailInput(attrs={
+                'id':'UsuarioInputCorreo',
+                'class':'input_box__input fs_normal color_primario_variante fondo_secundario',
+                'autocomplete':'off',
+                'readonly':'readonly'
+            })
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # El `instance` es el usuario que estamos editando
+        if self.instance:
+            self.fields['rut'].initial = self.instance.rut
+            self.fields['email'].initial = self.instance.email
+
+        # Personaliza otros campos si es necesario
+        self.fields['first_name'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
+        self.fields['last_name'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
+        self.fields['birthdate'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
+        self.fields['phone'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
+
+
+
 class CustomUserCreationForm(UserCreationForm):
     """
     Formulario para crear nuevos usuarios. Hereda de UserCreationForm

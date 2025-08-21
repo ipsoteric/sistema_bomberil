@@ -1,0 +1,77 @@
+{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Título de la ventana #} {% block titulo_ventana %}Modificar Usuario{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Modificar Información de Usuario{% endblock %}
+
+{% block contenido %}
+<div class="caja_para_pagina_contenido_centrado">
+
+    <div class="contenedor_formulario_simple fondo_secundario">
+        <form 
+        method="post" 
+        action="{% url 'gestion_usuarios:ruta_editar_usuario' id=usuario.id %}"
+        class=" formulario_simple color_primario fs_normal"
+        >
+        {% csrf_token %}
+
+            {# Correo #}
+            <div class="input_box">
+                <div class="input_box__label color_primario_variante">
+                    <label for="">Corre Electrónico</label>
+                </div>
+                {{formulario.email}}
+            </div>
+
+            {# Rut #}
+            <div class="input_box">
+                <div class="input_box__label color_primario_variante">
+                    <label for="">Rut</label>
+                </div>
+                {{formulario.rut}}
+            </div>
+            
+            {# Nombre #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <i class="fa-solid fa-asterisk color_rojo"></i>
+                    <label for="">Nombre</label>
+                </div>
+                {{formulario.first_name}}
+            </div>
+            
+            {# Apellido #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <i class="fa-solid fa-asterisk color_rojo"></i>
+                    <label for="">Apellido</label>
+                </div>
+                {{formulario.last_name}}
+            </div>
+            
+            {# Fecha nacimiento #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <label for="">Fecha de nacimiento</label>
+                </div>
+                {{formulario.birthdate}}
+            </div>
+            
+            {# Teléfono #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <label for="">Teléfono</label>
+                </div>
+                {{formulario.phone}}
+            </div>
+
+            <div class="formulario_simple__caja_botones">
+                <button type="submit" class="boton fs_normal color_blanco fondo_verde hover_color">Guardar</button>
+                <button class="color_primario fondo_transparente">Cancelar</button>
+            </div>
+
+        </form>
+    </div>  
+
+</div>
+
+{% endblock  %}
