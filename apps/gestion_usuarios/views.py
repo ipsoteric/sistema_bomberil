@@ -230,7 +230,7 @@ class UsuarioEditarView(UsuarioDeMiEstacionMixin, View):
 
 
 
-class UsuarioDesactivarView(View):
+class UsuarioDesactivarView(UsuarioDeMiEstacionMixin, View):
     '''Vista para desactivar usuarios. Desactivar un usuario consiste en no permitirle iniciar sesión en la compañía.'''
 
     def get(self, request, *args, **kwargs):
@@ -255,6 +255,43 @@ class UsuarioDesactivarView(View):
 
             # Mensaje de éxito para el usuario
             messages.success(request, f"El usuario '{membresia.usuario.get_full_name.title()}' ha sido desactivado correctamente.")
+
+        except Membresia.DoesNotExist:
+            messages.error(request, "El usuario no tiene acceso a esta estación.")
+        except Exception as e:
+            messages.error(request, f"Ocurrió un error inesperado: {e}")
+
+        # Redirige a la lista de usuarios (asegúrate que esta URL exista)
+        return redirect(reverse("gestion_usuarios:ruta_lista_usuarios"))
+
+
+
+
+class UsuarioActivarView(UsuarioDeMiEstacionMixin, View):
+    '''Vista para desactivar usuarios. Desactivar un usuario consiste en no permitirle iniciar sesión en la compañía.'''
+
+    def get(self, request, *args, **kwargs):
+        return HttpResponseNotAllowed(['POST'])
+
+    def post(self, request, id, *args, **kwargs):
+        active_estacion_id = request.session.get('active_estacion_id')
+        if not active_estacion_id:
+            messages.error(request, "No se pudo determinar la estación activa. Por favor, inicie sesión de nuevo.")
+            return redirect(reverse("gestion_usuarios:ruta_lista_usuarios"))
+
+        
+        try:
+            membresia = get_object_or_404(
+                Membresia, 
+                usuario_id=id, 
+                estacion_id=active_estacion_id
+            )
+
+            membresia.estado = 'ACTIVO'
+            membresia.save()
+
+            # Mensaje de éxito para el usuario
+            messages.success(request, f"El usuario '{membresia.usuario.get_full_name.title()}' ha sido activado correctamente.")
 
         except Membresia.DoesNotExist:
             messages.error(request, "El usuario no tiene acceso a esta estación.")

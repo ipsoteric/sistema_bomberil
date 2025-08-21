@@ -24,4 +24,7 @@ urlpatterns = [
 
     # Desactivar usuario (No puede acceder al sistema)
     path('usuarios/<int:id>/desactivar/', UsuarioDesactivarView.as_view(), name="ruta_desactivar_usuario"),
+
+    # Activar usuario (Puede acceder al sistema)
+    path('usuarios/<int:id>/activar/', UsuarioActivarView.as_view(), name="ruta_activar_usuario"),
 ]

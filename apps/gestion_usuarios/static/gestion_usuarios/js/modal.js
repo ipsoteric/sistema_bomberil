@@ -1,46 +1,57 @@
-/*
-const ModalDesactivarUsuario = document.getElementById('ModalDesactivarUsuario')
-const confirmarDesactivarUsuario = document.getElementById('confirmarDesactivarUsuario')
-
-ModalDesactivarUsuario.addEventListener('shown.bs.modal', () => {
-  myInput.focus()
-})
-*/
-
 document.addEventListener('DOMContentLoaded', function () {
-  // 1. Seleccionar el elemento HTML del modal
-  const ModalDesactivarUsuario = document.getElementById('ModalDesactivarUsuario');
-  
-  // Si el elemento del modal no existe, no hacemos nada más.
-  if (!ModalDesactivarUsuario) {
-    console.error("No se encontró el elemento del modal #ModalDesactivarUsuario.");
-    return;
-  }
 
-  // 2. Crear una instancia del Modal de Bootstrap a partir del elemento HTML
-  const modalBootstrap = new bootstrap.Modal(ModalDesactivarUsuario);
-  
-  // Seleccionar el formulario que está dentro del modal
-  const formDesactivarUsuario = document.getElementById('formDesactivarUsuario');
+    // --- LÓGICA PARA EL MODAL DE DESACTIVAR USUARIO ---
+    const modalDesactivarUsuarioEl = document.getElementById('ModalDesactivarUsuario');
+    
+    // Si el elemento del modal existe, configuramos su lógica
+    if (modalDesactivarUsuarioEl) {
+        const modalBootstrapDesactivar = new bootstrap.Modal(modalDesactivarUsuarioEl);
+        const formDesactivarUsuario = document.getElementById('formDesactivarUsuario');
 
-  // 3. Añadir el listener a todos los botones que deben abrir el modal
-  document.querySelectorAll('.boton-desactivar-usuario').forEach(boton => {
-    boton.addEventListener('click', function () {
-      
-      // Esta lógica para obtener la URL y actualizar el formulario sigue igual
-      const urlAccion = this.dataset.formAction;
+        document.querySelectorAll('.boton-desactivar-usuario').forEach(boton => {
+            boton.addEventListener('click', function () {
+                const urlAccion = this.dataset.formAction;
 
-      if (formDesactivarUsuario && urlAccion) {
-        formDesactivarUsuario.action = urlAccion;
-      } else {
-        console.error("No se encontró el formulario o la URL en el data-attribute.");
-      }
+                if (formDesactivarUsuario && urlAccion) {
+                    formDesactivarUsuario.action = urlAccion;
+                } else {
+                    console.error("No se encontró el formulario o la URL en el data-attribute.");
+                }
 
-      // 4. Mostrar el modal usando el método de Bootstrap
-      modalBootstrap.show();
-    });
-  });
-  
-  // ¡Ya no necesitas el código para cerrar el modal!
-  // Bootstrap lo hace automáticamente con 'data-bs-dismiss="modal"'.
+                modalBootstrapDesactivar.show();
+            });
+        });
+    } else {
+        // Este console.log es útil para depurar si el modal no estuviera en la página
+        console.log("El modal #ModalDesactivarUsuario no se encuentra en esta página.");
+    }
+
+    // --- LÓGICA PARA EL MODAL DE ACTIVAR USUARIO ---
+    const modalActivarUsuarioEl = document.getElementById('ModalActivarUsuario');
+
+    // Si el elemento del modal existe, configuramos su lógica
+    if (modalActivarUsuarioEl) {
+        // Corregido: Usar la variable correcta
+        const modalBootstrapActivar = new bootstrap.Modal(modalActivarUsuarioEl); 
+        // Corregido: Asumimos que el formulario de activar tiene un ID diferente
+        const formActivarUsuario = document.getElementById('formActivarUsuario'); 
+
+        // Corregido: Asumimos que los botones de activar tienen una clase diferente
+        document.querySelectorAll('.boton-activar-usuario').forEach(boton => { 
+            boton.addEventListener('click', function () {
+                const urlAccion = this.dataset.formAction;
+
+                if (formActivarUsuario && urlAccion) {
+                    formActivarUsuario.action = urlAccion;
+                } else {
+                    console.error("No se encontró el formulario o la URL en el data-attribute.");
+                }
+
+                modalBootstrapActivar.show();
+            });
+        });
+    } else {
+        console.log("El modal #ModalActivarUsuario no se encuentra en esta página.");
+    }
+
 });

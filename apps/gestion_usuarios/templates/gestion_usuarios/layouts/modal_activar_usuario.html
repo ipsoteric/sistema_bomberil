@@ -1,18 +1,18 @@
-<div id="ModalDesactivarUsuario" class="modal" tabindex="-1">
+<div id="ModalActivarUsuario" class="modal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content fondo_secundario fs_normal color_primario">
 
             <div class="modal-header">
-                <h5 class="modal-title">Confirmar Desactivación</h5>
+                <h5 class="modal-title">Confirmar Activación</h5>
                 <button type="button" class="btn-close color_primario" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <div class="modal-body">
-                <p>¿Estás seguro de que deseas desactivar a este usuario?. Si lo haces, no podrá conectarse al sistema de la compañía ni realizar ninguna acción.</p>
+                <p>¿Estás seguro de que deseas activar a este usuario?. Si lo activas, podrá iniciar sesión en el sistema de la compañía</p>
             </div>
 
             <div class="modal-footer">
-                <form id="formDesactivarUsuario" method="post" action="">
+                <form id="formActivarUsuario" method="post" action="">
                     {% csrf_token %}
                     <div class="acciones_modal">
                         <button 
@@ -25,11 +25,11 @@
                         </button>
 
                         <button 
-                        id="confirmarDesactivacion" 
+                        id="confirmarActivacion" 
                         type="submit" 
                         class="boton_s fondo_azul color_blanco"
                         >
-                        Sí, Desactivar
+                        Sí, Activar
                         </button>
                     </div>
                 </form>

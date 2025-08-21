@@ -92,6 +92,11 @@
                 <i class="fa-solid fa-ban"></i>
                 Desactivar
             </a>
+            {% elif membresia.estado == 'INACTIVO' %}
+            <a class="boton_flex fondo_azul color_blanco fs_normal" href="{% url 'gestion_usuarios:ruta_activar_usuario' id=membresia.usuario.id %}">
+                <i class="fa-solid fa-circle-up"></i>
+                Activar
+            </a>
             {% endif %}
             <a class="boton_flex fondo_rojo color_blanco fs_normal" href="">
                 <i class="fa-solid fa-flag-checkered"></i>
