@@ -14,7 +14,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=100, unique=True, verbose_name="correo electrónico")
     first_name = models.CharField(max_length=100, verbose_name="Nombre")
     last_name = models.CharField(max_length=100, verbose_name="Apellidos")
-    rut = models.CharField(max_length=15, unique=True)
+    rut = models.CharField(max_length=15, unique=True, blank=True, null=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)

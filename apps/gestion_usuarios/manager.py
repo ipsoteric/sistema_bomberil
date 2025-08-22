@@ -24,6 +24,12 @@ class CustomUserManager(BaseUserManager):
         if not last_name:
             raise ValidationError("El apellido es obligatorio")
         
+        is_superuser = extra_fields.get('is_superuser')
+        rut = extra_fields.get('rut')
+
+        if not is_superuser and not rut:
+            raise ValueError('El campo "rut" es requerido.')
+        
         user=self.model(email=email.lower(), first_name=first_name.upper(), last_name=last_name.upper(), **extra_fields)
         user.set_password(password)
         user.save(using=self._db)

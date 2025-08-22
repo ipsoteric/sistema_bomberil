@@ -146,6 +146,21 @@ class CustomUserCreationForm(UserCreationForm):
             print("-----------------------------------------")
             
         return valid
+    
+
+    def clean(self):
+        # Llama a la validación original primero
+        cleaned_data = super().clean()
+        is_superuser = cleaned_data.get("is_superuser")
+        
+        # Aquí va el nombre de tu campo, por ejemplo 'rut'
+        rut = cleaned_data.get("rut")
+
+        # Si no es superusuario y el campo está vacío, lanza un error
+        if not is_superuser and not rut:
+            self.add_error('rut', 'Este campo es obligatorio para usuarios regulares.')
+        
+        return cleaned_data
 
 
 
