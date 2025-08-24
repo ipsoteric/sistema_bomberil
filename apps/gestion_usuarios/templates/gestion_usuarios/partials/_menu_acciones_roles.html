@@ -1,0 +1,23 @@
+<div class="menu-acciones-usuarios">
+
+    {# Ver rol #}
+    <a 
+    class="menu-acciones-usuarios__accion acciones-usuarios-ver color_negro" 
+    href=""
+    >
+        <i class="fa-solid fa-eye"></i> 
+        Ver
+    </a>
+
+    {# Modificar rol #}
+    {% if rol.estacion %}
+    <a 
+    class="menu-acciones-usuarios__accion acciones-usuarios-editar color_negro" 
+    href=""
+    >
+        <i class="fa-solid fa-pen-to-square"></i> 
+        Modificar
+    </a>
+    {% endif %}
+
+</div>

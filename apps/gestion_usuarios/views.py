@@ -5,8 +5,9 @@ from django.db import IntegrityError, transaction
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseNotAllowed, HttpResponse
 from django.utils import timezone
+from django.db.models import Q
 
-from .models import Usuario, Membresia
+from .models import Usuario, Membresia, Rol
 from .forms import FormularioCrearUsuario, FormularioEditarUsuario
 from .mixins import UsuarioDeMiEstacionMixin
 from .funciones import generar_contraseña_segura
@@ -300,3 +301,39 @@ class UsuarioActivarView(UsuarioDeMiEstacionMixin, View):
 
         # Redirige a la lista de usuarios (asegúrate que esta URL exista)
         return redirect(reverse("gestion_usuarios:ruta_lista_usuarios"))
+
+
+
+
+class RolListaView(View):
+    """
+    Muestra una lista de roles de la estación activa del usuario,
+    separando los roles universales de los específicos.
+    """
+
+    template_name = "gestion_usuarios/pages/lista_roles.html"
+
+    def get(self, request, *args, **kwargs):
+
+        # 1. Obtener el ID de la estación activa
+        estacion_id = request.session.get('active_estacion_id')
+
+        # 2. Verificar que el ID exista en la sesión.
+        if not estacion_id:
+            messages.error(request, "No se pudo determinar la estación activa. Por favor, inicie sesión de nuevo.")
+            return redirect(reverse("gestion_usuarios:ruta_lista_roles"))
+    
+        # 3. Obtenemos el objeto de la estación. Si no existe, devuelve un error 404.
+        estacion = get_object_or_404(Estacion, id=estacion_id)
+
+        # 4. La consulta para obtener los roles es la misma.
+        query = Q(estacion__isnull=True) | Q(estacion=estacion)
+        roles_queryset = Rol.objects.filter(query).prefetch_related('permisos').order_by('nombre')
+
+        # 5. Preparar datos
+        context = {
+            'estacion': estacion,
+            'roles': roles_queryset, # Pasamos el queryset al template con la clave 'roles'.
+        }
+
+        return render(request, self.template_name, context)

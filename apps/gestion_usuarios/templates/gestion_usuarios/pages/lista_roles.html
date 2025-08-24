@@ -1,0 +1,52 @@
+{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Título de la ventana #} {% block titulo_ventana %}Lista de roles{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Lista de roles{% endblock %}
+
+{% block contenido %}
+
+<table id="myTable" class="display tabla_1">
+    <thead class="color_blanco fondo_negro">
+        <tr>
+            <th>Nombre</th>
+            <th>Permisos</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody class="fondo_secundario_variante">
+        {% if roles %}
+        {% for rol in roles %}
+        <tr>
+            
+            {# Nombre #}
+            <td>
+                {{rol.nombre|title}}
+            {% if rol.estacion %}
+                <span class="etiqueta fondo_morado color_blanco">Personalizado</span>
+            {% endif %}
+            </td>
+            
+            {# Permisos #}
+            <td>
+                <span>Permisos:</span>
+                {% for permiso in rol.permisos.all %}
+                    {{ permiso.name }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    Sin permisos asignados.
+                {% endfor %}
+            </td>
+
+            {# Acciones #}
+            <td>
+                <button class="boton_s boton-menu-acciones fondo_transparente">
+                    <i class="fa-solid fa-ellipsis-vertical color_primario"></i>
+                </button>
+                {% include 'gestion_usuarios/partials/_menu_acciones_roles.html' with rol=rol %}
+            </td>
+
+        {% endfor %}
+        {% endif %}
+    </tbody>
+</table>
+    
+{% endblock  %}
