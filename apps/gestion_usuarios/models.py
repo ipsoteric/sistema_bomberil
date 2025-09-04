@@ -41,17 +41,28 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         verbose_name = "usuario"
         verbose_name_plural = "usuarios"
 
+        default_permissions = []
+
+        permissions = [
+            # Permisos de Sistema
+            ("sys_view_usuario", "System: Puede ver usuarios"),
+            ("sys_add_usuario", "System: Puede agregar usuarios"),
+            ("sys_change_usuario", "System: Puede cambiar usuarios"),
+            ("sys_delete_usuario", "System: Puede eliminar usuarios"),
+
+            # Permisos de Negocio
+            ("create_user", "Puede crear y registrar nuevos usuarios"),
+            ("change_user_personal_info", "Puede modificar la información personal de un usuario"),
+        ]
 
 
     def __str__(self):
         return self.email
     
 
-
     @property
     def get_full_name(self):
-        return f'{self.first_name} {self.last_name}'
-    
+        return f'{self.first_name} {self.last_name}'    
 
 
     def save(self, *args, **kwargs):
@@ -135,6 +146,7 @@ class Rol(models.Model):
     las compañías) o específico de una sola compañía.
     """
     nombre = models.CharField(_("nombre"), max_length=150)
+    descripcion= models.TextField(verbose_name="(Descripción)", null=True, blank=True)
     
     # La clave del modelo híbrido. Si es Null, el rol es universal.
     estacion = models.ForeignKey(
@@ -169,6 +181,20 @@ class Rol(models.Model):
                 name='rol_global_unico'
             )
         ]
+
+        default_permissions = []
+
+        permissions = [
+            # Permisos de Sistema
+            ("sys_view_rol", "System: Puede ver los roles "),
+            ("sys_add_rol", "System: Puede agregar roles"),
+            ("sys_change_rol", "System: Puede cambiar usuarios"),
+            ("sys_delete_rol", "System: Puede eliminar usuarios"),
+
+            # Permisos de Negocio
+            ("manage_custom_roles", "Puede gestionar roles personalizados"),
+        ]
+
 
     def __str__(self):
         if self.estacion:
@@ -209,6 +235,22 @@ class Membresia(models.Model):
                 condition=Q(estado='ACTIVO'), 
                 name='membresia_activa_unica_por_usuario'
             )
+        ]
+
+        default_permissions = []
+
+        permissions = [
+            # Permisos de Sistema
+            ("sys_view_membresia", "System: Puede ver membresías"),
+            ("sys_add_membresia", "System: Puede agregar membresías"),
+            ("sys_change_membresia", "System: Puede cambiar membresías"),
+            ("sys_delete_membresia", "System: Puede eliminar membresías"),
+
+            # Permisos de Negocio
+            ("view_company_users", "Puede ver a los usuarios de la compañía"),
+            ("assign_user_roles", "Puede asignar y cambiar roles a un usuario"),
+            ("deactivate_user", "Puede desactivar o reactivar la cuenta de un usuario"),
+            ("end_user_membership", "Puede finalizar la membresía de un usuario"),
         ]
 
     
