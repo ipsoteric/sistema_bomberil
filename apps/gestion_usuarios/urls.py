@@ -41,4 +41,7 @@ urlpatterns = [
 
     # Crear rol
     path('roles/crear/', RolCrearView.as_view(), name="ruta_crear_rol"),
+
+    # Asignar permisos a rol
+    path('roles/<int:id>/asignar-permisos/', RolAsignarPermisosView.as_view(), name="ruta_asignar_permisos"),
 ]

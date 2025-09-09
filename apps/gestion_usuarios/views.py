@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.contrib import messages
+from django.contrib.auth.models import Permission
 from django.db import IntegrityError, transaction
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseNotAllowed, HttpResponse
@@ -493,3 +494,58 @@ class RolCrearView(View):
             'estacion': estacion
         }
         return render(request, self.template_name, context)
+
+
+
+
+class RolAsignarPermisosView(View):
+    template_name = 'gestion_usuarios/pages/asignar_permisos.html'
+    success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
+    # permission_required = 'gestion_usuarios.manage_custom_roles'
+
+    def dispatch(self, request, *args, **kwargs):
+        """Valida que el rol sea editable y pertenece a la estación activa."""
+        estacion_id = request.session.get('active_estacion_id')
+        rol_id = kwargs.get('id')
+        
+        # Un rol editable debe tener el 'id' correcto y pertenecer a la estación activa.
+        self.rol = get_object_or_404(Rol, id=rol_id, estacion__id=estacion_id)
+        
+        return super().dispatch(request, *args, **kwargs)
+
+
+    def get(self, request, *args, **kwargs):
+        """Muestra el formulario con los permisos agrupados y los checkboxes."""
+        
+        # Filtra los permisos para no mostrar los de sistema (sys_) ni los de apps de Django.
+        permissions = Permission.objects.exclude(
+            content_type__app_label__in=['admin', 'auth', 'contenttypes', 'sessions']
+        ).exclude(
+            codename__startswith='sys_'
+        ).select_related('content_type').order_by('name')
+
+        # Agrupa los permisos por el nombre legible del módulo (app).
+        permissions_by_module = defaultdict(list)
+        for perm in permissions:
+            module_name = perm.content_type.model_class()._meta.app_config.verbose_name
+            permissions_by_module[module_name].append(perm)
+
+        context = {
+            'rol': self.rol,
+            'permissions_by_module': dict(sorted(permissions_by_module.items())),
+            'rol_permissions_ids': set(self.rol.permisos.values_list('id', flat=True))
+        }
+        return render(request, self.template_name, context)
+
+
+    def post(self, request, *args, **kwargs):
+        """Guarda los permisos seleccionados para el rol."""
+        
+        # Obtiene una lista con los IDs de todos los checkboxes marcados.
+        selected_permissions_ids = request.POST.getlist('permisos')
+        
+        # El método set() es ideal: añade los nuevos, quita los desmarcados y deja los que no cambiaron.
+        self.rol.permisos.set(selected_permissions_ids)
+        
+        messages.success(request, f"Permisos del rol '{self.rol.nombre}' actualizados correctamente.")
+        return redirect(self.success_url)

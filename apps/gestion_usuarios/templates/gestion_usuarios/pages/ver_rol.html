@@ -56,7 +56,7 @@
             <div class="usuarios_ver_rol__titulo_permisos">
                 <h2 class="fs_mediana color_primario">Permisos Asignados</h2>
                 <div class="caja_botones">
-                    <a class="boton_s color_blanco fondo_azul fs_normal" href="">Asignar permisos</a>
+                    <a class="boton_s color_blanco fondo_azul fs_normal" href="{% url 'gestion_usuarios:ruta_asignar_permisos' id=rol.id %}">Asignar permisos</a>
                     <a class="boton_s color_blanco fondo_rojo fs_normal" href="">Quitar todo</a>
                 </div>
             </div>

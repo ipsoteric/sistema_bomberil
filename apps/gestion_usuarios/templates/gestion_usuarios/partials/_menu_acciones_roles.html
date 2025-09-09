@@ -20,4 +20,15 @@
     </a>
     {% endif %}
 
+    {# Asignar permisos #}
+    {% if rol.estacion %}
+    <a 
+    class="menu-acciones-usuarios__accion acciones-usuarios-editar color_negro" 
+    href="{% url 'gestion_usuarios:ruta_asignar_permisos' id=rol.id %}"
+    >
+        <i class="fa-solid fa-file-pen"></i>
+        Asignar permisos
+    </a>
+    {% endif %}
+
 </div>
