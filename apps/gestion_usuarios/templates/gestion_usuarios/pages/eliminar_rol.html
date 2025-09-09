@@ -1,0 +1,51 @@
+{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Título de la ventana #} {% block titulo_ventana %}Eliminar Rol: {{rol.id}}{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Eliminar Rol{% endblock %}
+
+
+{% block contenido %}
+<div class="caja_para_pagina_contenido_arriba">
+
+
+<div class="alert alert-warning fs_normal" role="alert">
+    <strong><i class="fas fa-exclamation-triangle"></i> ¡Atención!</strong> Esta acción no se puede deshacer. Los usuarios que actualmente tengan este rol asignado lo perderán.
+</div>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">Confirmar Eliminación de Rol</h3>
+                </div>
+                <div class="card-body fondo_secundario color_primario fs_normal">
+                    <p class="fs_normal">
+                        Estás a punto de eliminar permanentemente el rol:
+                    </p>
+
+                    <h2 class="text-center my-4"><strong>{{ rol.nombre|title }}</strong></h2>
+                
+
+                    <span class="text-center mt-4">¿Estás seguro de que deseas continuar?</span>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{% url 'gestion_usuarios:ruta_lista_roles' %}" class="boton_s color_primario_variante">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="boton_s fondo_rojo color_blanco">
+                                Sí, Eliminar Rol
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</div>
+{% endblock %}

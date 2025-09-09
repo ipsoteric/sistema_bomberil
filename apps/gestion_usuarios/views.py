@@ -549,3 +549,42 @@ class RolAsignarPermisosView(View):
         
         messages.success(request, f"Permisos del rol '{self.rol.nombre}' actualizados correctamente.")
         return redirect(self.success_url)
+
+
+
+
+class RolEliminarView(View):
+    '''Vista para eliminar un rol personalizado.'''
+
+    # --- Atributos de Configuración ---
+    template_name = 'gestion_usuarios/pages/eliminar_rol.html'
+    # permission_required = 'gestion_usuarios.manage_custom_roles'
+    success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
+
+    def dispatch(self, request, *args, **kwargs):
+        """
+        Valida que el rol a eliminar exista y pertenezca a la estación activa del usuario.
+        Se ejecuta antes que get() o post().
+        """
+        estacion_id = request.session.get('active_estacion_id')
+        rol_id = kwargs.get('id')
+
+        # La consulta de seguridad: encuentra el rol solo si su ID y el ID de su estación
+        # coinciden con los datos de la URL y la sesión. Si no, 404.
+        self.rol = get_object_or_404(Rol, id=rol_id, estacion__id=estacion_id)
+        
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        """Muestra la página de confirmación de eliminación."""
+        # El objeto 'self.rol' ya fue obtenido y validado en dispatch().
+        return render(request, self.template_name, {'rol': self.rol})
+
+    def post(self, request, *args, **kwargs):
+        """Ejecuta la eliminación del rol."""
+        # El objeto 'self.rol' ya fue obtenido y validado.
+        rol_nombre = self.rol.nombre
+        self.rol.delete()
+        
+        messages.success(request, f"El rol '{rol_nombre.title()}' ha sido eliminado exitosamente.")
+        return redirect(self.success_url)

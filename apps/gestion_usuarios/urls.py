@@ -44,4 +44,7 @@ urlpatterns = [
 
     # Asignar permisos a rol
     path('roles/<int:id>/asignar-permisos/', RolAsignarPermisosView.as_view(), name="ruta_asignar_permisos"),
+
+    # Eliminar rol
+    path('roles/<int:id>/eliminar/', RolEliminarView.as_view(), name="ruta_eliminar_rol"),
 ]
