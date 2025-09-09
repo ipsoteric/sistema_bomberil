@@ -1,0 +1,127 @@
+{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Cargar filtros #}{% load age_filters %}{% load humanize %}
+{# Título de la ventana #} {% block titulo_ventana %}{{rol.nombre|title}} - Asignar permisos{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Asignar permisos{% endblock %}
+
+{% block contenido %}
+
+<div class="caja_para_pagina_contenido_arriba">
+
+<div class="container mt-4">
+    <h1 class="color_primario">Asignar Permisos al Rol: <strong>{{ rol.nombre|title }}</strong></h1>
+    <p class="color_primario_variante fs_normal">Gestiona los permisos aplicables a la estación <strong>{{ rol.estacion.nombre }}</strong>.</p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% for module_name, permissions in permissions_by_module.items %}
+        <div class="card mb-4 fondo_secundario color_primario fs_normal">
+            <div class="card-header">
+                <div class="form-check">
+                    {# El checkbox "maestro" del módulo #}
+                    <input class="form-check-input check-all-module" 
+                           type="checkbox" 
+                           id="module-{{ module_name|slugify }}"
+                           data-module="{{ module_name|slugify }}">
+                    <label class="form-check-label h5 fs_mediana" for="module-{{ module_name|slugify }}">
+                        {{ module_name }}
+                    </label>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for perm in permissions %}
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check">
+                            {# El checkbox de un permiso individual #}
+                            <input class="form-check-input permiso-check" 
+                                   type="checkbox" 
+                                   name="permisos" 
+                                   value="{{ perm.id }}" 
+                                   id="perm-{{ perm.id }}"
+                                   data-module="{{ module_name|slugify }}"
+                                   {% if perm.id in rol_permissions_ids %}checked{% endif %}>
+                            <label class="form-check-label" for="perm-{{ perm.id }}">
+                                {{ perm.name }}
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="d-flex justify-content-end mb-5">
+            <a href="{% url 'gestion_usuarios:ruta_lista_roles' %}" class="boton_s fs_normal color_primario_variante">Cancelar</a>
+            <button type="submit" class="boton_s fondo_verde fs_normal color_blanco">Guardar Permisos</button>
+        </div>
+    </form>
+</div>
+
+</div>
+
+{# Manejo de selección de permisos #}
+<script>
+    // Este script se ejecuta cuando el documento HTML ha sido completamente cargado.
+    document.addEventListener('DOMContentLoaded', function () {
+        
+        // Función para actualizar el estado del checkbox "maestro" de un módulo.
+        function updateModuleCheckboxState(moduleName) {
+            const moduleCheckbox = document.querySelector(`.check-all-module[data-module="${moduleName}"]`);
+            const permissionCheckboxes = document.querySelectorAll(`.permiso-check[data-module="${moduleName}"]`);
+            
+            const totalPermissions = permissionCheckboxes.length;
+            const checkedPermissions = document.querySelectorAll(`.permiso-check[data-module="${moduleName}"]:checked`).length;
+
+            if (totalPermissions === 0) return;
+
+            if (checkedPermissions === 0) {
+                // Si no hay ninguno marcado, el maestro se desmarca.
+                moduleCheckbox.checked = false;
+                moduleCheckbox.indeterminate = false;
+            } else if (checkedPermissions === totalPermissions) {
+                // Si todos están marcados, el maestro se marca.
+                moduleCheckbox.checked = true;
+                moduleCheckbox.indeterminate = false;
+            } else {
+                // Si solo algunos están marcados, el maestro se pone en estado "indeterminado".
+                moduleCheckbox.checked = false;
+                moduleCheckbox.indeterminate = true;
+            }
+        }
+
+        // 1. Lógica para los checkboxes "maestros" de cada módulo.
+        const allModuleCheckboxes = document.querySelectorAll('.check-all-module');
+        allModuleCheckboxes.forEach(function (moduleCheckbox) {
+            moduleCheckbox.addEventListener('change', function () {
+                const moduleName = this.dataset.module;
+                const permissionCheckboxes = document.querySelectorAll(`.permiso-check[data-module="${moduleName}"]`);
+                
+                // Marca o desmarca todos los permisos hijos según el estado del maestro.
+                permissionCheckboxes.forEach(perm => perm.checked = this.checked);
+            });
+        });
+
+        // 2. Lógica para los checkboxes de permisos individuales.
+        const allPermissionCheckboxes = document.querySelectorAll('.permiso-check');
+        allPermissionCheckboxes.forEach(function (permCheckbox) {
+            permCheckbox.addEventListener('change', function () {
+                const moduleName = this.dataset.module;
+                // Cada vez que un permiso individual cambia, actualiza el estado de su maestro.
+                updateModuleCheckboxState(moduleName);
+            });
+        });
+
+        // 3. Estado inicial al cargar la página.
+        // Recorre cada módulo y establece el estado inicial correcto de su checkbox maestro.
+        allModuleCheckboxes.forEach(function (moduleCheckbox) {
+            const moduleName = moduleCheckbox.dataset.module;
+            updateModuleCheckboxState(moduleName);
+        });
+    });
+</script>
+
+
+{% endblock  %}

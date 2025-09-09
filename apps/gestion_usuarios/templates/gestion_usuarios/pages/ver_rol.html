@@ -1,0 +1,87 @@
+{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Cargar filtros #}{% load age_filters %}{% load humanize %}
+{# Título de la ventana #} {% block titulo_ventana %}{{rol.nombre|title}}{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Ver rol{% endblock %}
+
+{% block contenido %}
+
+<div class="caja_para_pagina_contenido_arriba">
+    <div class="usuarios_ver_rol__flexbox panel_base fondo_secundario_variante">
+
+        {# Nombre #}
+        <div class="usuarios_ver_rol__nombre">
+            <h1 class="fs_grande color_primario">
+                {{rol.nombre|title}}
+                {% if rol.estacion %}
+                <span class="etiqueta fondo_morado fs_normal color_blanco" title="Este rol pertenece a la {{rol.estacion.nombre|title}}">Personalizado</span>
+                {% else %}
+                <span class="etiqueta fondo_azul fs_normal color_blanco">Por defecto</span>
+                {% endif %}
+            </h1>
+        </div>
+
+        {# Información #}
+        <div class="informacion__seccion">
+
+            {# Estación #}
+        {% if rol.estacion %}
+            <div class="informacion__campo fs_normal">
+                <span class="informacion__label color_primario_variante">Compañía:</span>
+                <span class="color_primario">{{rol.estacion.nombre|title}}</span>
+            </div>
+        {% endif %}
+
+            {# Descripción #}
+            <div class="informacion__campo fs_normal">
+                    <span class="informacion__label color_primario_variante">Descripción:</span>
+                    <p class="informacion__dato color_primario">
+                        {% if rol.descripcion %}
+                        {{rol.descripcion}}
+                        {% else %}
+                        Sin descripción
+                        {% endif %}
+                    </p>
+            </div>
+        </div>
+
+        {# Permisos #}
+        <div class="usuarios_ver_rol__permisos">
+            <div class="usuarios_ver_rol__titulo_permisos">
+                <h2 class="fs_mediana color_primario">Permisos Asignados</h2>
+            </div>
+
+            {% for modulo, permisos in permisos_por_modulo.items %}
+                <div class="permisos_modulo">
+                    <h3 class="permisos_modulo__titulo fs_normal color_primario">{{ modulo }}</h3>
+                    <ul class="permisos_modulo__lista">
+                        {% for nombre_permiso in permisos %}
+                            <li class="fs_normal color_primario_variante">
+                                {{ nombre_permiso }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% empty %}
+                <p class="fs_normal color_primario">Este rol no tiene ningún permiso asignado.</p>
+            {% endfor %}
+        </div>
+
+        {# Botones #}
+        <div class="caja_botones_derecha_pagina">
+            {# Modificar rol #}
+            <a class="boton_s color_blanco fondo_azul fs_normal" href="{% url 'gestion_usuarios:ruta_editar_rol' id=rol.id %}">Modificar</a>
+            {# Asignar permisos #}
+            <a class="boton_s color_blanco fondo_azul fs_normal" href="{% url 'gestion_usuarios:ruta_asignar_permisos' id=rol.id %}">Asignar permisos</a>
+            {# Eliminar rol #}
+            <a class="boton_s color_blanco fondo_rojo fs_normal" href="{% url 'gestion_usuarios:ruta_eliminar_rol' id=rol.id %}">Eliminar</a>
+            {# Volver #}
+            <a class="boton_s color_primario_variante fs_normal" href="{% url 'gestion_usuarios:ruta_lista_roles' %}">Volver</a>
+        </div>
+
+    </div>
+
+
+</div>
+
+{% endblock  %}

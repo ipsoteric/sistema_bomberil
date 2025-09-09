@@ -1,0 +1,115 @@
+{% extends 'gestion_usuarios/layouts/base.html' %}
+{% load static %}
+{% block titulo_ventana %}{{ usuario.get_full_name|title }} - Asignar Roles{% endblock %}
+{% block titulo_pagina %}Asignar Roles{% endblock %}
+
+{% block contenido %}
+<div class="caja_para_pagina_contenido_arriba">
+<div class="container mt-4">
+    <h1 class="color_primario">Asignar Roles a: <strong>{{ usuario.get_full_name|title }}</strong></h1>
+    <p class="color_primario_variante fs_normal">Gestiona los roles del usuario en la estación <strong>{{ estacion.nombre }}</strong>.</p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {# --- Grupo de Roles Universales --- #}
+        {% with group_name="universales" group_title="Roles Universales" roles=roles_universales %}
+        <div class="card mb-4 fondo_secundario color_primario fs_normal">
+            <div class="card-header">
+                <div class="form-check">
+                    <input class="form-check-input check-all-group" type="checkbox" id="group-{{ group_name }}" data-group="{{ group_name }}">
+                    <label class="form-check-label h5 fs_mediana" for="group-{{ group_name }}">{{ group_title }}</label>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for rol in roles %}
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input rol-check" type="checkbox" name="roles" value="{{ rol.id }}" id="rol-{{ rol.id }}" data-group="{{ group_name }}" {% if rol.id in usuario_roles_ids %}checked{% endif %}>
+                            <label class="form-check-label" for="rol-{{ rol.id }}">{{ rol.nombre|title }}</label>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="color_primario_variante">No hay roles universales definidos.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+
+        {# --- Grupo de Roles de la Estación --- #}
+        {% with group_name="estacion" group_title="Roles de la Estación" roles=roles_de_estacion %}
+        <div class="card mb-4 fondo_secundario color_primario fs_normal">
+            <div class="card-header">
+                <div class="form-check">
+                    <input class="form-check-input check-all-group" type="checkbox" id="group-{{ group_name }}" data-group="{{ group_name }}">
+                    <label class="form-check-label h5 fs_mediana" for="group-{{ group_name }}">{{ group_title }}</label>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for rol in roles %}
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input rol-check" type="checkbox" name="roles" value="{{ rol.id }}" id="rol-{{ rol.id }}" data-group="{{ group_name }}" {% if rol.id in usuario_roles_ids %}checked{% endif %}>
+                            <label class="form-check-label" for="rol-{{ rol.id }}">{{ rol.nombre|title }}</label>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="color_primario_variante">No hay roles personalizados definidos para esta estación.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+
+        <div class="d-flex justify-content-end mb-5">
+            <a href="{% url 'gestion_usuarios:ruta_ver_usuario' id=usuario.id %}" class="boton_s fs_normal color_primario_variante">Cancelar</a>
+            <button type="submit" class="boton_s fondo_verde fs_normal color_blanco">Guardar Roles</button>
+        </div>
+    </form>
+</div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function updateGroupCheckboxState(groupName) {
+        const groupCheckbox = document.querySelector(`.check-all-group[data-group="${groupName}"]`);
+        const roleCheckboxes = document.querySelectorAll(`.rol-check[data-group="${groupName}"]`);
+        const totalRoles = roleCheckboxes.length;
+        const checkedRoles = document.querySelectorAll(`.rol-check[data-group="${groupName}"]:checked`).length;
+        if (totalRoles === 0) return;
+        if (checkedRoles === 0) {
+            groupCheckbox.checked = false;
+            groupCheckbox.indeterminate = false;
+        } else if (checkedRoles === totalRoles) {
+            groupCheckbox.checked = true;
+            groupCheckbox.indeterminate = false;
+        } else {
+            groupCheckbox.checked = false;
+            groupCheckbox.indeterminate = true;
+        }
+    }
+    const allGroupCheckboxes = document.querySelectorAll('.check-all-group');
+    allGroupCheckboxes.forEach(function (groupCheckbox) {
+        groupCheckbox.addEventListener('change', function () {
+            const groupName = this.dataset.group;
+            const roleCheckboxes = document.querySelectorAll(`.rol-check[data-group="${groupName}"]`);
+            roleCheckboxes.forEach(role => role.checked = this.checked);
+        });
+    });
+    const allRoleCheckboxes = document.querySelectorAll('.rol-check');
+    allRoleCheckboxes.forEach(function (roleCheckbox) {
+        roleCheckbox.addEventListener('change', function () {
+            const groupName = this.dataset.group;
+            updateGroupCheckboxState(groupName);
+        });
+    });
+    allGroupCheckboxes.forEach(function (groupCheckbox) {
+        const groupName = groupCheckbox.dataset.group;
+        updateGroupCheckboxState(groupName);
+    });
+});
+</script>
+{% endblock %}

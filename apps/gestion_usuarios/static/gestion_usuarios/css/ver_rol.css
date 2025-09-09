@@ -1,0 +1,45 @@
+.usuarios_ver_rol__flexbox {
+    display: flex;
+    flex-direction: column;
+    min-width: 320px;
+    width: 1000px;
+    max-width: 1000px;
+    justify-content: start;
+    align-items: start;
+    padding: 30px;
+    gap: 10px;
+}
+
+.usuarios_ver_rol__permisos {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.usuarios_ver_rol__nombre, .usuarios_ver_rol__titulo_permisos {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid gray;
+}
+
+.permisos_modulo {
+    padding-bottom: 20px;
+}
+
+.permisos_modulo__lista {
+    display: flex;
+    flex-direction: column;
+}
+
+.permisos_modulo__lista li {
+    padding: 5px;
+    list-style: circle;
+}
+
+.permisos_modulo__titulo {
+    padding: 5px;
+}

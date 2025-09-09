@@ -8,7 +8,7 @@
 
         <div class="barra_lateral__modulo" data-toggle="modulo">
             <a href="" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario scale">
-                <i class="fa-solid fa-truck-ramp-box"></i> 
+                <i class="fa-solid fa-user"></i>
                 <span>Usuarios</span>
             </a>
             <i class="fa-solid fa-chevron-down color_primario barra_lateral__flecha_modulo"></i>
@@ -25,6 +25,35 @@
                 <a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_usuarios:ruta_agregar_usuario' %}">
                     <i class="fa-solid fa-user-plus color_verde"></i>
                     Agregar usuario
+                </a>
+            </li>
+        </ul>
+    </section>
+
+
+    {# Sección #}
+    <section class="barra_lateral__seccion">
+
+        <div class="barra_lateral__modulo" data-toggle="modulo">
+            <a href="" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario scale">
+                <i class="fa-solid fa-people-group"></i>
+                <span>Roles y permisos</span>
+            </a>
+            <i class="fa-solid fa-chevron-down color_primario barra_lateral__flecha_modulo"></i>
+        </div>
+
+        <ul class="barra_lateral__lista_opciones oculto">
+            <li class="fondo_opcion_nav hover_color">
+                <a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_usuarios:ruta_lista_roles' %}">
+                    <i class="fa-solid fa-clipboard-list color_naranjo_claro"></i>
+                    Lista de roles
+                </a>
+            </li>
+
+            <li class="fondo_opcion_nav hover_color">
+                <a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_usuarios:ruta_crear_rol' %}">
+                    <i class="fa-solid fa-square-plus color_verde"></i>
+                    Crear rol personalizado
                 </a>
             </li>
         </ul>

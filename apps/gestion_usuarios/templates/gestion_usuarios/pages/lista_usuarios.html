@@ -66,6 +66,7 @@
             {# Correo #}
             <td>{{membresia.usuario.email}}</td>
 
+            {# Estado #}
             <td>
             {% if membresia.estado == 'ACTIVO' %}
                 <span title="El usuario puede iniciar sesión" class="etiqueta fondo_verde color_blanco">Activo</span>
@@ -75,7 +76,16 @@
             <span title="El usuario no puede iniciar sesión" class="etiqueta fondo_negro color_blanco">Finalizado</span>
             {% endif %}
             </td>
-            <td>{{usuario.groups}}</td>
+
+            {# Roles asignados en la compañía #}
+            <td>
+                {% if membresia.roles %}
+                {% for rol in membresia.roles.all %}
+                {{rol.nombre|title}}
+                <br>
+                {% endfor %}
+                {% endif %}
+            </td>
             <td>{{membresia.created_at}}</td>
             <td>
                 <button class="boton_s boton-menu-acciones fondo_transparente">

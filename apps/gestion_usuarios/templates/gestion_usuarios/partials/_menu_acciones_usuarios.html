@@ -9,6 +9,7 @@
         Ver
     </a>
 
+
     {# Modificar información personal de usuario #}
     <a 
     class="menu-acciones-usuarios__accion acciones-usuarios-editar color_negro" 
@@ -17,6 +18,19 @@
         <i class="fa-solid fa-pen-to-square"></i> 
         Modificar información
     </a>
+
+
+    {# Asignar roles al usuario #}
+    {% if membresia.estado == 'ACTIVO' %}
+    <a 
+    class="menu-acciones-usuarios__accion acciones-usuarios-editar color_negro" 
+    href="{% url 'gestion_usuarios:ruta_asignar_roles_usuario' usuario_id=membresia.usuario.id %}"
+    >
+        <i class="fa-solid fa-group-arrows-rotate"></i>
+        Asignar roles
+    </a>
+    {% endif %}
+
 
     {# Desactivar usuario #}
     {% if membresia.estado == 'ACTIVO' %}
@@ -30,6 +44,7 @@
     </button>
     {% endif %}
 
+    
     {# Activar usuario #}
     {% if membresia.estado == 'INACTIVO' %}
     <button 

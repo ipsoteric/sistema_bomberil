@@ -36,6 +36,18 @@ class CustomUserAdmin(UserAdmin):
         ('Fechas Importantes', {'fields': ('last_login', 'created_at', 'updated_at')}),
     )
 
+    def has_view_permission(self, request, obj=None):
+        return request.user.has_perm('gestion_usuarios.sys_view_usuario')
+
+    def has_add_permission(self, request):
+        return request.user.has_perm('gestion_usuarios.sys_add_usuario')
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.has_perm('gestion_usuarios.sys_change_usuario')
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.has_perm('gestion_usuarios.sys_delete_usuario')
+
 
 
 @admin.register(Rol)
@@ -44,6 +56,18 @@ class RolAdmin(admin.ModelAdmin):
     list_filter = ('estacion',)
     search_fields = ('nombre',)
     filter_horizontal = ('permisos',) # Facilita la asignación de permisos
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.has_perm('gestion_usuarios.sys_view_rol')
+
+    def has_add_permission(self, request):
+        return request.user.has_perm('gestion_usuarios.sys_add_rol')
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.has_perm('gestion_usuarios.sys_change_rol')
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.has_perm('gestion_usuarios.sys_delete_rol')
 
 
 
@@ -54,6 +78,18 @@ class MembresiaAdmin(admin.ModelAdmin):
     search_fields = ('usuario__get_full_name', 'estacion__nombre')
     autocomplete_fields = ('usuario', 'estacion', 'roles') # Mejora la selección
     filter_horizontal = ('roles',)
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.has_perm('gestion_usuarios.sys_view_membresia')
+
+    def has_add_permission(self, request):
+        return request.user.has_perm('gestion_usuarios.sys_add_membresia')
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.has_perm('gestion_usuarios.sys_change_membresia')
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.has_perm('gestion_usuarios.sys_delete_membresia')
 
 
 

@@ -1,0 +1,44 @@
+{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Título de la ventana #} {% block titulo_ventana %}Crear Rol{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Crear Rol{% endblock %}
+
+{% block contenido %}
+<div class="caja_para_pagina_contenido_arriba">
+
+    <div class="contenedor_formulario_simple fondo_secundario">
+        <form 
+        method="post" 
+        action="{% url 'gestion_usuarios:ruta_crear_rol' %}"
+        class=" formulario_simple color_primario fs_normal"
+        >
+        {% csrf_token %}
+
+            {# Nombre #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <i class="fa-solid fa-asterisk color_rojo"></i>
+                    <label for="">Nombre</label>
+                </div>
+                {{formulario.nombre}}
+            </div>
+            
+            {# Descripción #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <label for="">Descripción</label>
+                </div>
+                {{formulario.descripcion}}
+            </div>
+
+            <div class="formulario_simple__caja_botones">
+                <button type="submit" class="boton fs_normal color_blanco fondo_verde hover_color">Crear</button>
+                <button class="color_primario fondo_transparente">Cancelar</button>
+            </div>
+
+        </form>
+    </div>  
+
+</div>
+
+{% endblock  %}

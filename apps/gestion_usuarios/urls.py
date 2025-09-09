@@ -27,4 +27,28 @@ urlpatterns = [
 
     # Activar usuario (Puede acceder al sistema)
     path('usuarios/<int:id>/activar/', UsuarioActivarView.as_view(), name="ruta_activar_usuario"),
+
+    # Asignar roles al usuario
+    path('usuarios/<int:usuario_id>/asignar-roles/', UsuarioAsignarRolesView.as_view(), name='ruta_asignar_roles_usuario'),
+
+
+
+
+    # Lista de roles
+    path('roles/', RolListaView.as_view(), name="ruta_lista_roles"),
+
+    # Ver detalle de rol
+    path('roles/<int:id>/', RolObtenerView.as_view(), name="ruta_ver_rol"),
+
+    # Editar rol (nombre, descripción)
+    path('roles/<int:id>/editar/', RolEditarView.as_view(), name="ruta_editar_rol"),
+
+    # Crear rol
+    path('roles/crear/', RolCrearView.as_view(), name="ruta_crear_rol"),
+
+    # Asignar permisos a rol
+    path('roles/<int:id>/asignar-permisos/', RolAsignarPermisosView.as_view(), name="ruta_asignar_permisos"),
+
+    # Eliminar rol
+    path('roles/<int:id>/eliminar/', RolEliminarView.as_view(), name="ruta_eliminar_rol"),
 ]

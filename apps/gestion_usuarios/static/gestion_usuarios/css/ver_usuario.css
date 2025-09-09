@@ -138,6 +138,7 @@
 .informacion__campo {
     display: flex;
     padding: 5px 0;
+    height: auto;
 }
 
 .informacion__label {
