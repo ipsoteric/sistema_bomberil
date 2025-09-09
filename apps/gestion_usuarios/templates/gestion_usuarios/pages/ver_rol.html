@@ -19,12 +19,6 @@
                 <span class="etiqueta fondo_azul fs_normal color_blanco">Por defecto</span>
                 {% endif %}
             </h1>
-
-            <div class="caja_botones">
-                <a class="boton color_blanco fondo_azul fs_normal" href="{% url 'gestion_usuarios:ruta_editar_rol' id=rol.id %}">Modificar</a>
-                <a class="boton color_blanco fondo_rojo fs_normal" href="">Eliminar</a>
-            </div>
-
         </div>
 
         {# Información #}
@@ -55,10 +49,6 @@
         <div class="usuarios_ver_rol__permisos">
             <div class="usuarios_ver_rol__titulo_permisos">
                 <h2 class="fs_mediana color_primario">Permisos Asignados</h2>
-                <div class="caja_botones">
-                    <a class="boton_s color_blanco fondo_azul fs_normal" href="{% url 'gestion_usuarios:ruta_asignar_permisos' id=rol.id %}">Asignar permisos</a>
-                    <a class="boton_s color_blanco fondo_rojo fs_normal" href="">Quitar todo</a>
-                </div>
             </div>
 
             {% for modulo, permisos in permisos_por_modulo.items %}
@@ -77,8 +67,19 @@
             {% endfor %}
         </div>
 
-    </div>
-</div>
+        {# Botones #}
+        <div class="caja_botones_derecha_pagina">
+            {# Modificar rol #}
+            <a class="boton_s color_blanco fondo_azul fs_normal" href="{% url 'gestion_usuarios:ruta_editar_rol' id=rol.id %}">Modificar</a>
+            {# Asignar permisos #}
+            <a class="boton_s color_blanco fondo_azul fs_normal" href="{% url 'gestion_usuarios:ruta_asignar_permisos' id=rol.id %}">Asignar permisos</a>
+            {# Eliminar rol #}
+            <a class="boton_s color_blanco fondo_rojo fs_normal" href="{% url 'gestion_usuarios:ruta_eliminar_rol' id=rol.id %}">Eliminar</a>
+        </div>
 
+    </div>
+
+
+</div>
 
 {% endblock  %}
