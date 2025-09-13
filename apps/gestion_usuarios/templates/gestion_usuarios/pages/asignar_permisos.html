@@ -15,43 +15,50 @@
     <form method="post">
         {% csrf_token %}
 
-        {% for module_name, permissions in permissions_by_module.items %}
-        <div class="card mb-4 fondo_secundario color_primario fs_normal">
-            <div class="card-header">
+{% for app_label, data in permissions_by_app.items %}
+<div class="card mb-4 fondo_secundario color_primario fs_normal">
+    <div class="card-header">
+        <div class="form-check">
+            {# El checkbox "maestro" ahora es un permiso REAL #}
+            {% if data.main_perm %}
+                <input class="form-check-input check-all-module permiso-check" 
+                       type="checkbox" 
+                       name="permisos"
+                       value="{{ data.main_perm.id }}"
+                       id="module-{{ app_label }}" {# Usamos app_label #}
+                       data-module="{{ app_label }}" {# Usamos app_label #}
+                       {% if data.main_perm.id in rol_permissions_ids %}checked{% endif %}>
+                <label class="form-check-label h5 fs_mediana" for="module-{{ app_label }}">
+                    {{ data.verbose_name }} {# Mostramos el nombre legible #}
+                </label>
+            {% else %}
+                <h5 class="fs_mediana">{{ data.verbose_name }}</h5>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {# Iteramos solo sobre los permisos "hijos" #}
+            {% for perm in data.children %}
+            <div class="col-md-4 mb-2">
                 <div class="form-check">
-                    {# El checkbox "maestro" del módulo #}
-                    <input class="form-check-input check-all-module" 
+                    <input class="form-check-input permiso-check" 
                            type="checkbox" 
-                           id="module-{{ module_name|slugify }}"
-                           data-module="{{ module_name|slugify }}">
-                    <label class="form-check-label h5 fs_mediana" for="module-{{ module_name|slugify }}">
-                        {{ module_name }}
+                           name="permisos" 
+                           value="{{ perm.id }}" 
+                           id="perm-{{ perm.id }}"
+                           data-module="{{ app_label }}" {# Usamos app_label consistente #}
+                           {% if perm.id in rol_permissions_ids %}checked{% endif %}>
+                    <label class="form-check-label" for="perm-{{ perm.id }}">
+                        {{ perm.name }}
                     </label>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    {% for perm in permissions %}
-                    <div class="col-md-4 mb-2">
-                        <div class="form-check">
-                            {# El checkbox de un permiso individual #}
-                            <input class="form-check-input permiso-check" 
-                                   type="checkbox" 
-                                   name="permisos" 
-                                   value="{{ perm.id }}" 
-                                   id="perm-{{ perm.id }}"
-                                   data-module="{{ module_name|slugify }}"
-                                   {% if perm.id in rol_permissions_ids %}checked{% endif %}>
-                            <label class="form-check-label" for="perm-{{ perm.id }}">
-                                {{ perm.name }}
-                            </label>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
+    </div>
+</div>
+{% endfor %}
 
         <div class="d-flex justify-content-end mb-5">
             <a href="{% url 'gestion_usuarios:ruta_lista_roles' %}" class="boton_s fs_normal color_primario_variante">Cancelar</a>
@@ -64,64 +71,74 @@
 
 {# Manejo de selección de permisos #}
 <script>
-    // Este script se ejecuta cuando el documento HTML ha sido completamente cargado.
-    document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function () {
+    
+    const moduleChecks = document.querySelectorAll('.check-all-module');
+    const childChecks = document.querySelectorAll('.permiso-check:not(.check-all-module)');
+
+    /**
+     * Actualiza el estado visual del checkbox "padre" (marcado, desmarcado o indeterminado)
+     * basándose en el estado de sus "hijos".
+     */
+    function updateParentState(moduleName) {
+        const parentCheck = document.querySelector(`.check-all-module[data-module="${moduleName}"]`);
+        if (!parentCheck) return;
+
+        const children = document.querySelectorAll(`.permiso-check[data-module="${moduleName}"]:not(.check-all-module)`);
+        const totalChildren = children.length;
+        const checkedChildren = document.querySelectorAll(`.permiso-check[data-module="${moduleName}"]:not(.check-all-module):checked`).length;
         
-        // Función para actualizar el estado del checkbox "maestro" de un módulo.
-        function updateModuleCheckboxState(moduleName) {
-            const moduleCheckbox = document.querySelector(`.check-all-module[data-module="${moduleName}"]`);
-            const permissionCheckboxes = document.querySelectorAll(`.permiso-check[data-module="${moduleName}"]`);
-            
-            const totalPermissions = permissionCheckboxes.length;
-            const checkedPermissions = document.querySelectorAll(`.permiso-check[data-module="${moduleName}"]:checked`).length;
+        if (totalChildren === 0) return;
 
-            if (totalPermissions === 0) return;
-
-            if (checkedPermissions === 0) {
-                // Si no hay ninguno marcado, el maestro se desmarca.
-                moduleCheckbox.checked = false;
-                moduleCheckbox.indeterminate = false;
-            } else if (checkedPermissions === totalPermissions) {
-                // Si todos están marcados, el maestro se marca.
-                moduleCheckbox.checked = true;
-                moduleCheckbox.indeterminate = false;
-            } else {
-                // Si solo algunos están marcados, el maestro se pone en estado "indeterminado".
-                moduleCheckbox.checked = false;
-                moduleCheckbox.indeterminate = true;
-            }
+        if (checkedChildren === 0) {
+            // Si no hay ningún hijo marcado, el padre no debe estar indeterminado.
+            // OJO: No lo desmarcamos automáticamente, ya que el acceso es un permiso propio.
+            parentCheck.indeterminate = false;
+        } else if (checkedChildren === totalChildren) {
+            // Si TODOS los hijos están marcados, el padre debe estar marcado y no indeterminado.
+            parentCheck.checked = true;
+            parentCheck.indeterminate = false;
+        } else {
+            // Si algunos hijos están marcados, el padre debe estar en estado indeterminado.
+            parentCheck.indeterminate = true;
         }
+    }
 
-        // 1. Lógica para los checkboxes "maestros" de cada módulo.
-        const allModuleCheckboxes = document.querySelectorAll('.check-all-module');
-        allModuleCheckboxes.forEach(function (moduleCheckbox) {
-            moduleCheckbox.addEventListener('change', function () {
-                const moduleName = this.dataset.module;
-                const permissionCheckboxes = document.querySelectorAll(`.permiso-check[data-module="${moduleName}"]`);
-                
-                // Marca o desmarca todos los permisos hijos según el estado del maestro.
-                permissionCheckboxes.forEach(perm => perm.checked = this.checked);
-            });
-        });
-
-        // 2. Lógica para los checkboxes de permisos individuales.
-        const allPermissionCheckboxes = document.querySelectorAll('.permiso-check');
-        allPermissionCheckboxes.forEach(function (permCheckbox) {
-            permCheckbox.addEventListener('change', function () {
-                const moduleName = this.dataset.module;
-                // Cada vez que un permiso individual cambia, actualiza el estado de su maestro.
-                updateModuleCheckboxState(moduleName);
-            });
-        });
-
-        // 3. Estado inicial al cargar la página.
-        // Recorre cada módulo y establece el estado inicial correcto de su checkbox maestro.
-        allModuleCheckboxes.forEach(function (moduleCheckbox) {
-            const moduleName = moduleCheckbox.dataset.module;
-            updateModuleCheckboxState(moduleName);
+    // --- LÓGICA PARA LOS CHECKBOXES PADRE (MÓDULOS) ---
+    moduleChecks.forEach(function (check) {
+        check.addEventListener('change', function () {
+            const moduleName = this.dataset.module;
+            const children = document.querySelectorAll(`.permiso-check[data-module="${moduleName}"]:not(.check-all-module)`);
+            
+            // Regla 2 y 3: Marcar/desmarcar el padre afecta a todos los hijos.
+            children.forEach(child => child.checked = this.checked);
         });
     });
-</script>
 
+    // --- LÓGICA PARA LOS CHECKBOXES HIJO (PERMISOS ESPECÍFICOS) ---
+    childChecks.forEach(function (check) {
+        check.addEventListener('change', function () {
+            const moduleName = this.dataset.module;
+            const parentCheck = document.querySelector(`.check-all-module[data-module="${moduleName}"]`);
+
+            // Regla 1: Si se marca un hijo, el padre DEBE estar marcado.
+            if (this.checked && parentCheck) {
+                parentCheck.checked = true;
+            }
+            
+            // Actualiza el estado visual del padre (indeterminado, etc.)
+            updateParentState(moduleName);
+        });
+    });
+
+    // --- ESTADO INICIAL AL CARGAR LA PÁGINA ---
+    // Asegura que los checkboxes padre reflejen el estado de sus hijos al cargar la página.
+    moduleChecks.forEach(function (check) {
+        const moduleName = check.dataset.module;
+        updateParentState(moduleName);
+    });
+
+});
+</script>
 
 {% endblock  %}

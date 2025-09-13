@@ -25,21 +25,27 @@ class RolBackend(ModelBackend):
 
 
     def get_user_permissions(self, user_obj, obj=None):
-        # Esta función no es contextual, devuelve TODOS los permisos del usuario
-        # en todas las compañías donde tiene membresía activa.
         if not user_obj.is_active:
             return set()
         
-        # Permisos asignados directamente al usuario
-        user_perms = user_obj.user_permissions.all()
+        # --- LÍNEA CORREGIDA ---
+        # Construimos el string 'app_label.codename' manualmente
+        user_perms = {
+            f"{p.content_type.app_label}.{p.codename}" 
+            for p in user_obj.user_permissions.all()
+        }
         
-        # Permisos obtenidos a través de los roles en todas sus membresías activas
         roles = self._get_roles_for_user(user_obj)
         role_perms = set()
         for rol in roles:
-            role_perms.update(rol.permisos.all())
-            
-        return set(user_perms) | role_perms
+            # --- LÍNEA CORREGIDA ---
+            # Hacemos lo mismo para los permisos que vienen de los roles
+            role_perms.update({
+                f"{p.content_type.app_label}.{p.codename}" 
+                for p in rol.permisos.all()
+            })
+                
+        return user_perms | role_perms
 
 
 

@@ -192,7 +192,8 @@ class Rol(models.Model):
             ("sys_delete_rol", "System: Puede eliminar usuarios"),
 
             # Permisos de Negocio
-            ("manage_custom_roles", "Puede gestionar roles personalizados"),
+            ("view_roles", "Puede ver los roles y sus permisos"),
+            ("manage_custom_roles", "Puede crear, editar, eliminar y asignar permisos a los roles"),
         ]
 
 

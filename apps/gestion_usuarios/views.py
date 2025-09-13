@@ -1,23 +1,28 @@
+import json
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.contrib import messages
 from django.contrib.auth.models import Permission
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db import IntegrityError, transaction
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseNotAllowed, HttpResponse
 from django.utils import timezone
 from django.db.models import Q
 from collections import defaultdict
+from django.apps import apps
 
 from .models import Usuario, Membresia, Rol
 from .forms import FormularioCrearUsuario, FormularioEditarUsuario, FormularioRol
-from .mixins import UsuarioDeMiEstacionMixin
+from .mixins import UsuarioDeMiEstacionMixin, RolValidoParaEstacionMixin
+from apps.common.mixins import ModuleAccessMixin, ObjectInStationRequiredMixin
 from .funciones import generar_contraseña_segura
 from apps.gestion_inventario.models import Estacion
 
 
 
-class UsuarioInicioView(View):
+class UsuarioInicioView(LoginRequiredMixin, ModuleAccessMixin, View):
     '''Vista para la página inicial de Gestión de Usuarios'''
 
     def get(self, request):
@@ -25,16 +30,18 @@ class UsuarioInicioView(View):
 
 
 
-class UsuarioListaView(View):
+class UsuarioListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     '''Vista para listar usuarios'''
 
     template_name = "gestion_usuarios/pages/lista_usuarios.html"
+    model = Membresia
+    permission_required = 'gestion_usuarios.view_company_users'
     
     def get(self, request):
         active_estacion_id = request.session.get('active_estacion_id')
         
         # Filtra el modelo Membresia, no Usuario
-        membresias = Membresia.objects.filter(
+        membresias = self.model.objects.filter(
             estacion_id=active_estacion_id
         ).select_related('usuario')
         
@@ -42,13 +49,15 @@ class UsuarioListaView(View):
 
 
 
-class UsuarioObtenerView(UsuarioDeMiEstacionMixin, View):
+class UsuarioObtenerView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, ObjectInStationRequiredMixin, View):
     '''Vista para obtener el detalle de un usuario'''
 
     template_name = "gestion_usuarios/pages/ver_usuario.html"
+    model = Membresia
+    permission_required = 'gestion_usuarios.view_company_users'
 
     def get(self, request, id):
-        membresia = Membresia.objects.filter(
+        membresia = self.model.objects.filter(
             usuario_id=id,
             estacion_id=request.session.get('active_estacion_id'),
             estado__in=['ACTIVO', 'INACTIVO']
@@ -62,10 +71,11 @@ class UsuarioObtenerView(UsuarioDeMiEstacionMixin, View):
 
 
 
-class UsuarioAgregarView(View):
+class UsuarioAgregarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     '''Vista para agregar usuario y que pueda acceder a la información de la compañía'''
 
     template_name = "gestion_usuarios/pages/agregar_usuario.html"
+    permission_required = 'gestion_usuarios.create_user'
 
     def get(self, request):
         return render(request, self.template_name)
@@ -114,10 +124,11 @@ class UsuarioAgregarView(View):
 
 
 
-class UsuarioCrearView(View):
+class UsuarioCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     '''Vista para crear usuarios'''
 
     template_name = "gestion_usuarios/pages/crear_usuario.html"
+    permission_required = 'gestion_usuarios.create_user'
 
     def get(self, request):
         formulario = FormularioCrearUsuario()
@@ -186,10 +197,11 @@ class UsuarioCrearView(View):
 
 
 
-class UsuarioEditarView(UsuarioDeMiEstacionMixin, View):
+class UsuarioEditarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
     '''Vista para editar usuarios'''
 
     template_name = "gestion_usuarios/pages/editar_usuario.html"
+    permission_required = 'gestion_usuarios.change_user_personal_info'
 
 
     def get(self, request, id):
@@ -233,8 +245,11 @@ class UsuarioEditarView(UsuarioDeMiEstacionMixin, View):
 
 
 
-class UsuarioDesactivarView(UsuarioDeMiEstacionMixin, View):
+class UsuarioDesactivarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
     '''Vista para desactivar usuarios. Desactivar un usuario consiste en no permitirle iniciar sesión en la compañía.'''
+
+    permission_required = 'gestion_usuarios.deactivate_user'
+
 
     def get(self, request, *args, **kwargs):
         return HttpResponseNotAllowed(['POST'])
@@ -270,8 +285,10 @@ class UsuarioDesactivarView(UsuarioDeMiEstacionMixin, View):
 
 
 
-class UsuarioActivarView(UsuarioDeMiEstacionMixin, View):
+class UsuarioActivarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
     '''Vista para desactivar usuarios. Desactivar un usuario consiste en no permitirle iniciar sesión en la compañía.'''
+
+    permission_required = 'gestion_usuarios.deactivate_user'
 
     def get(self, request, *args, **kwargs):
         return HttpResponseNotAllowed(['POST'])
@@ -307,13 +324,14 @@ class UsuarioActivarView(UsuarioDeMiEstacionMixin, View):
 
 
 
-class RolListaView(View):
+class RolListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Muestra una lista de roles de la estación activa del usuario,
     separando los roles universales de los específicos.
     """
 
     template_name = "gestion_usuarios/pages/lista_roles.html"
+    permission_required = 'gestion_usuarios.view_roles'
 
     def get(self, request, *args, **kwargs):
 
@@ -343,10 +361,11 @@ class RolListaView(View):
 
 
 
-class RolObtenerView(View):
+class RolObtenerView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacionMixin, PermissionRequiredMixin, View):
     '''Vista para obtener el detalle de un rol'''
 
     template_name = "gestion_usuarios/pages/ver_rol.html"
+    permission_required = 'gestion_usuarios.view_roles'
     
     def get(self, request, id):
         # Usamos get_object_or_404 para manejar automáticamente el error si el rol no existe.
@@ -382,13 +401,13 @@ class RolObtenerView(View):
 
 
 
-class RolEditarView(View):
+class RolEditarView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacionMixin, PermissionRequiredMixin, View):
     '''Vista para editar roles. Sólo el nombre y la descripción. El usuario sólo puede editar roles asociados a su estación'''
 
     form_class = FormularioRol
     template_name = "gestion_usuarios/pages/editar_rol.html"
     success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
-    # permission_required = 'gestion_usuarios.manage_custom_roles'
+    permission_required = 'gestion_usuarios.manage_custom_roles'
 
 
     def dispatch(self, request, *args, **kwargs):
@@ -445,13 +464,13 @@ class RolEditarView(View):
 
 
 
-class RolCrearView(View):
+class RolCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     '''Vista para crear roles personalizados. Los roles se asocian a la estación del usuario'''
 
     form_class = FormularioRol
     template_name = 'gestion_usuarios/pages/crear_rol.html'
     success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
-    # permission_required = 'gestion_usuarios.manage_custom_roles'
+    permission_required = 'gestion_usuarios.manage_custom_roles'
 
 
     def get(self, request, *args, **kwargs):
@@ -498,10 +517,11 @@ class RolCrearView(View):
 
 
 
-class RolAsignarPermisosView(View):
+class RolAsignarPermisosView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacionMixin, PermissionRequiredMixin, View):
+
     template_name = 'gestion_usuarios/pages/asignar_permisos.html'
     success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
-    # permission_required = 'gestion_usuarios.manage_custom_roles'
+    permission_required = 'gestion_usuarios.manage_custom_roles'
 
     def dispatch(self, request, *args, **kwargs):
         """Valida que el rol sea editable y pertenece a la estación activa."""
@@ -517,22 +537,50 @@ class RolAsignarPermisosView(View):
     def get(self, request, *args, **kwargs):
         """Muestra el formulario con los permisos agrupados y los checkboxes."""
         
-        # Filtra los permisos para no mostrar los de sistema (sys_) ni los de apps de Django.
-        permissions = Permission.objects.exclude(
-            content_type__app_label__in=['admin', 'auth', 'contenttypes', 'sessions']
+        # --- CAMBIO 1: Usar las etiquetas cortas en la lista ---
+        apps_del_proyecto = [
+            'common', 'utilidades', 'gestion_inventario', 'gestion_mantenimiento',
+            'gestion_voluntarios', 'gestion_medica', 'gestion_usuarios', 'portal',
+            'acceso', 'api'
+        ]
+        permissions = Permission.objects.filter(
+            content_type__app_label__in=apps_del_proyecto
         ).exclude(
             codename__startswith='sys_'
-        ).select_related('content_type').order_by('name')
-
-        # Agrupa los permisos por el nombre legible del módulo (app).
-        permissions_by_module = defaultdict(list)
+        ).select_related('content_type').order_by('content_type__app_label', 'name')
+    
+        permissions_by_app = defaultdict(lambda: {
+            'verbose_name': '', 'main_perm': None, 'children': []
+        })
+    
         for perm in permissions:
-            module_name = perm.content_type.model_class()._meta.app_config.verbose_name
-            permissions_by_module[module_name].append(perm)
-
+            app_label = None
+            verbose_name = ''
+    
+            if perm.codename.startswith('acceso_'):
+                # --- CAMBIO 2: Dividir solo por el primer '_' ---
+                app_label = perm.codename.split('_', 1)[1]
+                try:
+                    config = apps.get_app_config(app_label)
+                    verbose_name = config.verbose_name
+                except LookupError: continue
+            
+            elif perm.content_type and perm.content_type.model_class():
+                config = perm.content_type.model_class()._meta.app_config
+                app_label = config.label
+                verbose_name = config.verbose_name
+            
+            if not app_label: continue
+    
+            permissions_by_app[app_label]['verbose_name'] = verbose_name
+            if perm.codename.startswith('acceso_'):
+                permissions_by_app[app_label]['main_perm'] = perm
+            else:
+                permissions_by_app[app_label]['children'].append(perm)
+    
         context = {
             'rol': self.rol,
-            'permissions_by_module': dict(sorted(permissions_by_module.items())),
+            'permissions_by_app': dict(sorted(permissions_by_app.items(), key=lambda item: item[1]['verbose_name'])),
             'rol_permissions_ids': set(self.rol.permisos.values_list('id', flat=True))
         }
         return render(request, self.template_name, context)
@@ -542,7 +590,7 @@ class RolAsignarPermisosView(View):
         """Guarda los permisos seleccionados para el rol."""
         
         # Obtiene una lista con los IDs de todos los checkboxes marcados.
-        selected_permissions_ids = request.POST.getlist('permisos')
+        selected_permissions_ids = request.POST.getlist('permisos') 
         
         # El método set() es ideal: añade los nuevos, quita los desmarcados y deja los que no cambiaron.
         self.rol.permisos.set(selected_permissions_ids)
@@ -553,13 +601,14 @@ class RolAsignarPermisosView(View):
 
 
 
-class RolEliminarView(View):
+class RolEliminarView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacionMixin, PermissionRequiredMixin, View):
     '''Vista para eliminar un rol personalizado.'''
 
     # --- Atributos de Configuración ---
     template_name = 'gestion_usuarios/pages/eliminar_rol.html'
-    # permission_required = 'gestion_usuarios.manage_custom_roles'
+    permission_required = 'gestion_usuarios.manage_custom_roles'
     success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
+
 
     def dispatch(self, request, *args, **kwargs):
         """
@@ -575,10 +624,12 @@ class RolEliminarView(View):
         
         return super().dispatch(request, *args, **kwargs)
 
+
     def get(self, request, *args, **kwargs):
         """Muestra la página de confirmación de eliminación."""
         # El objeto 'self.rol' ya fue obtenido y validado en dispatch().
         return render(request, self.template_name, {'rol': self.rol})
+
 
     def post(self, request, *args, **kwargs):
         """Ejecuta la eliminación del rol."""
@@ -592,63 +643,93 @@ class RolEliminarView(View):
 
 
 
-class UsuarioAsignarRolesView(View):
-    # permission_required = 'gestion_usuarios.assign_user_roles'
+class UsuarioAsignarRolesView(LoginRequiredMixin, ModuleAccessMixin, UsuarioDeMiEstacionMixin, PermissionRequiredMixin, View):
+    permission_required = 'gestion_usuarios.assign_user_roles'
     template_name = 'gestion_usuarios/pages/asignar_roles.html'
+    success_url = reverse_lazy('gestion_usuarios:ruta_lista_usuarios')
 
-    def dispatch(self, request, *args, **kwargs):
-        """
-        Valida que el usuario a editar tenga una membresía activa en la estación actual.
-        """
-        estacion_id = request.session.get('active_estacion_id')
-        usuario_id = kwargs.get('usuario_id')
-
-        # Buscamos al usuario y la estación para el contexto.
-        self.usuario = get_object_or_404(Usuario, id=usuario_id)
-        self.estacion = get_object_or_404(Estacion, id=estacion_id)
-        
-        # La validación clave: el usuario debe tener una membresía activa en esta estación.
-        # Si no la tiene, no se pueden asignar roles, por lo que lanzamos un 404.
-        self.membresia = get_object_or_404(
-            Membresia, 
-            usuario=self.usuario, 
-            estacion=self.estacion,
-            estado='ACTIVO'
-        )
-        
-        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         """
         Muestra los checkboxes con los roles disponibles agrupados.
         """
+        usuario_id = kwargs.get('id')
+        estacion_id = request.session.get('active_estacion_id')
+
+        usuario = get_object_or_404(Usuario, id=usuario_id)
+        estacion = get_object_or_404(Estacion, id=estacion_id)
+        membresia = get_object_or_404(
+            Membresia, 
+            usuario=usuario, 
+            estacion=estacion, 
+            estado__in=[Membresia.Estado.ACTIVO, Membresia.Estado.INACTIVO]
+        )
+
         # Obtenemos todos los roles que están disponibles para esta estación:
         # Aquellos donde la estación es nula (universales) O cuya estación es la activa.
         roles_disponibles = Rol.objects.filter(
-            Q(estacion__isnull=True) | Q(estacion=self.estacion)
+            Q(estacion__isnull=True) | Q(estacion=estacion)
         ).order_by('nombre')
         
         # Separamos los roles en dos grupos para mostrarlos en la plantilla.
         roles_universales = roles_disponibles.filter(estacion__isnull=True)
-        roles_de_estacion = roles_disponibles.filter(estacion=self.estacion)
+        roles_de_estacion = roles_disponibles.filter(estacion=estacion)
 
         context = {
-            'usuario': self.usuario,
-            'estacion': self.estacion,
+            'usuario': usuario,
+            'estacion': estacion,
             'roles_universales': roles_universales,
             'roles_de_estacion': roles_de_estacion,
-            'usuario_roles_ids': set(self.membresia.roles.values_list('id', flat=True))
+            'usuario_roles_ids': set(membresia.roles.values_list('id', flat=True))
         }
         return render(request, self.template_name, context)
+
 
     def post(self, request, *args, **kwargs):
         """
         Guarda los roles seleccionados en la membresía del usuario.
         """
-        selected_roles_ids = request.POST.getlist('roles')
+
+        usuario_id = kwargs.get('id')
+        estacion_id = request.session.get('active_estacion_id')
+
+        usuario = get_object_or_404(Usuario, id=usuario_id)
+        estacion = get_object_or_404(Estacion, id=estacion_id)
+        membresia = get_object_or_404(
+            Membresia, 
+            usuario=usuario, 
+            estacion=estacion, 
+            estado__in=[Membresia.Estado.ACTIVO, Membresia.Estado.INACTIVO]
+        )
+
+        # VALIDAR ROLES
+        # 1. Obtenemos la lista de IDs que el usuario envió desde el formulario.
+        selected_roles_ids_str = request.POST.getlist('roles')
+
+        # 2. Obtenemos el CONJUNTO de IDs de roles que son REALMENTE VÁLIDOS para esta estación.
+        #    (Los universales + los de la estación). Usar un set() es muy eficiente.
+        roles_validos_ids = set(Rol.objects.filter(
+            Q(estacion__isnull=True) | Q(estacion=estacion)
+        ).values_list('id', flat=True))
+
+        # 3. Validamos la lista del usuario.
+        #    Convertimos los IDs de string a int y nos quedamos SOLO con los que
+        #    están presentes en nuestro conjunto de roles válidos.
+        roles_finales_para_guardar = []
+        for role_id_str in selected_roles_ids_str:
+            try:
+                role_id = int(role_id_str)
+                if role_id in roles_validos_ids:
+                    roles_finales_para_guardar.append(role_id)
+                else:
+                    print(f"ALERTA DE SEGURIDAD: El usuario {request.user.id} intentó asignar el rol no válido {role_id} al usuario {usuario_id}.")
+            except (ValueError, TypeError):
+                # Ignorar si el dato enviado no es un número válido.
+                continue
+
         
         # Usamos set() para actualizar la relación ManyToMany de forma eficiente.
-        self.membresia.roles.set(selected_roles_ids)
+        membresia.roles.set(roles_finales_para_guardar)
         
-        messages.success(request, f"Roles de '{self.usuario.get_full_name.title()}' actualizados correctamente.")
-        return redirect('gestion_usuarios:ruta_ver_usuario', id=self.usuario.id) # Ajusta la URL de redirección
+        messages.success(request, f"Roles de '{usuario.get_full_name.title()}' actualizados correctamente.")
+        return redirect('gestion_usuarios:ruta_ver_usuario', id=usuario.id) # Ajusta la URL de redirección
