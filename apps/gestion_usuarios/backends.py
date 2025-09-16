@@ -1,5 +1,6 @@
 from django.contrib.auth.backends import ModelBackend
-from .models import Membresia
+from django.db.models import Q
+from .models import Membresia, Usuario
 from apps.gestion_inventario.models import Estacion
 
 class RolBackend(ModelBackend):
@@ -76,3 +77,26 @@ class RolBackend(ModelBackend):
         
         # Si no hay contexto o el permiso no se encontró en el contexto, denegar.
         return False
+    
+
+
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        """
+        Autentica a un usuario usando únicamente su RUT.
+        El campo 'username' del formulario debe contener el RUT.
+        """
+        try:
+            # Buscamos al usuario exclusivamente por su RUT.
+            # .get() es eficiente y correcto aquí porque el RUT es único.
+            user = Usuario.objects.get(rut__iexact=username)
+            
+            # Verificamos la contraseña.
+            if user.check_password(password) and user.is_active:
+                return user # Éxito
+        
+        except Usuario.DoesNotExist:
+            # Si no se encuentra el RUT, la autenticación falla.
+            return None
+        
+        # Si se encontró el RUT pero la contraseña es incorrecta, falla.
+        return None

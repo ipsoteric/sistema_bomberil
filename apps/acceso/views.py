@@ -31,7 +31,7 @@ class LoginView(View):
         datos_limpios = formulario.cleaned_data
         user = authenticate(
             request, 
-            email=datos_limpios.get('correo'), 
+            rut=datos_limpios.get('rut'), 
             password=datos_limpios.get('password')
         )
 

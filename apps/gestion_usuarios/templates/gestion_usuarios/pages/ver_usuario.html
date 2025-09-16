@@ -110,19 +110,20 @@
         {# Información del usuario #}
         <section class="usuarios_ver_usuario__informacion">
         <div class="informacion__seccion">
-            <div class="informacion__campo fs_normal">
-                <span class="informacion__label color_primario_variante">Correo electrónico:</span>
-                {% if membresia.usuario.email %}
-                <span class="color_primario">{{membresia.usuario.email}}</span>
-                {% else %}
-                <span class="color_primario">No especificado</span>
-                {% endif %}
-            </div>
-            
+
             <div class="informacion__campo fs_normal">
                 <span class="informacion__label color_primario_variante">RUT:</span>
                 {% if membresia.usuario.rut %}
                 <span class="color_primario">{{membresia.usuario.rut}}</span>
+                {% else %}
+                <span class="color_primario">No especificado</span>
+                {% endif %}
+            </div>
+
+            <div class="informacion__campo fs_normal">
+                <span class="informacion__label color_primario_variante">Correo electrónico:</span>
+                {% if membresia.usuario.email %}
+                <span class="color_primario">{{membresia.usuario.email}}</span>
                 {% else %}
                 <span class="color_primario">No especificado</span>
                 {% endif %}
@@ -154,13 +155,13 @@
             </div>
             
             <div class="informacion__campo fs_normal">
-                <span class="informacion__label color_primario_variante">Actualizado:</span>
-                <span class="color_primario">{{membresia.usuario.updated_at|naturalday }}</span>
-            </div>
-            
-            <div class="informacion__campo fs_normal">
                 <span class="informacion__label color_primario_variante">Ingreso a la compañía:</span>
                 <span class="color_primario">{{membresia.fecha_inicio|naturalday}}</span>
+            </div>
+
+            <div class="informacion__campo fs_normal">
+                <span class="informacion__label color_primario_variante">Actualizado:</span>
+                <span class="color_primario">{{membresia.usuario.updated_at|naturalday }}</span>
             </div>
         </div>
         </section>

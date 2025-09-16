@@ -162,10 +162,10 @@ class UsuarioCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequired
                 # create_user para hashear la contraseña correctamente
                 nuevo_usuario = Usuario.objects.create_user(
                     password=contrasena_plana,
+                    rut=datos_limpios.get('rut'),
                     email=datos_limpios.get('correo'),
                     first_name=datos_limpios.get('nombre'),
                     last_name=datos_limpios.get('apellido'),
-                    rut=datos_limpios.get('rut'),
                     birthdate=datos_limpios.get('fecha_nacimiento'),
                     phone=datos_limpios.get('telefono'),
                     avatar=datos_limpios.get('avatar'),

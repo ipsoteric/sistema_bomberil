@@ -15,6 +15,15 @@
         >
         {% csrf_token %}
 
+            {# Rut #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <i class="fa-solid fa-asterisk color_rojo"></i>
+                    <label for="">Rut</label>
+                </div>
+                {{formulario.rut}}
+            </div>
+
             {# Correo #}
             <div class="input_box">
                 <div class="input_box__label color_primario">
@@ -40,15 +49,6 @@
                     <label for="">Apellido</label>
                 </div>
                 {{formulario.apellido}}
-            </div>
-            
-            {# Rut #}
-            <div class="input_box">
-                <div class="input_box__label color_primario">
-                    <i class="fa-solid fa-asterisk color_rojo"></i>
-                    <label for="">Rut</label>
-                </div>
-                {{formulario.rut}}
             </div>
             
             {# Fecha nacimiento #}

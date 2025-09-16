@@ -2,11 +2,12 @@ from django import forms
 
 
 class FormularioLogin(forms.Form):
-    correo = forms.EmailField(
+    rut = forms.CharField(
         required=True, 
         widget=forms.TextInput(
             attrs={
-                'name':'LoginInputCorreo',
+                'id':'id_username',
+                'name':'username',
                 'class':'input_box__input fs_normal color_primario fondo_secundario_variante',
                 'autocomplete':'off',
             }
@@ -17,7 +18,8 @@ class FormularioLogin(forms.Form):
         required=True, 
         widget=forms.PasswordInput(
             attrs={
-                'name':'LoginInputPassword',
+                'id':'id_password',
+                'name':'password',
                 'class':'input_box__input fs_normal color_primario fondo_secundario_variante',
                 'autocomplete':'off'
             }
