@@ -29,7 +29,7 @@ class EditarPerfilView(LoginRequiredMixin, View):
     """
     Maneja la edición de la información del perfil del usuario.
     """
-    template_name = 'perfil/editar_perfil.html'
+    template_name = 'perfil/pages/editar_perfil.html'
     form_class = EditarPerfilForm
     success_url = reverse_lazy('perfil:ver')
 
