@@ -5,56 +5,74 @@
 {# Título de la ventana #} {% block titulo_pagina %}Portal{% endblock %}
 
 {% block contenido %}
-    <section class="portal_menu__contenedor">
-        <ul class="portal_menu__opciones">
 
-            <li class="portal_menu__opcion">
-                <a 
-                class="color_blanco fs_normal" 
-                href="{% url 'gestion_inventario:ruta_inicio' %}">
-                Gestión Inventario
-                </a>
-            </li>
+<div class="portal__modulos">
 
-            <li class="portal_menu__opcion">
-                <a 
-                class="color_blanco fs_normal" 
-                href="{% url 'gestion_mantenimiento:ruta_inicio' %}"
-                >
-                Gestión Mantenimiento de Herramientas
-                </a>
-            </li>
+    {# Módulo: Gestión de Inventario #}
+    <a href="{% url 'gestion_inventario:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+        <div class="modulo__header">
+            <img src="{% static 'portal/imagenes/modulo_inventario2.jpg' %}">
+        </div>
+        <div class="modulo__body">
+            <span class="fs_grande color_primario_variante">Inventario</span>
+            <p class="fs_normal color_primario_variante">
+                Controla el ciclo de vida de tu equipamiento. Gestiona stock, bodegas, ubicaciones y unidades en tiempo real.
+            </p>
+        </div>
+    </a>
 
-            <li class="portal_menu__opcion">
-                <a 
-                class="color_blanco fs_normal" 
-                href="{% url 'gestion_usuarios:ruta_inicio' %}"
-                >
-                Gestión de Usuarios y Permisos
-                </a>
-            </li>
+    {# Módulo: Gestión de Mantenimiento de Herramientas #}
+    <a href="{% url 'gestion_mantenimiento:ruta_inicio' %}" class="portal__modulo fondo_secundario_variante hover_scale hover_color">
+        <div class="modulo__header">
+            <img src="{% static 'portal/imagenes/modulo_mantenimiento.jpg' %}">
+        </div>
+        <div class="modulo__body">
+            <span class="fs_grande color_primario_variante">Mantenimiento de Herramientas</span>
+            <p class="fs_normal color_primario_variante">
+                Asegura la operatividad de tus equipos. Planifica mantenimientos, registra reparaciones y consulta el historial de cada herramienta.
+            </p>
+        </div>
+    </a>
 
-            <li class="portal_menu__opcion">
-                <a 
-                class="color_blanco fs_normal" 
-                href="{% url 'gestion_medica:ruta_inicio' %}"
-                >
-                Gestión Médica
-                </a>
-            </li>
+    {# Módulo: Gestión de Usuarios y permisos #}
+    <a href="{% url 'gestion_usuarios:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+        <div class="modulo__header">
+            <img src="{% static 'portal/imagenes/modulo_usuarios.jpg' %}">
+        </div>
+        <div class="modulo__body">
+            <span class="fs_grande color_primario_variante">Usuarios y permisos</span>
+            <p class="fs_normal color_primario_variante">
+                Controla el acceso a la plataforma. Crea perfiles de usuario, asigna roles y gestiona los permisos para cada módulo del sistema.
+            </p>
+        </div>
+    </a>
 
-            <li class="portal_menu__opcion">
-                <a 
-                class="color_blanco fs_normal" 
-                href="{% url 'gestion_voluntarios:ruta_inicio' %}">
-                Gestión de Voluntarios
-                </a>
-            </li>
-        </ul>
-        <div class="portal_menu__previsualizacion"></div>
-    </section>
-    <section style="display:none;" class="fs_normal color_primario">
-        <h2>TEMPORAL</h2>
-        
-    </section>
+    {# Módulo: Gestión Voluntarios #}
+    <a href="{% url 'gestion_voluntarios:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+        <div class="modulo__header">
+            <img src="{% static 'portal/imagenes/modulo_voluntarios.png' %}">
+        </div>
+        <div class="modulo__body">
+            <span class="fs_grande color_primario_variante">Voluntarios</span>
+            <p class="fs_normal color_primario_variante">
+                Gestiona la ficha personal y la trayectoria de cada voluntario. Registra su historial, méritos, formación y especialidades.
+            </p>
+        </div>
+    </a>
+
+    {# Módulo: Gestión Médica #}
+    <a href="{% url 'gestion_medica:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+        <div class="modulo__header">
+            <img src="{% static 'portal/imagenes/modulo_medico.jpg' %}">
+        </div>
+        <div class="modulo__body">
+            <span class="fs_mediana color_primario_variante">Fichas médicas</span>
+            <p class="fs_normal color_primario_variante">
+                Registra y consulta información médica clave para la seguridad y el bienestar de tus voluntarios en todo momento.
+            </p>
+        </div>
+    </a>
+
+</div>
+
 {% endblock  %}
