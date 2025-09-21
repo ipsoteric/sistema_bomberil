@@ -54,6 +54,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
             # Permisos de Negocio
             ("create_user", "Puede crear y registrar nuevos usuarios"),
             ("change_user_personal_info", "Puede modificar la información personal de un usuario"),
+            ("force_password_reset", "Puede restablecer la contraseña de un usuario")
         ]
 
 

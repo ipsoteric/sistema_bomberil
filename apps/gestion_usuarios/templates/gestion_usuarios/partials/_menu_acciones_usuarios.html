@@ -1,60 +1,63 @@
 <div class="menu-acciones-usuarios">
 
     {# Ver usuario #}
-    <a 
-    class="menu-acciones-usuarios__accion acciones-usuarios-ver color_negro" 
-    href="{% url 'gestion_usuarios:ruta_ver_usuario' id=membresia.usuario.id %}"
-    >
-        <i class="fa-solid fa-eye"></i> 
-        Ver
+    {% if perms.gestion_usuarios.view_company_users %}
+    <a class="menu-acciones-usuarios__accion acciones-usuarios-ver color_negro" 
+       href="{% url 'gestion_usuarios:ruta_ver_usuario' id=membresia.usuario.id %}">
+        <i class="fa-solid fa-eye"></i> Ver
     </a>
-
+    {% endif %}
 
     {# Modificar información personal de usuario #}
-    <a 
-    class="menu-acciones-usuarios__accion acciones-usuarios-editar color_negro" 
-    href="{% url 'gestion_usuarios:ruta_editar_usuario' id=membresia.usuario.id %}"
-    >
-        <i class="fa-solid fa-pen-to-square"></i> 
-        Modificar información
+    {% if perms.gestion_usuarios.change_user_personal_info %}
+    <a class="menu-acciones-usuarios__accion acciones-usuarios-editar color_negro"
+       href="{% url 'gestion_usuarios:ruta_editar_usuario' id=membresia.usuario.id %}">
+        <i class="fa-solid fa-pen-to-square"></i> Modificar información
     </a>
-
+    {% endif %}
 
     {# Asignar roles al usuario #}
-    {% if membresia.estado == 'ACTIVO' %}
-    <a 
-    class="menu-acciones-usuarios__accion acciones-usuarios-editar color_negro" 
-    href="{% url 'gestion_usuarios:ruta_asignar_roles_usuario' id=membresia.usuario.id %}"
-    >
-        <i class="fa-solid fa-group-arrows-rotate"></i>
-        Asignar roles
+    {% if perms.gestion_usuarios.assign_user_roles and membresia.estado != 'FINALIZADO' %}
+    <a class="menu-acciones-usuarios__accion acciones-usuarios-editar color_negro"
+       href="{% url 'gestion_usuarios:ruta_asignar_roles_usuario' id=membresia.usuario.id %}">
+        <i class="fa-solid fa-group-arrows-rotate"></i> Asignar roles
     </a>
     {% endif %}
-
+    
+    {# Restablecer Contraseña #}
+    {% if perms.gestion_usuarios.force_password_reset and membresia.estado != 'FINALIZADO' %}
+    <button type="button" 
+            class="menu-acciones-usuarios__accion js-reset-password-btn fondo_transparente"
+            data-bs-toggle="modal" 
+            data-bs-target="#confirmResetModal"
+            data-user-name="{{ membresia.usuario.get_full_name|title|escapejs }}"
+            data-form-action="{% url 'gestion_usuarios:ruta_restablecer_contrasena' id=membresia.usuario.id %}">
+        <i class="fa-solid fa-key"></i> Restablecer Contraseña
+    </button>
+    {% endif %}
 
     {# Desactivar usuario #}
-    {% if membresia.estado == 'ACTIVO' %}
-    <button 
-    type="button" 
-    class="menu-acciones-usuarios__accion boton-desactivar-usuario fondo_transparente color_rojo"
-    data-form-action="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=membresia.usuario.id %}"
-    >
-        <i class="fa-solid fa-ban"></i>
-        Desactivar
+    {% if perms.gestion_usuarios.deactivate_user and membresia.estado == 'ACTIVO' %}
+    <button type="button" 
+            class="menu-acciones-usuarios__accion boton-desactivar-usuario fondo_transparente color_rojo">
+        {# Aquí deberías añadir la lógica para un modal de confirmación si lo necesitas #}
+        <i class="fa-solid fa-ban"></i> Desactivar
     </button>
     {% endif %}
-
     
     {# Activar usuario #}
-    {% if membresia.estado == 'INACTIVO' %}
-    <button 
-    type="button" 
-    class="menu-acciones-usuarios__accion boton-activar-usuario fondo_transparente color_primario"
-    data-form-action="{% url 'gestion_usuarios:ruta_activar_usuario' id=membresia.usuario.id %}"
-    >
-        <i class="fa-solid fa-circle-up"></i>
-        Activar
+    {% if perms.gestion_usuarios.deactivate_user and membresia.estado == 'INACTIVO' %}
+    <button type="button" 
+            class="menu-acciones-usuarios__accion boton-activar-usuario fondo_transparente color_primario">
+        {# Aquí deberías añadir la lógica para un modal de confirmación si lo necesitas #}
+        <i class="fa-solid fa-circle-up"></i> Activar
     </button>
     {% endif %}
 
+    {# Finalizar membresía #}
+    {% if perms.gestion_usuarios.end_user_membership and membresia.estado != 'FINALIZADO' %}
+    <a class="menu-acciones-usuarios__accion acciones-usuarios-finalizar color_rojo" href="#">
+        <i class="fa-solid fa-flag-checkered"></i> Finalizar Membresía
+    </a>
+    {% endif %}
 </div>

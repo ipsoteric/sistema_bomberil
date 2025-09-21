@@ -5,6 +5,7 @@ from django.views import View
 from django.contrib import messages
 from django.contrib.auth.models import Permission
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.forms import PasswordResetForm
 from django.db import IntegrityError, transaction
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseNotAllowed, HttpResponse
@@ -733,3 +734,44 @@ class UsuarioAsignarRolesView(LoginRequiredMixin, ModuleAccessMixin, UsuarioDeMi
         
         messages.success(request, f"Roles de '{usuario.get_full_name.title()}' actualizados correctamente.")
         return redirect('gestion_usuarios:ruta_ver_usuario', id=usuario.id) # Ajusta la URL de redirección
+
+
+
+
+class UsuarioRestablecerContrasena(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
+    """
+    Vista para que un administrador inicie el proceso de restablecimiento
+    de contraseña para otro usuario.
+    """
+    permission_required = 'gestion_usuarios.force_password_reset'
+    
+    def post(self, request, id, *args, **kwargs):
+        # El mixin UsuarioDeMiEstacionMixin ya ha verificado que el admin
+        # tiene derecho a gestionar a este usuario.
+
+        usuario_a_resetear = get_object_or_404(Usuario, id=id)
+
+        if not usuario_a_resetear.email:
+            messages.error(request, f"El usuario {usuario_a_resetear.get_full_name()} no tiene un correo electrónico registrado para enviarle el enlace.")
+            return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))
+
+        # Usamos el formulario de reseteo de Django, pasándole el email del usuario.
+        form = PasswordResetForm({'email': usuario_a_resetear.email})
+
+        if form.is_valid():
+            # El método save() se encarga de todo.
+            form.save(
+                request=request,
+                from_email='noreply@bomberil.cl',
+                email_template_name='acceso/emails/password_reset_email.txt',
+                html_email_template_name='acceso/emails/password_reset_email.html',
+                subject_template_name='acceso/emails/password_reset_subject.txt',
+                
+                # --- LÍNEA CLAVE AÑADIDA ---
+                # Le decimos a Django que busque las URLs de reseteo
+                # en el namespace 'acceso'.
+                domain_override='acceso'
+            )
+            messages.success(request, f"Se ha enviado un correo para restablecer la contraseña a {usuario_a_resetear.email}.")
+
+        return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))

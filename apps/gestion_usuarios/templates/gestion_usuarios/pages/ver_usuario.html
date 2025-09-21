@@ -88,7 +88,18 @@
         {# Acciones #}
         <section class="usuarios_ver_usuario__acciones">
             <a class="boton_flex fondo_azul color_blanco fs_normal" href="{% url 'gestion_usuarios:ruta_editar_usuario' id=membresia.usuario.id %}">Modificar información</a>
+
             <a class="boton_flex fondo_azul color_blanco fs_normal" href="{% url 'gestion_usuarios:ruta_asignar_roles_usuario' id=membresia.usuario.id %}">Asignar roles</a>
+
+            {% if perms.gestion_usuarios.force_password_reset %}
+            <form id="resetPasswordForm" action="{% url 'gestion_usuarios:ruta_restablecer_contrasena' id=membresia.usuario.id %}" method="post" class="d-none">
+            {% csrf_token %}
+            </form>
+            <button type="button" class="boton_flex fondo_gris_oscuro color_blanco fs_normal" data-bs-toggle="modal" data-bs-target="#confirmResetModal">
+                Restablecer Contraseña
+            </button>
+            {% endif %}
+
             {% if membresia.estado == 'ACTIVO' %}
             <a class="boton_flex fondo_rojo color_blanco fs_normal" href="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=membresia.usuario.id %}">
                 <i class="fa-solid fa-ban"></i>
@@ -100,6 +111,7 @@
                 Activar
             </a>
             {% endif %}
+
             <a class="boton_flex fondo_rojo color_blanco fs_normal" href="">
                 <i class="fa-solid fa-flag-checkered"></i>
                 Finalizar membresía
@@ -169,6 +181,7 @@
     </div>
 </div>
 
+{% include "gestion_usuarios/partials/_modal_restablecer_contrasena.html" %}
 
 {# Token CSRF, necesario para el script #}
 {% csrf_token %} 
@@ -185,5 +198,26 @@
             //    con su ID único 'avatar-container-admin'.
             inicializarCargadorAvatar('avatar-container-admin');
         });
+    </script>
+
+    {# Modal de confirmación restablecer contraseña #}
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Obtenemos el nombre una sola vez al cargar la página
+        const modalUserName = document.getElementById('modalUserName');
+        if(modalUserName) {
+            modalUserName.textContent = '{{ membresia.usuario.get_full_name|title|escapejs }}';
+        }
+
+        // Conectamos el botón de confirmación del modal al formulario
+        const modalConfirmButton = document.getElementById('modalConfirmResetBtn');
+        const resetForm = document.getElementById('resetPasswordForm');
+        
+        if (modalConfirmButton && resetForm) {
+            modalConfirmButton.addEventListener('click', () => {
+                resetForm.submit();
+            });
+        }
+    });
     </script>
 {% endblock %}

@@ -64,7 +64,7 @@
             
             
             {# Correo #}
-            <td>{{membresia.usuario.email}}</td>
+            <td>{{membresia.usuario.email|default:""}}</td>
 
             {# Estado #}
             <td>
@@ -98,5 +98,47 @@
         {% endif %}
     </tbody>
 </table>
+
+
+{# Colocamos el formulario y el modal UNA SOLA VEZ, al final de la plantilla #}
+<form id="resetPasswordForm" method="post" class="d-none">
+    {% csrf_token %}
+</form>
+
+{% include "gestion_usuarios/partials/_modal_restablecer_contrasena.html" %}
     
 {% endblock  %}
+
+
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    const modalUserName = document.getElementById('modalUserName');
+    const modalConfirmButton = document.getElementById('modalConfirmResetBtn');
+
+    // Escuchamos clics en CUALQUIER botón de restablecer de la lista
+    document.querySelectorAll('.js-reset-password-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            // Obtenemos los datos del botón que fue presionado
+            const userName = button.dataset.userName;
+            const formAction = button.dataset.formAction;
+
+            // Actualizamos el contenido del modal y la URL del formulario
+            if (modalUserName) modalUserName.textContent = userName;
+            if (resetPasswordForm) resetPasswordForm.action = formAction;
+        });
+    });
+
+    // --- LÓGICA CORREGIDA: Hacemos que el botón del modal envíe el formulario ---
+    if (modalConfirmButton && resetPasswordForm) {
+        modalConfirmButton.addEventListener('click', () => {
+            // Al hacer clic en "Sí, Enviar Correo", enviamos el formulario
+            // que ya tiene la URL correcta.
+            resetPasswordForm.submit();
+        });
+    }
+});
+</script>
+{% endblock %}
