@@ -775,3 +775,54 @@ class UsuarioRestablecerContrasena(LoginRequiredMixin, ModuleAccessMixin, Permis
             messages.success(request, f"Se ha enviado un correo para restablecer la contraseña a {usuario_a_resetear.email}.")
 
         return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))
+
+
+
+
+class UsuarioVerPermisos(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin,UsuarioDeMiEstacionMixin, View):
+    """
+    Muestra una lista de solo lectura de todos los permisos que un usuario
+    posee en la estación activa, consolidados de todos sus roles.
+    """
+    permission_required = 'gestion_usuarios.view_user_permissions' # O un permiso más específico si lo creas
+    template_name = 'gestion_usuarios/pages/ver_permisos_usuario.html'
+
+    def get(self, request, id, *args, **kwargs):
+        # El mixin UsuarioDeMiEstacionMixin ya ha verificado que podemos ver a este usuario.
+        usuario = get_object_or_404(Usuario, id=id)
+        active_station_id = request.session.get('active_estacion_id')
+        
+        # Obtenemos la membresía del usuario en la estación actual.
+        membresia = get_object_or_404(
+            Membresia, 
+            usuario=usuario, 
+            estacion_id=active_station_id,
+            estado__in=[Membresia.Estado.ACTIVO, Membresia.Estado.INACTIVO]
+        )
+
+        # Recopilamos todos los permisos de todos los roles del usuario.
+        # Usamos un conjunto (set) para evitar duplicados si dos roles
+        # tuvieran el mismo permiso.
+        permisos_del_usuario = set()
+        for rol in membresia.roles.prefetch_related('permisos__content_type'):
+            permisos_del_usuario.update(rol.permisos.all())
+        
+        # Agrupamos los permisos por módulo/app para una mejor visualización.
+        permisos_agrupados = defaultdict(list)
+        for perm in sorted(list(permisos_del_usuario), key=lambda p: p.name):
+            # Usamos el verbose_name de la app del modelo al que pertenece el permiso
+            if perm.content_type.model_class():
+                app_config = perm.content_type.model_class()._meta.app_config
+                module_name = app_config.verbose_name
+            else: # Para permisos anclados a 'common'
+                module_name = "Permisos Generales"
+                
+            permisos_agrupados[module_name].append(perm)
+
+        context = {
+            'membresia': membresia,
+            'permisos_agrupados': dict(sorted(permisos_agrupados.items())),
+            'total_permisos': len(permisos_del_usuario)
+        }
+        
+        return render(request, self.template_name, context)

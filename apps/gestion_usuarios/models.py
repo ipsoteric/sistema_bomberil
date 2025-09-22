@@ -182,6 +182,7 @@ class Membresia(models.Model):
 
             # Permisos de Negocio
             ("view_company_users", "Puede ver a los usuarios de la compañía"),
+            ("view_user_permissions", "Puede ver los permisos de los usuarios"),
             ("assign_user_roles", "Puede asignar y cambiar roles a un usuario"),
             ("deactivate_user", "Puede desactivar o reactivar la cuenta de un usuario"),
             ("end_user_membership", "Puede finalizar la membresía de un usuario"),

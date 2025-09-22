@@ -77,7 +77,7 @@
 
             {# Información adicional (PENDIENTE DE MODIFICAR) #}
             <div class="descripcion__informacion_adicional fs_normal">
-                <a class="boton fondo_gris_oscuro color_blanco">Ver Permisos</a>
+                <a href="{% url 'gestion_usuarios:ruta_ver_permisos_usuario' id=membresia.usuario.id %}" class="boton fondo_gris_oscuro color_blanco">Ver Permisos</a>
                 <a class="boton fondo_morado color_blanco">Hoja de vida</a>
                 <a class="boton fondo_morado color_blanco">Ficha médica</a>
             </div>

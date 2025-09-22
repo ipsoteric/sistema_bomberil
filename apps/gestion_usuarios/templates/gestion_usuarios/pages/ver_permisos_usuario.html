@@ -1,0 +1,61 @@
+{% extends 'gestion_usuarios/layouts/base.html' %}
+{% load static %}
+{% block titulo_ventana %}Permisos de {{ membresia.usuario.get_full_name|title }}{% endblock %}
+{% block titulo_pagina %}Permisos de Usuario{% endblock %}
+
+{% block contenido %}
+
+{# --- CAMBIO 1: Contenedor más ancho para mayores márgenes --- #}
+<div class="container-xl mt-4">
+    <div class="d-flex align-items-center mb-3">
+        {# --- CAMBIO 2: Clase de avatar más grande --- #}
+        {% if membresia.usuario.avatar_thumb_small %}
+            <img class="avatar_medium me-3" src="{{ membresia.usuario.avatar_thumb_small.url }}">
+        {% else %}
+            <img class="avatar_medium me-3" src="{% static 'imagenes/default_avatar.png' %}">
+        {% endif %}
+        <div>
+            <h1 class="h3 mb-0 color_primario fs_grande">
+                {{ membresia.usuario.get_full_name|title }}
+            </h1>
+            <p class="mb-0 color_primario_variante fs_normal">
+                Total de permisos únicos: {{ total_permisos }}
+            </p>
+        </div>
+    </div>
+    
+    <p class="color_primario_variante fs_normal">A continuación se listan todos los permisos que el usuario hereda de sus roles asignados en la estación <strong>{{ membresia.estacion.nombre }}</strong>.</p>
+    <hr>
+    
+    {% if permisos_agrupados %}
+        <div class="row">
+            {% for modulo, permisos in permisos_agrupados.items %}
+                <div class="col-md-6 col-lg-4"> {# Organiza las tarjetas en columnas #}
+                    <div class="card mb-3 fondo_secundario color_primario fs_normal h-100">
+                        <div class="card-header fw-bold">
+                            {{ modulo }}
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled mb-0">
+                                {% for perm in permisos %}
+                                    <li>
+                                        <i class="fa-solid fa-check-circle text-success me-2"></i>{{ perm.name }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            Este usuario no tiene ningún permiso asignado en esta estación.
+        </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{% url 'gestion_usuarios:ruta_ver_usuario' id=membresia.usuario.id %}" class="btn btn-secondary fs_normal">Volver al Perfil</a>
+    </div>
+</div>
+{% endblock %}

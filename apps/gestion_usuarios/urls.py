@@ -34,6 +34,8 @@ urlpatterns = [
     # Restablecer contraseña a usuario
     path('usuarios/<int:id>/restablecer-contrasena/', UsuarioRestablecerContrasena.as_view(), name='ruta_restablecer_contrasena'),
 
+    # Ver permisos de usuario
+    path('usuarios/<int:id>/permisos/', UsuarioVerPermisos.as_view(), name='ruta_ver_permisos_usuario'),
 
 
 
