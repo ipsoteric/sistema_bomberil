@@ -13,4 +13,6 @@ urlpatterns = [
 
     # Lista de almacenes
     path('almacenes/', AlmacenListaView.as_view(), name="ruta_lista_almacenes"),
+    # Crear almacen
+    path('almacenes/crear/', AlmacenCrearView.as_view(), name="ruta_crear_almacen"),
 ]

@@ -1,0 +1,57 @@
+{# Plantilla base #}{% extends 'gestion_inventario/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Título de la ventana #} {% block titulo_ventana %}Crear Almacén{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Crear Almacén{% endblock %}
+
+{% block contenido %}
+<div class="caja_para_pagina_contenido_centrado">
+
+    <div class="contenedor_formulario_simple fondo_secundario">
+    <form 
+    method="post" 
+    action="{% url 'gestion_inventario:ruta_crear_almacen' %}"
+        class=" formulario_simple color_primario fs_normal"
+        >
+        {% csrf_token %}
+
+            {# Nombre #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <i class="fa-solid fa-asterisk color_rojo"></i>
+                    <label for="id_nombre">Nombre</label>
+                </div>
+                {{ formulario.nombre }}
+            </div>
+
+            {# Descripción #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <label for="id_descripcion">Descripción</label>
+                </div>
+                {{ formulario.descripcion }}
+            </div>
+
+            {# Dirección #}
+            <div class="input_box">
+                <div class="input_box__label color_primario">
+                    <label for="id_direccion">Dirección</label>
+                </div>
+                {{ formulario.direccion }}
+            </div>
+
+
+
+            {# Estación: asignada desde la sesión del usuario (no mostrar selector) #}
+            {# Imagen: no se puede subir en la creación (solo al editar) #}
+
+            <div class="formulario_simple__caja_botones">
+                <button type="submit" class="boton fs_normal color_blanco fondo_verde hover_color">Crear</button>
+                <a href="{% url 'gestion_inventario:ruta_lista_almacenes' %}" class="color_primario fondo_transparente boton">Cancelar</a>
+            </div>
+
+        </form>
+    </div>  
+
+</div>
+
+{% endblock  %}
