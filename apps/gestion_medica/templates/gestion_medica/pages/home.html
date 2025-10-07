@@ -5,6 +5,24 @@
 
 {% block contenido %}
 
-    <div class="color_primario">FICHAS MEDICAS HOME</div>
-    
+    <div class="contenedor_medico">
+        <div class="contenedor_tarjetas">
+            <div class="tarjeta">
+                <img src="{% static 'imagenes/medico/lista.png' %}" alt="tarjeta_imagen">
+                <a href="{% url 'gestion_medica:ruta_lista_paciente' %}" class="tarjeta_titulo">Lista pacientes</a>
+            </div>
+            <div class="tarjeta">
+                <img src="{% static 'imagenes/medico/creacion.png' %}" alt="tarjeta_imagen">
+                <a href="{% url 'gestion_medica:ruta_crear_paciente' %}" class="tarjeta_titulo">Crear pacientes</a>
+            </div>
+            <div class="tarjeta">
+                <img src="{% static 'imagenes/medico/lista_med.png' %}" alt="tarjeta_imagen">
+                <a href="{% url 'gestion_medica:ruta_lista_medicamentos' %}" class="tarjeta_titulo">Lista medicamentos</a>
+            </div>
+            <div class="tarjeta">
+                <img src="{% static 'imagenes/medico/medicamentos.png' %}" alt="tarjeta_imagen">
+                <a href="{% url 'gestion_medica:ruta_crear_medicamento' %}" class="tarjeta_titulo">Añadir medicamentos</a>
+            </div>
+        </div>
+    </div>
 {% endblock  %}

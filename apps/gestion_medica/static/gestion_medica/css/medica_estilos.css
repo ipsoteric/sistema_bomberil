@@ -1,4 +1,87 @@
-/* 
-- Usa esta hoja para definir los estilos que se usarán en esta aplicación.
-- Defíne los estilos aquí o segméntalos en archivos separados e impórtalos aquí. Como prefieras.
-*/
+.contenedor_medico {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.contenedor_tarjetas {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: auto;
+    gap: 20px;
+}
+
+.tarjeta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 200px;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 1px 1px 1px var(--color-header-border);
+    padding: 15px;
+    background-color: var(--color-secondary-variant);
+    gap: 15px;
+    margin: 15px;
+}
+
+.tarjeta_titulo {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.tarjeta img {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+}
+
+.contenedor_tabla {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: var(--color-secondary-variant);
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+tr:hover {
+    background-color: var(--color-header-border);
+}
+
+td button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--color-primary);
+}
+
+td button:hover {
+    text-decoration: underline;
+}

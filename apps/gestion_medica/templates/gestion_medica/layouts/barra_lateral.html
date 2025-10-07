@@ -7,7 +7,7 @@
     <section class="barra_lateral__seccion">
 
         <div class="barra_lateral__modulo" data-toggle="modulo">
-            <a href="" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario scale">
+            <a href="{% url 'gestion_medica:ruta_inicio' %}" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario scale">
                 <i class="fa-solid fa-clipboard"></i>
                 <span>Fichas médicas</span>
             </a>
@@ -15,7 +15,13 @@
         </div>
 
         <ul class="barra_lateral__lista_opciones oculto">
-            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="">Pendiente</a></li>
+            {% if request.user.is_staff %}
+            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_medica:ruta_crear_paciente' %}">Crear pacientes</a></li>
+            {% endif %}
+            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_medica:ruta_lista_paciente' %}">Lista de pacientes</a></li>
+            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_medica:ruta_datos_paciente' %}">Datos del pacientes</a></li>
+            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_medica:ruta_contacto_emergencia' %}">Contacto de emergencia</a></li>
+            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_medica:ruta_enfermedad_paciente' %}">Enfermedad cronica</a></li>
         </ul>
     </section>
 
@@ -23,7 +29,7 @@
     <section class="barra_lateral__seccion">
 
         <div class="barra_lateral__modulo" data-toggle="modulo">
-            <a href="" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario scale">
+            <a href="{% url 'gestion_medica:ruta_inicio' %}" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario scale">
                 {# Icono #}
                 <i class="fa-solid fa-capsules"></i>
                 <span>Medicamentos</span>
@@ -33,10 +39,12 @@
         
         {# Subsecciones #}
         <ul class="barra_lateral__lista_opciones oculto">
-            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="">Lista de medicamentos</a></li>
-            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="">Agregar medicamento</a></li>
+            {% if request.user.is_staff %}
+            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_medica:ruta_crear_medicamento' %}">Agregar medicamento</a></li>
+            {% endif %}
+            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_medica:ruta_lista_medicamentos' %}">Lista de medicamentos</a></li>
+            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_medica:ruta_alergias_paciente' %}">Alergias</a></li>
+            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_medica:ruta_informacion_paciente' %}">Información Medica</a></li>
         </ul>
     </section>
-
-
 </nav>
