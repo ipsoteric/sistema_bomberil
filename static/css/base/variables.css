@@ -17,6 +17,7 @@
     --color-primary-variant: rgb(78, 78, 78);
     --color-secondary: rgb(255, 255, 255);
     --color-secondary-variant: rgb(245, 245, 245);
+    --color-primary-muted: rgba(33, 37, 41, 0.75);
     
     --color-header: rgb(255, 255, 255);
     --color-header-inventario: rgb(255, 255, 255);

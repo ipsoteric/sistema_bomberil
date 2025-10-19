@@ -11,6 +11,7 @@ body.dark-mode {
     
     --color-primary: rgb(241, 241, 241);
     --color-primary-variant: rgb(224, 224, 224);
+    --color-primary-muted: rgba(206, 206, 206, 0.75);
     --color-secondary: rgb(54, 54, 54);
     --color-secondary-variant: rgb(34, 34, 34);
 
@@ -23,4 +24,44 @@ body.dark-mode {
     .modal-footer {
         border: 0;
     }
+}
+
+body.dark-mode .ts-control {
+    background-color: var(--color-secondary-variant, #2b3035); /* Usa tus variables CSS */
+    border-color: var(--color-sidebar-border, #495057);
+    color: var(--color-primary, #dee2e6);
+}
+
+body.dark-mode .ts-control .ts-item {
+    background-color: var(--color-secondary, #495057);
+    color: var(--color-primary, #f8f9fa);
+    border-radius: 0.25rem;
+    margin-right: 0.25rem;
+}
+
+body.dark-mode .ts-dropdown {
+    background-color: var(--color-secondary-variant, #2b3035);
+    border-color: var(--color-sidebar-border, #495057);
+    color: var(--color-primary, #dee2e6);
+}
+
+body.dark-mode .ts-dropdown .ts-option {
+    color: var(--color-primary, #dee2e6);
+}
+
+body.dark-mode .ts-dropdown .ts-option.active {
+    background-color: #0d6efd; /* O usa una variable CSS tuya para el color de resaltado */
+    color: #fff;
+}
+
+body.dark-mode .ts-dropdown .create {
+    color: var(--color-primary-muted, #adb5bd);
+}
+
+body.dark-mode .ts-control input::placeholder {
+  color: var(--color-primary-muted, #6c757d);
+}
+
+body.dark-mode .ts-control input {
+  color: var(--color-primary, #dee2e6);
 }

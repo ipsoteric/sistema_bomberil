@@ -136,6 +136,11 @@
 }
 
 
+.color_primario_muteado {
+    color: var(--color-primary-muted);
+}
+
+
 .color_secundario {
     color: var(--color-secondary);
 }

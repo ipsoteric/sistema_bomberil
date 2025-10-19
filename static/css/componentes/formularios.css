@@ -48,3 +48,20 @@
     justify-content: end;
     gap: 30px;
 }
+
+/* Bootstrap form control customization */
+.form-control {
+    display: block;
+    width: 100%;
+    padding: .375rem .75rem;
+    line-height: 1.5;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-clip: padding-box;
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    transition: border-color .15s 
+ease-in-out, box-shadow .15s 
+ease-in-out;
+}
