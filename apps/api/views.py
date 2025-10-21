@@ -6,12 +6,14 @@ from PIL import Image
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 
 from apps.gestion_usuarios.models import Usuario, Membresia
 from apps.common.permissions import CanUpdateUserProfile
 from apps.gestion_usuarios.funciones import generar_avatar_thumbnail, recortar_y_redimensionar_avatar
+from apps.gestion_inventario.models import Comuna
+from .serializers import ComunaSerializer
 
 
 
@@ -148,3 +150,21 @@ class ActualizarAvatarUsuarioView(APIView):
                 {'error': f'Ocurrió un error inesperado: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+
+
+class ComunasPorRegionAPIView(APIView):
+    """
+    Endpoint de API para obtener una lista de Comunas filtradas por una Región.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, region_id, *args, **kwargs):
+        # Filtra las comunas que pertenecen a la region_id especificada en la URL
+        comunas = Comuna.objects.filter(region_id=region_id).order_by('nombre')
+        
+        # Si no se encuentran comunas, devuelve una lista vacía (lo cual es correcto)
+        serializer = ComunaSerializer(comunas, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
