@@ -220,14 +220,64 @@ class Proveedor(models.Model):
     email = models.EmailField(max_length=50, null=True, blank=True, verbose_name="Email contacto")
     telefono = models.CharField(max_length=9, null=True, blank=True, verbose_name="Teléfono contacto")
     comuna = models.ForeignKey(Comuna, on_delete=models.PROTECT, verbose_name="Comuna", help_text="Seleccione la comuna correspondiente")
+    contacto_principal = models.OneToOneField(
+        'ContactoProveedor', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='+', # '+' evita crear una relación inversa innecesaria
+        verbose_name="Contacto Principal"
+    )
     estacion_creadora = models.ForeignKey(Estacion, on_delete=models.PROTECT, verbose_name="Estación Origen")
     
     class Meta:
         verbose_name = "Proveedor"
         verbose_name_plural = "Proveedores"
+        ordering = ['nombre']
 
     def __str__(self):
         return self.nombre
+
+
+
+
+class ContactoProveedor(models.Model):
+    '''(Global) Modelo para registrar contactos específicos (personas, sucursales) de un Proveedor.'''
+    proveedor = models.ForeignKey(
+        Proveedor, 
+        on_delete=models.CASCADE, 
+        related_name="contactos", 
+        verbose_name="Proveedor"
+    )
+    nombre_contacto = models.CharField(
+        verbose_name="Nombre Sucursal/Contacto", 
+        max_length=100, 
+        help_text="Ej: 'Sucursal Iquique', 'Juan Pérez (Ventas)'"
+    )
+    direccion = models.CharField(verbose_name="Dirección", max_length=150, blank=True, null=True)
+    comuna = models.ForeignKey(Comuna, on_delete=models.PROTECT, verbose_name="Comuna", null=True, blank=True)
+    telefono = models.CharField(verbose_name="Teléfono", max_length=20, blank=True, null=True)
+    email = models.EmailField(verbose_name="Email", max_length=100, blank=True, null=True)
+    notas = models.TextField(verbose_name="Notas Adicionales", blank=True, null=True)
+    
+    # Campo opcional para indicar si este contacto es específico de una estación
+    # Si es NULL, es un contacto general para todas las estaciones.
+    estacion_especifica = models.ForeignKey(
+        Estacion, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name="Específico para Estación",
+        help_text="Si este contacto es solo relevante para una estación en particular."
+    )
+
+    class Meta:
+        verbose_name = "Contacto de Proveedor"
+        verbose_name_plural = "Contactos de Proveedor"
+        ordering = ['proveedor', 'nombre_contacto']
+
+    def __str__(self):
+        return f"{self.nombre_contacto} ({self.proveedor.nombre})"
 
 
 
@@ -310,7 +360,7 @@ class Producto(models.Model):
     es_serializado = models.BooleanField(default=False, help_text="Marcar si este producto es un Activo que requiere seguimiento individual.")
 
     proveedor_preferido = models.ForeignKey(Proveedor, on_delete=models.PROTECT, verbose_name="Proveedor preferido", help_text="Seleccione el proveedor preferido para este producto", null=True, blank=True)
-    costo_compra = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    costo_compra = models.DecimalField(max_digits=10, decimal_places=0, null=True, blank=True)
     estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT, verbose_name="Estación Origen")
     es_expirable = models.BooleanField(verbose_name="¿Es expirable?", default=0)
     created_at = models.DateTimeField(auto_now_add=True)
