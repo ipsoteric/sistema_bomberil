@@ -15,7 +15,8 @@ from .views import (
     ProductoGlobalCrearView,
     ProductoLocalListView,
     ProductoLocalEditView,
-    ProveedorListView
+    ProveedorListView,
+    ProveedorCrearView
     )
 
 app_name = 'gestion_inventario'
@@ -55,4 +56,6 @@ urlpatterns = [
 
     # Lista de proveedores
     path('proveedores/', ProveedorListView.as_view(), name='ruta_lista_proveedores'),
+    # Crear proveedor
+    path('proveedores/crear/', ProveedorCrearView.as_view(), name='ruta_crear_proveedor'),
 ]

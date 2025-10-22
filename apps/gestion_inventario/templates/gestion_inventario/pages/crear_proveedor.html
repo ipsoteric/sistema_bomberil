@@ -1,0 +1,145 @@
+{% extends "gestion_inventario/layouts/base.html" %}
+{% load static %}
+{% block titulo_ventana %}Crear Proveedor{% endblock %}
+
+{% block contenido %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="card shadow-sm">
+                    <div class="card-header fondo_secundario_variante">
+                        <h4 class="mb-0 fs_grande color_primario">Crear Nuevo Proveedor</h4>
+                    </div>
+                    <div class="card-body fondo_secundario">
+                        
+                        <!-- SECCIÓN DATOS DEL PROVEEDOR (EMPRESA) -->
+                        <fieldset>
+                            <legend class="fs-5 color_primario_variante fs_pequena">Datos de la Entidad</legend>
+                            
+                            {% if proveedor_form.non_field_errors %}
+                                <div class="alert alert-danger fs_pequena">{{ proveedor_form.non_field_errors }}</div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <label for="{{ proveedor_form.nombre.id_for_label }}" class="form-label fs_normal color_primario_variante">{{ proveedor_form.nombre.label }}*</label>
+                                {{ proveedor_form.nombre }}
+                                {% if proveedor_form.nombre.errors %}
+                                    <div class="text-danger fs_pequena mt-1">{{ proveedor_form.nombre.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ proveedor_form.rut.id_for_label }}" class="form-label fs_normal color_primario_variante">{{ proveedor_form.rut.label }}*</label>
+                                {{ proveedor_form.rut }}
+                                {% if proveedor_form.rut.errors %}
+                                    <div class="text-danger fs_pequena mt-1">{{ proveedor_form.rut.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                        </fieldset>
+
+                        <hr class="my-4">
+
+                        <!-- SECCIÓN DATOS DEL CONTACTO PRINCIPAL -->
+                        <fieldset>
+                            <legend class="fs-5 color_primario_variante">Datos del Contacto Principal</legend>
+
+                             {% if contacto_form.non_field_errors %}
+                                <div class="alert alert-danger">{{ contacto_form.non_field_errors }}</div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <label for="{{ contacto_form.nombre_contacto.id_for_label }}" class="form-label fs_normal color_primario_variante">{{ contacto_form.nombre_contacto.label }}*</label>
+                                {{ contacto_form.nombre_contacto }}
+                                {% if contacto_form.nombre_contacto.errors %}
+                                    <div class="text-danger fs_pequena mt-1">{{ contacto_form.nombre_contacto.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ contacto_form.telefono.id_for_label }}" class="form-label fs_normal color_primario_variante">{{ contacto_form.telefono.label }}</label>
+                                    {{ contacto_form.telefono }}
+                                    {% if contacto_form.telefono.errors %}<div class="text-danger fs_pequena mt-1">{{ contacto_form.telefono.errors|striptags }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ contacto_form.email.id_for_label }}" class="form-label fs_normal color_primario_variante">{{ contacto_form.email.label }}</label>
+                                    {{ contacto_form.email }}
+                                    {% if contacto_form.email.errors %}<div class="text-danger fs_pequena mt-1">{{ contacto_form.email.errors|striptags }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ contacto_form.direccion.id_for_label }}" class="form-label fs_normal color_primario_variante">{{ contacto_form.direccion.label }}</label>
+                                {{ contacto_form.direccion }}
+                                {% if contacto_form.direccion.errors %}<div class="text-danger fs_pequena mt-1">{{ contacto_form.direccion.errors|striptags }}</div>{% endif %}
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ contacto_form.region.id_for_label }}" class="form-label fs_normal color_primario_variante">{{ contacto_form.region.label }}</label>
+                                    {{ contacto_form.region }}
+                                    {% if contacto_form.region.errors %}<div class="text-danger fs_pequena mt-1">{{ contacto_form.region.errors|striptags }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ contacto_form.comuna.id_for_label }}" class="form-label fs_normal color_primario_variante">{{ contacto_form.comuna.label }}</label>
+                                    {{ contacto_form.comuna }}
+                                    {% if contacto_form.comuna.errors %}<div class="text-danger fs_pequena mt-1">{{ contacto_form.comuna.errors|striptags }}</div>{% endif %}
+                                </div>
+                            </div>
+                            
+                             <div class="mb-3">
+                                <label for="{{ contacto_form.notas.id_for_label }}" class="form-label fs_normal color_primario_variante">{{ contacto_form.notas.label }}</label>
+                                {{ contacto_form.notas }}
+                                {% if contacto_form.notas.errors %}<div class="text-danger fs_pequena mt-1">{{ contacto_form.notas.errors|striptags }}</div>{% endif %}
+                            </div>
+
+                        </fieldset>
+
+                        <hr>
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'gestion_inventario:ruta_lista_proveedores' %}" class="btn btn-secondary fs_normal">Cancelar</a>
+                            <button type="submit" class="btn btn-primary fs_normal">Guardar Proveedor</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <!-- Reutilizamos el mismo JS de la lista de proveedores para el filtro de comunas -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const regionSelect = document.getElementById('id_region'); // El ID del form de región
+        const comunaSelect = document.getElementById('id_comuna');   // El ID del form de comuna
+
+        if (regionSelect && comunaSelect) {
+            const comunasUrlTemplate = "{% url 'api:comunas_por_region' 0 %}";
+
+            regionSelect.addEventListener('change', async function() {
+                const regionId = this.value;
+                comunaSelect.innerHTML = '<option value="">---------</option>';
+                if (!regionId) { return; }
+
+                try {
+                    const finalUrl = comunasUrlTemplate.replace('/0/', `/${regionId}/`);
+                    const response = await fetch(finalUrl);
+                    if (!response.ok) throw new Error('Error al cargar comunas');
+                    
+                    const comunas = await response.json();
+                    comunas.forEach(comuna => {
+                        const option = new Option(comuna.nombre, comuna.id);
+                        comunaSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error cargando comunas:', error);
+                }
+            });
+        }
+    });
+    </script>
+{% endblock %}

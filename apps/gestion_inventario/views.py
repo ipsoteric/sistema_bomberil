@@ -783,3 +783,69 @@ class ProveedorListView(View):
         }
         
         return render(request, self.template_name, context)
+
+
+
+
+class ProveedorCrearView(View):
+    template_name = 'gestion_inventario/pages/crear_proveedor.html'
+
+    def get(self, request, *args, **kwargs):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "Debes tener una estación activa para crear proveedores.")
+            return redirect('portal:ruta_inicio')
+
+        proveedor_form = ProveedorForm()
+        contacto_form = ContactoProveedorForm()
+        
+        context = {
+            'proveedor_form': proveedor_form,
+            'contacto_form': contacto_form
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "Tu sesión ha expirado o no tienes una estación activa.")
+            return redirect('portal:ruta_inicio')
+            
+        estacion = get_object_or_404(Estacion, pk=estacion_id)
+
+        proveedor_form = ProveedorForm(request.POST)
+        contacto_form = ContactoProveedorForm(request.POST)
+
+        if proveedor_form.is_valid() and contacto_form.is_valid():
+            try:
+                # Usamos una transacción para asegurar que todo se guarde o nada se guarde.
+                with transaction.atomic():
+                    # 1. Guardar el Proveedor
+                    proveedor = proveedor_form.save(commit=False)
+                    proveedor.estacion_creadora = estacion
+                    proveedor.save()
+
+                    # 2. Guardar el Contacto y vincularlo al Proveedor
+                    contacto = contacto_form.save(commit=False)
+                    contacto.proveedor = proveedor
+                    contacto.save()
+
+                    # 3. Actualizar el Proveedor para asignarle su Contacto Principal
+                    proveedor.contacto_principal = contacto
+                    proveedor.save()
+                
+                messages.success(request, f'Proveedor "{proveedor.nombre}" y su contacto principal han sido creados exitosamente.')
+                return redirect('gestion_inventario:ruta_lista_proveedores')
+
+            except IntegrityError as e:
+                print(e)
+                messages.error(request, 'Error: Ya existe un proveedor con ese RUT.')
+            except Exception as e:
+                messages.error(request, f'Ha ocurrido un error inesperado: {e}')
+
+        # Si algún formulario no es válido, volvemos a mostrar la página con los errores
+        context = {
+            'proveedor_form': proveedor_form,
+            'contacto_form': contacto_form
+        }
+        return render(request, self.template_name, context)

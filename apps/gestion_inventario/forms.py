@@ -1,5 +1,16 @@
 from django import forms
-from .models import Ubicacion, Compartimento, Categoria, Marca, ProductoGlobal, Producto, Proveedor
+from .models import (
+    Ubicacion, 
+    Compartimento, 
+    Categoria, 
+    Marca, 
+    ProductoGlobal, 
+    Producto, 
+    Proveedor,
+    ContactoProveedor,
+    Region,
+    Comuna
+    )
 
 
 class AreaForm(forms.ModelForm):
@@ -146,3 +157,63 @@ class ProductoLocalEditForm(forms.ModelForm):
             return self.instance.es_serializado 
         # Si no, devolvemos el valor enviado en el formulario
         return self.cleaned_data.get('es_serializado')
+
+
+
+
+class ProveedorForm(forms.ModelForm):
+    """Formulario para los datos principales del Proveedor."""
+    class Meta:
+        model = Proveedor
+        fields = ['nombre', 'rut'] # Los demás campos se manejarán en la vista o en el contacto
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control fs_normal color_primario fondo_secundario'}),
+            'rut': forms.TextInput(attrs={'class': 'form-control fs_normal color_primario fondo_secundario', 'placeholder': 'Ej: 12345678-9'}),
+        }
+
+
+
+
+class ContactoProveedorForm(forms.ModelForm):
+    """Formulario para los datos del Contacto (principal o secundario)."""
+    # Añadimos un campo para seleccionar la región para el filtro dependiente
+    region = forms.ModelChoiceField(
+        queryset=Region.objects.all(),
+        label="Región",
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select fs_normal color_primario fondo_secundario'})
+    )
+
+    class Meta:
+        model = ContactoProveedor
+        fields = [
+            'nombre_contacto', 
+            'direccion', 
+            'region', # El nuevo campo
+            'comuna', 
+            'telefono', 
+            'email', 
+            'notas'
+        ]
+        widgets = {
+            'nombre_contacto': forms.TextInput(attrs={'class': 'form-control fs_normal fondo_secundario color_primario'}),
+            'direccion': forms.TextInput(attrs={'class': 'form-control fs_normal fondo_secundario color_primario'}),
+            'comuna': forms.Select(attrs={'class': 'form-select fs_normal fondo_secundario color_primario'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control fs_normal fondo_secundario color_primario'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control fs_normal fondo_secundario color_primario'}),
+            'notas': forms.Textarea(attrs={'class': 'form-control fs_normal fondo_secundario color_primario', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Hacemos que el queryset de comuna esté vacío al principio. Se llenará con JS.
+        self.fields['comuna'].queryset = Comuna.objects.none()
+
+        if 'region' in self.data:
+            try:
+                region_id = int(self.data.get('region'))
+                self.fields['comuna'].queryset = Comuna.objects.filter(region_id=region_id).order_by('nombre')
+            except (ValueError, TypeError):
+                pass  # Ignorar si la región no es válida
+        elif self.instance.pk and self.instance.comuna:
+             self.fields['comuna'].queryset = self.instance.comuna.region.comuna_set.order_by('nombre')
