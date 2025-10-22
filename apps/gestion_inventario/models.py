@@ -216,10 +216,6 @@ class Proveedor(models.Model):
     nombre = models.CharField(verbose_name="Nombre", max_length=50, help_text="Ingrese el nombre del proveedor")
     rut = models.CharField(verbose_name="Rol Único Tributario (RUT)", max_length=10, help_text="Ingrese el rut de la compañía")
     giro_comercial = models.CharField(verbose_name="Giro", max_length=100, null=True, blank=True, help_text="(Opcional) Ingrese el giro comercial del proveedor")
-    direccion = models.CharField(verbose_name="Dirección", null=True, blank=True, max_length=100, help_text="Ingrese la dirección del proveedor")
-    email = models.EmailField(max_length=50, null=True, blank=True, verbose_name="Email contacto")
-    telefono = models.CharField(max_length=9, null=True, blank=True, verbose_name="Teléfono contacto")
-    comuna = models.ForeignKey(Comuna, on_delete=models.PROTECT, verbose_name="Comuna", help_text="Seleccione la comuna correspondiente")
     contacto_principal = models.OneToOneField(
         'ContactoProveedor', 
         on_delete=models.SET_NULL, 

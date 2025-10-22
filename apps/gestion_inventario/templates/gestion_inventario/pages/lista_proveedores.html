@@ -93,8 +93,9 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="fs_grande color_primario"><i class="fas fa-truck me-2"></i> Proveedores</h2>
-        {# Puedes añadir un botón para crear proveedor aquí si lo deseas #}
-        {# <a href="..." class="btn btn-success"><i class="fas fa-plus me-1"></i> Nuevo Proveedor</a> #}
+        <a href="{% url 'gestion_inventario:ruta_crear_proveedor' %}" class="btn btn-success fs_normal">
+            <i class="fas fa-plus me-1"></i> Nuevo Proveedor
+        </a>
     </div>
 
     <div class="card shadow-sm mb-3 {% if request.session.dark_mode %}dark-mode{% endif %}">
@@ -185,9 +186,8 @@
                                     </td>
                                     <td class="fs_pequena">{{ contacto.telefono|default:"N/A" }}</td>
                                     <td class="fs_pequena">{{ contacto.email|default:"N/A" }}</td>
+                                    <td class="fs_pequena">{{ contacto.comuna.nombre|default:"N/A" }}</td>
                                 {% endwith %}
-                                
-                                <td class="fs_pequena">{% if proveedor.comuna %}{{ proveedor.comuna.nombre }}{% else %}<span class="text-muted fst-italic">N/A</span>{% endif %}</td>
 
                                 <td>
                                     <span class="badge bg-secondary fs_pequena">{{ proveedor.contactos_count }}</span>
