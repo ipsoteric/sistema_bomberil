@@ -3,91 +3,6 @@
 {% block titulo_ventana %}Lista de Proveedores{% endblock %}
 
 {% block contenido %}
-{# Estilos para modo oscuro #}
-{% if request.session.dark_mode %}
-<style>
-    /* Cards */
-    .dark-mode .card {
-        background-color: #1a1d21 !important;
-        border-color: #2d3238 !important;
-    }
-    
-    .dark-mode .card-body.bg-light {
-        background-color: #1a1d21 !important;
-    }
-
-    /* Formularios */
-    .dark-mode .form-control,
-    .dark-mode .form-select {
-        background-color: #111318 !important;
-        border-color: #2b3136 !important;
-        color: #e6edf3 !important;
-    }
-
-    .dark-mode .form-control:focus,
-    .dark-mode .form-select:focus {
-        border-color: #0d6efd !important;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-    }
-
-    .dark-mode .form-control:disabled,
-    .dark-mode .form-select:disabled {
-        background-color: #1c1f24 !important;
-        color: #8b949e !important;
-    }
-
-    /* Labels y texto */
-    .dark-mode .form-label,
-    .dark-mode .card-title {
-        color: #e6edf3 !important;
-    }
-
-    /* Tabla */
-    .dark-mode .table {
-        color: #e6edf3 !important;
-    }
-
-    .dark-mode .table-light {
-        background-color: #1a1d21 !important;
-        color: #e6edf3 !important;
-    }
-
-    .dark-mode .table-hover tbody tr:hover {
-        background-color: rgba(255,255,255,0.02) !important;
-        color: #e6edf3 !important;
-    }
-
-    /* Paginación */
-    .dark-mode .page-link {
-        background-color: #1a1d21 !important;
-        border-color: #2d3238 !important;
-        color: #e6edf3 !important;
-    }
-
-    .dark-mode .page-item.active .page-link {
-        background-color: #0d6efd !important;
-        border-color: #0d6efd !important;
-    }
-
-    .dark-mode .page-item.disabled .page-link {
-        background-color: #1a1d21 !important;
-        border-color: #2d3238 !important;
-        color: #6c757d !important;
-    }
-
-    /* Alertas */
-    .dark-mode .alert-warning {
-        background-color: #332701 !important;
-        border-color: #856404 !important;
-        color: #ffd970 !important;
-    }
-
-    /* Otros elementos */
-    .dark-mode .text-muted {
-        color: #8b949e !important;
-    }
-</style>
-{% endif %}
 
 <div class="container-fluid mt-4">
 
@@ -98,7 +13,7 @@
         </a>
     </div>
 
-    <div class="card shadow-sm mb-3 {% if request.session.dark_mode %}dark-mode{% endif %}">
+    <div class="card shadow-sm mb-3">
         <div class="card-body bg-light">
             <form method="GET" action="{% url 'gestion_inventario:ruta_lista_proveedores' %}" id="formFiltrosProveedor">
                 <div class="row g-2 align-items-end">
