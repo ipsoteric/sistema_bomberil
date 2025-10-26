@@ -78,39 +78,49 @@ def grafico_existencias_por_categoria(request):
 
 
 
-class AreaListaView(View):
+class AreaListaView(LoginRequiredMixin, View):
+    """
+    Vista para listar las Áreas (Ubicaciones) de la estación activa,
+    excluyendo vehículos y mostrando conteos optimizados.
+    """
+    template_name = "gestion_inventario/pages/lista_areas.html"
+    login_url = '/acceso/login/'
+
     def get(self, request):
         estacion_id = request.session.get('active_estacion_id')
 
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
         # --- CONSULTA OPTIMIZADA ---
-        # Usamos .annotate() para calcular todo en una sola consulta a la base de datos.
+        # Usamos .annotate() para calcular todo en una sola consulta.
         ubicaciones_con_totales = (
             Ubicacion.objects
             .filter(estacion_id=estacion_id)
             .exclude(tipo_ubicacion__nombre__iexact='VEHÍCULO')
             .annotate(
-                # 1. Contar el número de compartimentos por ubicación
+                # 1. Contar el número de compartimentos
                 total_compartimentos=Count('compartimento', distinct=True),
                 
-                # 2. Contar el número de Activos únicos en los compartimentos de esta ubicación
+                # 2. Contar el número de Activos únicos
                 total_activos=Count('compartimento__activo', distinct=True),
                 
-                # 3. Sumar la CANTIDAD de todos los Lotes de Insumos en los compartimentos
-                # Usamos Coalesce para que si no hay insumos, el resultado sea 0 en lugar de None
+                # 3. Sumar la CANTIDAD de todos los Lotes de Insumos
                 total_cantidad_insumos=Coalesce(Sum('compartimento__loteinsumo__cantidad'), 0)
             )
-            .select_related('tipo_ubicacion')
+            .select_related('tipo_ubicacion') # Optimiza la carga del tipo_ubicacion
+            .order_by('nombre') # Ordenamos alfabéticamente
         )
 
-        # --- CÁLCULO FINAL ---
-        # Ahora iteramos sobre el resultado de la consulta (que ya tiene todos los datos)
-        # para sumar los activos y los insumos en una sola variable.
+        # --- CÁLCULO FINAL (Tu lógica) ---
+        # Iteramos para sumar los totales en una sola variable para la plantilla.
         for ubicacion in ubicaciones_con_totales:
             ubicacion.total_existencias = ubicacion.total_activos + ubicacion.total_cantidad_insumos
 
         return render(
             request, 
-            "gestion_inventario/pages/lista_areas.html", 
+            self.template_name, 
             {'ubicaciones': ubicaciones_con_totales}
         )
 
