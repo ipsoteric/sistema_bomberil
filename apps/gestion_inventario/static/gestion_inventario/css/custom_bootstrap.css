@@ -1,0 +1,104 @@
+/* =================================================================
+ESTILOS DE MODO OSCURO
+=================================================================
+*/
+
+/* 1. Corrige los Paneles (.card) */
+.dark-mode .card {
+    background-color: #1a1d21;
+    border-color: #2d3238;
+}
+
+/* 2. Corrige fondos claros forzados (como el panel de filtro) */
+.dark-mode .card-body.bg-light {
+    background-color: #1a1d21 !important;
+}
+
+/* 3. Corrige los Formularios */
+.dark-mode .form-control,
+.dark-mode .form-select {
+    background-color: #111318;
+    border-color: #2b3136;
+    color: #e6edf3;
+}
+
+.dark-mode .form-control:focus,
+.dark-mode .form-select:focus {
+    /* Mantenemos el color de foco de tu ejemplo de proveedor (azul) */
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.dark-mode .form-control:disabled,
+.dark-mode .form-select:disabled {
+    background-color: #1c1f24;
+    color: #8b949e;
+}
+
+/* 4. Corrige Texto y Etiquetas */
+.dark-mode .form-label,
+.dark-mode .card-title,
+.dark-mode .card-header,
+.dark-mode .page-link {
+    color: #e6edf3;
+}
+
+/* 5. Corrige la Tabla */
+.dark-mode .table {
+    color: #e6edf3;
+}
+
+/* Sobreescribe el 'table-dark' de Bootstrap */
+.dark-mode .table.table-dark {
+    background-color: #1a1d21; /* Fondo de la tabla */
+    color: #e6edf3;
+}
+
+/* Corrige la cabecera 'table-light' */
+.dark-mode thead.table-light > tr > th {
+    background-color: #1a1d21;
+    border-color: #2d3238;
+    color: #e6edf3;
+}
+
+/* Corrige 'table-striped' */
+.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: #1a1d21;
+    color: #e6edf3;
+}
+.dark-mode .table-striped > tbody > tr:nth-of-type(even) > * {
+    background-color: #111318; /* Un poco más oscuro para la franja */
+    color: #e6edf3;
+}
+
+.dark-mode .table-hover tbody tr:hover > * {
+    background-color: rgba(255, 255, 255, 0.04); /* Un hover sutil */
+    color: #e6edf3;
+}
+
+.dark-mode .table-bordered,
+.dark-mode .table-bordered > :not(caption) > * > * {
+    border-color: #2d3238;
+}
+
+/* 6. Corrige la Paginación */
+.dark-mode .page-link {
+    background-color: #1a1d21;
+    border-color: #2d3238;
+}
+
+.dark-mode .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.dark-mode .page-item.disabled .page-link {
+    background-color: #1a1d21;
+    border-color: #2d3238;
+    color: #6c757d;
+}
+
+/* 7. Otros */
+.dark-mode .text-muted {
+    color: #8b949e !important;
+}

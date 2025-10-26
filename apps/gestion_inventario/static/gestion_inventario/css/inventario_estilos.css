@@ -6,3 +6,6 @@
 
 /* Tarjeta de Almacén */
 @import url("almacen_card.css");
+
+/* Bootstrap personalizado */
+@import url('custom_bootstrap.css')
