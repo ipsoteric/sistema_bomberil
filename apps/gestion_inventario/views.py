@@ -1,4 +1,6 @@
 import json
+from itertools import chain
+from django.utils import timezone
 from django.db import IntegrityError, transaction
 from django.shortcuts import render, redirect
 from django.views import View
@@ -8,7 +10,9 @@ from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
-from django.core.paginator import Paginator
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+
 
 from .models import (
     Estacion, 
@@ -23,7 +27,8 @@ from .models import (
     LoteInsumo,
     Proveedor,
     Region,
-    Comuna
+    Comuna,
+    Estado
     )
 from .forms import (
     AreaForm, 
@@ -848,4 +853,127 @@ class ProveedorCrearView(View):
             'proveedor_form': proveedor_form,
             'contacto_form': contacto_form
         }
+        return render(request, self.template_name, context)
+
+
+
+
+class StockActualListView(LoginRequiredMixin, View):
+    """
+    Vista para mostrar, filtrar y buscar en el stock actual
+    de Activos (serializados) y Lotes de Insumo (fungibles).
+    """
+    template_name = 'gestion_inventario/pages/stock_actual.html'
+    login_url = '/acceso/login/' # Ajusta si es necesario
+    paginate_by = 25
+
+    def get(self, request, *args, **kwargs):
+        context = {}
+
+        # 1. Obtener la Estación Activa desde la SESIÓN
+        estacion_id = request.session.get("active_estacion_id")
+        
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa. Por favor, seleccione una.")
+            # Redirige a la página principal del inventario (o al portal)
+            return redirect('gestion_inventario:ruta_inicio') 
+
+        try:
+            # Obtenemos el objeto Estacion basado en el ID de la sesión
+            estacion_usuario = Estacion.objects.get(id=estacion_id)
+        except Estacion.DoesNotExist:
+            messages.error(request, "La estación activa seleccionada no es válida o fue eliminada.")
+            request.session["active_estacion_id"] = None # Limpiamos la sesión
+            return redirect('gestion_inventario:ruta_inicio')
+        
+
+        # 2. Obtener parámetros de filtro de la URL (GET)
+        query = request.GET.get('q', '')
+        tipo_producto = request.GET.get('tipo', '')
+        ubicacion_id = request.GET.get('ubicacion', '')
+        estado_id = request.GET.get('estado', '')
+
+        # 3. Obtener querysets base, filtrados por la ESTACIÓN ACTIVA
+        activos_qs = Activo.objects.filter(estacion=estacion_usuario).select_related(
+            'producto__producto_global', 'compartimento__ubicacion', 'estado'
+        ).all()
+        
+        lotes_qs = LoteInsumo.objects.filter(producto__estacion=estacion_usuario).select_related(
+            'producto__producto_global', 'compartimento__ubicacion'
+        ).all()
+
+        # 4. Aplicar filtros de búsqueda (query 'q')
+        if query:
+            search_query_base = (
+                Q(producto__producto_global__nombre_oficial__icontains=query) |
+                Q(producto__sku__icontains=query) |
+                Q(producto__producto_global__marca__nombre__icontains=query) |
+                Q(producto__producto_global__modelo__icontains=query)
+            )
+            activos_qs = activos_qs.filter(
+                search_query_base | 
+                Q(codigo_activo__icontains=query) | 
+                Q(numero_serie_fabricante__icontains=query)
+            )
+            lotes_qs = lotes_qs.filter(
+                search_query_base | 
+                Q(numero_lote_fabricante__icontains=query)
+            )
+
+        # 5. Aplicar filtro de Estado (SOLO APLICA A Activo)
+        if estado_id:
+            activos_qs = activos_qs.filter(estado__id=estado_id)
+            if tipo_producto != 'activo':
+                lotes_qs = lotes_qs.none()
+
+        # 6. Aplicar filtro de Ubicación
+        if ubicacion_id:
+            activos_qs = activos_qs.filter(compartimento__ubicacion__id=ubicacion_id)
+            lotes_qs = lotes_qs.filter(compartimento__ubicacion__id=ubicacion_id)
+        
+        # 7. Combinar listas según el filtro 'tipo'
+        stock_items_list = []
+        if tipo_producto == 'activo':
+            stock_items_list = list(activos_qs)
+        elif tipo_producto == 'insumo':
+            stock_items_list = list(lotes_qs)
+        else:
+            stock_items_list = list(chain(activos_qs, lotes_qs))
+
+        # 8. Ordenar la lista combinada
+        try:
+            stock_items_list.sort(key=lambda x: x.producto.producto_global.nombre_oficial)
+        except AttributeError:
+            pass
+
+        # 9. Paginación
+        paginator = Paginator(stock_items_list, self.paginate_by)
+        page_number = request.GET.get('page')
+        try:
+            page_obj = paginator.page(page_number)
+        except PageNotAnInteger:
+            page_obj = paginator.page(1)
+        except EmptyPage:
+            page_obj = paginator.page(paginator.num_pages)
+
+        # 10. Preparar contexto para la plantilla
+        context['page_obj'] = page_obj
+        context['stock_items'] = page_obj.object_list
+        context['today'] = timezone.now().date() # <-- AÑADIDO para lógica de vencimiento
+
+        # Pasamos los objetos para poblar los dropdowns de filtros
+        context['todas_las_ubicaciones'] = Ubicacion.objects.filter(estacion=estacion_usuario)
+        
+        # CORREGIDO: Usamos el TipoEstado "ESTADO ARTICULO"
+        try:
+            context['todos_los_estados'] = Estado.objects.filter(tipo_estado__nombre="ESTADO ARTICULO") 
+        except Exception:
+            context['todos_los_estados'] = Estado.objects.none() # Fallback
+
+        # Mantenemos los valores de los filtros
+        context['current_q'] = query
+        context['current_tipo'] = tipo_producto
+        context['current_ubicacion'] = ubicacion_id
+        context['current_estado'] = estado_id
+        
         return render(request, self.template_name, context)

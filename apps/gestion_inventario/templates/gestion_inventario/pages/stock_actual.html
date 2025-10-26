@@ -1,0 +1,252 @@
+{% extends 'gestion_inventario/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Stock Actual{% endblock %}
+
+{% block titulo_pagina %}
+    <!-- Título principal de la página, usando tus clases -->
+    <span class="fs_grande color_primario">
+        <i class="fas fa-boxes me-2"></i> Stock Actual
+    </span>
+{% endblock %}
+
+{% block contenido %}
+
+<div class="container-fluid mt-4">
+
+<!-- Panel de Filtros y Búsqueda -->
+<div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
+    <div class="card-header">
+        <i class="fas fa-filter me-1"></i>
+        Filtros y Búsqueda
+    </div>
+    <div class="card-body">
+        <form method="get" action="{% url 'gestion_inventario:ruta_stock_actual' %}">
+            <div class="row g-3">
+                <!-- Barra de Búsqueda -->
+                <div class="col-md-6 col-lg-3">
+                    <label for="search_query" class="form-label fw-bold fs_pequena">Buscar</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control fs_normal" id="search_query" name="q" 
+                               placeholder="Nombre, SKU, N° Serie, Lote..." 
+                               value="{{ current_q|default:'' }}">
+                    </div>
+                </div>
+                
+                <!-- Filtro por Tipo (Activo/Insumo) -->
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter_tipo" class="form-label fw-bold fs_pequena">Tipo de Producto</label>
+                    <select id="filter_tipo" name="tipo" class="form-select form-select-sm fs_normal">
+                        <option value="">Todos</option>
+                        <option value="activo" {% if current_tipo == 'activo' %}selected{% endif %}>Activo (Serializado)</option>
+                        <option value="insumo" {% if current_tipo == 'insumo' %}selected{% endif %}>Insumo (Fungible)</option>
+                    </select>
+                </div>
+
+                <!-- Filtro por Ubicación (Tu modelo 'Ubicacion') -->
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter_ubicacion" class="form-label fw-bold fs_pequena">Ubicación</label>
+                    <select id="filter_ubicacion" name="ubicacion" class="form-select form-select-sm fs_normal">
+                        <option value="">Todas las Ubicaciones</option>
+                        {% for u in todas_las_ubicaciones %}
+                        <option value="{{ u.id }}" {% if current_ubicacion == u.id|stringformat:"s" %}selected{% endif %}>
+                            {{ u.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Filtro por Estado (Tu modelo 'Estado') -->
+                <div class="col-md-6 col-lg-3">
+                    <label for="filter_estado" class="form-label fw-bold fs_pequena">Estado (Activos)</label>
+                    <select id="filter_estado" name="estado" class="form-select form-select-sm fs_normal">
+                        <option value="">Todos los Estados</option>
+                        {% for e in todos_los_estados %}
+                        <option value="{{ e.id }}" {% if current_estado == e.id|stringformat:"s" %}selected{% endif %}>
+                            {{ e.nombre|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12 text-end">
+                    <a href="{% url 'gestion_inventario:ruta_stock_actual' %}" class="btn btn-outline-secondary btn-sm fs_normal">
+                        Limpiar
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-sm fs_normal">
+                        <i class="fas fa-filter me-1"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de Stock Actual -->
+<div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-bold">
+            <i class="fas fa-table me-1"></i>
+            Stock Actual del Inventario
+        </span>
+        <a href="#" class="btn btn-success btn-sm fs_normal">
+            <i class="fas fa-plus me-1"></i> Añadir Stock
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <!-- Aplicando el patrón de tu lista_proveedores.html -->
+            <table class="table table-hover table-sm align-middle {% if request.session.dark_mode %}table-dark{% endif %}" id="tablaStockActual">
+                <thead class="table-light fs_pequena">
+                    <tr>
+                        <th>Producto</th>
+                        <th>Identificador / Lote</th>
+                        <th class="text-center">Tipo</th>
+                        <th>Ubicación</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-center">Estado</th>
+                        <th>Fecha Relevante</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="fs_normal">
+                    {% for item in stock_items %}
+                    <tr>
+                        <!-- Producto -->
+                        <td>
+                            <strong>{{ item.producto.producto_global.nombre_oficial }}</strong>
+                            <br><small class="text-muted">SKU: {{ item.producto.sku|default:"N/A" }}</small>
+                            <br><small class="text-muted">{{ item.producto.producto_global.marca|default:"" }} {{ item.producto.producto_global.modelo|default:"" }}</small>
+                        </td>
+                        
+                        <!-- Identificador / Lote (Usa 'item.producto.es_serializado') -->
+                        {% if item.producto.es_serializado %}
+                            <td class="fs_pequena">
+                                ID Interno: <strong>{{ item.codigo_activo|default:"N/A" }}</strong>
+                                <br><small class="text-muted">N/S: {{ item.numero_serie_fabricante|default:"N/A" }}</small>
+                            </td>
+                        {% else %}
+                            <td class="fs_pequena">
+                                Lote: <strong>{{ item.numero_lote_fabricante|default:"N/A" }}</strong>
+                            </td>
+                        {% endif %}
+                        
+                        <!-- Tipo -->
+                        <td class="text-center">
+                            {% if item.producto.es_serializado %}
+                                <span class="badge bg-info text-dark">Activo</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Insumo</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Ubicación (Compartimento y Ubicacion) -->
+                        <td class="fs_pequena">
+                            {% if item.compartimento %}
+                                {{ item.compartimento.ubicacion.nombre }}
+                                <br><small class="text-muted">{{ item.compartimento.nombre }}</small>
+                            {% else %}
+                                <span class="text-muted fst-italic">Sin ubicación</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Cantidad -->
+                        <td class="text-center">
+                            {% if item.producto.es_serializado %}
+                                <strong>1</strong>
+                            {% else %}
+                                <strong>{{ item.cantidad }}</strong>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Estado (Solo para Activos) -->
+                        <td class="text-center">
+                            {% if item.producto.es_serializado %}
+                                <span class="badge fs_pequena
+                                    {% if item.estado.nombre == 'DISPONIBLE' %}bg-success
+                                    {% elif item.estado.nombre == 'MANTENIMIENTO' %}bg-warning text-dark
+                                    {% elif item.estado.nombre == 'DE BAJA' %}bg-danger
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ item.estado.nombre|title }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success fs_pequena">Operativo</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Fecha Relevante -->
+                        <td class="fs_pequena">
+                            {% if item.producto.es_serializado %}
+                                {% if item.fin_vida_util %}
+                                    Vida Útil: {{ item.fin_vida_util|date:"d/m/Y" }}
+                                {% elif item.fecha_expiracion %}
+                                    Expira: {{ item.fecha_expiracion|date:"d/m/Y" }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            {% else %}
+                                {% if item.fecha_expiracion %}
+                                    Vence: {{ item.fecha_expiracion|date:"d/m/Y" }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Acciones -->
+                        <td class="text-center">
+                            <a href="#" class="btn btn-sm btn-outline-primary fs_normal" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                            <a href="#" class="btn btn-sm btn-outline-secondary fs_normal" title="Mover Ítem"><i class="fas fa-truck-moving"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center fst-italic py-4">
+                            No se encontraron artículos en el inventario que coincidan con los filtros seleccionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación (Usando Bootstrap .pagination) -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Paginación de Stock" class="mt-3">
+            <ul class="pagination pagination-sm justify-content-center">
+                {% with request.GET.urlencode|cut:'page=' as params %}
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link fs_pequena" href="?page=1&{{ params }}">&laquo; Primero</a></li>
+                        <li class="page-item"><a class="page-link fs_pequena" href="?page={{ page_obj.previous_page_number }}&{{ params }}">Anterior</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link fs_pequena">&laquo; Primero</span></li>
+                        <li class="page-item disabled"><span class="page-link fs_pequena">Anterior</span></li>
+                    {% endif %}
+                    
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link fs_pequena">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link fs_pequena" href="?page={{ page_obj.next_page_number }}&{{ params }}">Siguiente</a></li>
+                        <li class="page-item"><a class="page-link fs_pequena" href="?page={{ page_obj.paginator.num_pages }}&{{ params }}">Último &raquo;</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link fs_pequena">Siguiente</span></li>
+                        <li class="page-item disabled"><span class="page-link fs_pequena">Último &raquo;</span></li>
+                    {% endif %}
+                {% endwith %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    </div>
+</div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+{% endblock %}
