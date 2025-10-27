@@ -214,6 +214,57 @@ class AreaEditarView(View):
 
 
 
+class VehiculoListaView(LoginRequiredMixin, View):
+    """
+    Vista para listar los Vehículos (Ubicaciones de tipo 'VEHÍCULO')
+    de la estación activa, mostrando conteos optimizados.
+    """
+    template_name = "gestion_inventario/pages/lista_vehiculos.html"
+    login_url = '/acceso/login/'
+
+    def get(self, request):
+        estacion_id = request.session.get('active_estacion_id')
+
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        # --- CONSULTA OPTIMIZADA PARA VEHÍCULOS ---
+        vehiculos_con_totales = (
+            Ubicacion.objects
+            .filter(
+                estacion_id=estacion_id,
+                tipo_ubicacion__nombre__iexact='VEHÍCULO' # Filtro clave
+            )
+            .annotate(
+                total_compartimentos=Count('compartimento', distinct=True),
+                total_activos=Count('compartimento__activo', distinct=True),
+                total_cantidad_insumos=Coalesce(Sum('compartimento__loteinsumo__cantidad'), 0)
+            )
+            # Incluimos detalles del vehículo y su tipo para mostrar en la tabla
+            .select_related(
+                'tipo_ubicacion', 
+                'detalles_vehiculo', 
+                'detalles_vehiculo__tipo_vehiculo',
+                'detalles_vehiculo__marca' 
+            ) 
+            .order_by('nombre')
+        )
+
+        # Calculamos el total de existencias
+        for vehiculo in vehiculos_con_totales:
+            vehiculo.total_existencias = vehiculo.total_activos + vehiculo.total_cantidad_insumos
+
+        return render(
+            request, 
+            self.template_name, 
+            # Cambiamos el nombre del contexto para claridad en la plantilla
+            {'vehiculos': vehiculos_con_totales} 
+        )
+
+
+
+
 class CompartimentoListaView(View):
     """Lista potente de compartimentos con filtros y búsqueda."""
     def get(self, request):

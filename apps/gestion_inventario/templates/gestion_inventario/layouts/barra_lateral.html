@@ -30,7 +30,7 @@
 
             <li class="fondo_opcion_nav hover_color">
                 <a class="color_primario fs_nav_opcion" href="{% url 'gestion_inventario:ruta_stock_actual' %}">
-                    <i class="fas fa-boxes me-2"></i>
+                    <i class="fas fa-boxes me-2 color_naranjo"></i>
                     Stock actual
                 </a>
             </li>
@@ -72,7 +72,12 @@
         </div>
 
         <ul class="barra_lateral__lista_opciones oculto">
-            <li class="fondo_opcion_nav"><a class="color_primario fs_nav_opcion" href="">Pendiente</a></li>
+            <li class="fondo_opcion_nav hover_color">
+                <a class="color_primario fs_nav_opcion" href="{% url 'gestion_inventario:ruta_lista_vehiculos' %}">
+                    <i class="fa-solid fa-clipboard-list color_naranjo_claro"></i>
+                    Lista de vehículos
+                </a>
+            </li>
         </ul>
     </section>
     

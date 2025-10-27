@@ -4,8 +4,11 @@
 /* Tarjeta de Catálogo */
 @import url("catalogo_card.css");
 
-/* Tarjeta de Almacén */
+/* Tarjeta de Área */
 @import url("almacen_card.css");
+
+/* Tarjeta de Vehículo */
+@import url("vehiculo_card.css");
 
 /* Bootstrap personalizado */
 @import url('custom_bootstrap.css')

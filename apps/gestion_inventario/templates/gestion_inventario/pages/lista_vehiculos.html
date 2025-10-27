@@ -1,0 +1,116 @@
+{% extends 'gestion_inventario/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Lista de Vehículos{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-truck me-2"></i> Vehículos de la Estación
+    </span>
+{% endblock %}
+
+
+{% block contenido %}
+
+{# Slider de Vehículos (Usa el mismo partial, asume que funciona para vehículos) #}
+<div class="slider-container mb-4">
+    <div class="slider-viewport">
+        <div class="slider">
+            {% if vehiculos %}
+                {% for vehiculo in vehiculos %}
+                    {% include 'gestion_inventario/partials/_vehiculo_card.html' with ubicacion=vehiculo %}
+                {% endfor %}
+            {% else %}
+                <p class="text-center text-muted fst-italic p-3">No hay vehículos registrados para esta estación.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if vehiculos %}
+    <button class="slider-btn prev-btn" aria-label="Anterior">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+        </svg>
+    </button>
+    <button class="slider-btn next-btn" aria-label="Siguiente">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+        </svg>
+    </button>
+    {% endif %}
+</div>
+
+
+<div class="container-fluid mt-4">
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-bold fs_mediana">
+            <i class="fas fa-table me-1"></i>
+            Lista de Vehículos
+        </span>
+        <a href="#" class="btn btn-success btn-sm fs_normal"> <i class="fas fa-plus me-1"></i> Añadir Vehículo
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-sm w-100 fs_normal align-middle {% if request.session.dark_mode %}table-dark{% endif %}">
+                <thead class="table-light fs_pequena">
+                    <tr>
+                        <th>Nombre / Unidad</th>
+                        <th>Tipo de Vehículo</th>
+                        <th>Patente</th>
+                        <th class="text-center">Compartimentos</th>
+                        <th class="text-center">Existencias</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="fs_normal">
+                    {% for vehiculo in vehiculos %}
+                    <tr>
+                        <td>
+                            <strong>{{ vehiculo.nombre|title }}</strong>
+                        </td>
+                        <td>
+                           {% if vehiculo.detalles_vehiculo and vehiculo.detalles_vehiculo.tipo_vehiculo %}
+                                {{ vehiculo.detalles_vehiculo.tipo_vehiculo.nombre }}
+                           {% else %}
+                                <span class="text-muted fst-italic">No especificado</span>
+                           {% endif %}
+                        </td>
+                        <td>
+                            {% if vehiculo.detalles_vehiculo and vehiculo.detalles_vehiculo.patente %}
+                                <code>{{ vehiculo.detalles_vehiculo.patente }}</code>
+                            {% else %}
+                                <span class="text-muted fst-italic">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ vehiculo.total_compartimentos }}</td>
+                        <td class="text-center">{{ vehiculo.total_existencias }}</td>
+                        <td class="text-center">
+                            <a class="btn btn-sm btn-outline-primary fs_normal" 
+                               href="#">Gestionar</a> <a class="btn btn-sm btn-outline-secondary fs_normal" 
+                               href="#">Editar</a> </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center fst-italic py-4">
+                            No hay vehículos registrados para esta estación.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# Aquí puedes añadir la paginación si decides paginar la vista #}
+
+    </div>
+</div>
+
+</div>
+
+{# Script del Slider (Se mantiene) #}
+<script src="{% static 'js/slider.js' %}"></script>
+
+{% endblock %}

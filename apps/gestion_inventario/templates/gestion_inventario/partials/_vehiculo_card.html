@@ -1,0 +1,50 @@
+{% load static %}
+
+{# Partial para mostrar una tarjeta de vehículo en el slider #}
+<div class="vehiculo-card fondo_secundario_variante slider-item"> {# Añadida clase vehiculo-card #}
+    <div class="almacen-card__imagen-contenedor">
+        {% if ubicacion.imagen %}
+            <img src="{{ ubicacion.imagen.url }}" alt="Imagen de {{ ubicacion.nombre }}" class="almacen-card__imagen">
+        {% else %}
+            {# Puedes poner una imagen por defecto específica para vehículos #}
+            <img src="{% static 'gestion_inventario/imagenes/default_vehiculo.png' %}" alt="Imagen por defecto" class="almacen-card__imagen almacen-card__imagen--default">
+             {# Nota: Asegúrate de tener 'default_vehiculo.png' en tus estáticos #}
+        {% endif %}
+        <span class="almacen-card__nombre">{{ ubicacion.nombre|title }}</span>
+    </div>
+    <div class="almacen-card__info">
+        <ul class="almacen-card__lista">
+            {# Ícono de camión #}
+            <li class="almacen-card__item">
+                <i class="fas fa-truck almacen-card__icono color_primario_variante"></i> 
+                <span class="color_primario_variante fs_pequena">
+                    {% if ubicacion.detalles_vehiculo and ubicacion.detalles_vehiculo.tipo_vehiculo %}
+                        {{ ubicacion.detalles_vehiculo.tipo_vehiculo.nombre }}
+                    {% else %}
+                        Tipo no especificado
+                    {% endif %}
+                </span>
+            </li>
+             <li class="almacen-card__item">
+                <i class="fas fa-hashtag almacen-card__icono color_primario_variante"></i> {# Ícono para patente #}
+                <span class="color_primario_variante fs_pequena">
+                    {% if ubicacion.detalles_vehiculo and ubicacion.detalles_vehiculo.patente %}
+                        {{ ubicacion.detalles_vehiculo.patente }}
+                    {% else %}
+                        Patente N/A
+                    {% endif %}
+                </span>
+            </li>
+            <li class="almacen-card__item">
+                <i class="fas fa-boxes almacen-card__icono color_primario_variante"></i>
+                <span class="color_primario_variante fs_pequena">{{ ubicacion.total_compartimentos }} Compartimento{{ ubicacion.total_compartimentos|pluralize }}</span>
+            </li>
+            <li class="almacen-card__item">
+                <i class="fas fa-archive almacen-card__icono color_primario_variante"></i>
+                <span class="color_primario_variante fs_pequena">{{ ubicacion.total_existencias }} Existencia{{ ubicacion.total_existencias|pluralize }}</span>
+            </li>
+        </ul>
+        <a href="#" class="almacen-card__boton fondo_azul color_blanco fs_normal"> Gestionar Vehículo
+        </a>
+    </div>
+</div>
