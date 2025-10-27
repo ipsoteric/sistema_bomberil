@@ -1,33 +1,33 @@
 /* Estilos para tamaños de fuentes. Por defecto, se aplica la tipografía "Roboto" */ 
 
 .fs_pequena {
-    font-size: var(--fs-small);
+    font-size: var(--fs-small) !important;
     font-family: 'Roboto';
 }
 
 .fs_normal {
-    font-size: var(--fs-normal);
+    font-size: var(--fs-normal) !important;
     font-family: 'Roboto';
 }
 
 .fs_mediana {
-    font-size: var(--fs-medium);
+    font-size: var(--fs-medium) !important;
     font-family: 'Roboto';
 }
 
 .fs_grande {
-    font-size: var(--fs-large);
+    font-size: var(--fs-large) !important;
     font-family: 'Roboto';
 }
 
 .fs_x_grande {
-    font-size: var(--fs-x-large);
+    font-size: var(--fs-x-large) !important;
     font-family: 'Roboto';
     
 }
 
 .fs_xx_grande {
-    font-size: var(--fs-xx-large);
+    font-size: var(--fs-xx-large) !important;
     font-family: 'Roboto';
 }
 
