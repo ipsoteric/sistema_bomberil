@@ -23,7 +23,18 @@
             <div class="row g-3">
                 <div class="col-md-4">
                     <label for="{{ cabecera_form.proveedor.id_for_label }}" class="form-label fw-bold fs_pequena">{{ cabecera_form.proveedor.label }}</label>
-                    {{ cabecera_form.proveedor }}
+                    <select name="{{ cabecera_form.proveedor.name }}" 
+                            id="id_proveedor_select" 
+                            class="form-select form-select-sm fs_normal" 
+                            required>
+                        {# Tom Select usará este como placeholder si se configura #}
+                        <option class="fs_normal" value="">Seleccione un proveedor...</option>
+                        {% for value, text in cabecera_form.proveedor.field.choices %}
+                            {% if value %} {# Evita el option vacío por defecto de Django #}
+                            <option value="{{ value }}" {% if cabecera_form.proveedor.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ text }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
                     {% if cabecera_form.proveedor.errors %}
                         <div class="invalid-feedback d-block">
                             {% for error in cabecera_form.proveedor.errors %}{{ error }}{% endfor %}
@@ -289,6 +300,25 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleFields(newFormRow);
     });
     // --- FIN DE LA CORRECCIÓN ---
+
+    const proveedorSelect = document.getElementById('id_proveedor_select');
+    if (proveedorSelect && window.TomSelect) {
+        new TomSelect(proveedorSelect,{
+            create: false, 
+            sortField: { field: "text", direction: "asc" },
+            placeholder: 'Buscar o seleccionar proveedor...',
+             // Añadimos render para compatibilidad con modo oscuro si es necesario
+             render: {
+                 option: function(data, escape) {
+                     return `<div class="option">${escape(data.text)}</div>`;
+                 },
+                 item: function(data, escape) {
+                    return `<div class="item">${escape(data.text)}</div>`;
+                 }
+                 // Puedes añadir más renderizadores si los necesitas
+             }
+        });
+    }
 
 
     // --- Lógica para el cambio en el select de Producto y TOM SELECT (SIN CAMBIOS) ---
