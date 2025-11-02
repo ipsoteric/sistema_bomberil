@@ -1,24 +1,46 @@
-{# Plantilla base #}{% extends 'gestion_inventario/layouts/base.html' %}
-{# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Gestionar Área{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Gestionar Área{% endblock %}
+{% extends 'gestion_inventario/layouts/base.html' %}
+{% load static %}
+{% load tz %} {# Carga la librería de timezone para fechas #}
+
+{% block titulo_ventana %}Gestionar Área: {{ ubicacion.nombre }}{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-landmark me-2"></i> Gestionar Área
+    </span>
+{% endblock %}
 
 
 {% block contenido %}
-<div class="container py-4">
+<div class="container-fluid mt-4">
 
     <div class="row g-4 align-items-start">
-        <!-- Imagen y datos del almacén -->
         <div class="col-12 col-lg-4">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm mb-4">
                 <img src="{% if ubicacion.imagen %}{{ ubicacion.imagen.url }}{% else %}{% static 'gestion_inventario/imagenes/default_almacen.png' %}{% endif %}"
-                         class="card-img-top img-fluid" alt="Imagen {{ ubicacion.nombre }}">
-                <div class="card-body fondo_secundario">
-                    <h3 class="card-title h5 color_primario fs_mediana">{{ ubicacion.nombre }}</h3>
-                    <p class="card-text mb-1 color_primario_variante fs_normal">{{ ubicacion.descripcion|default:"Sin descripción" }}</p>
-                    <p class="small mb-2 color_primario_variante fs_pequena">Creado: {{ ubicacion.created_at }}</p>
+                     class="card-img-top img-fluid" alt="Imagen {{ ubicacion.nombre }}" style="height: 250px; object-fit: cover;">
+                
+                <div class="card-body">
+                    <h3 class="card-title h5 color_primario fs_mediana mb-1">{{ ubicacion.nombre }}</h3>
+                    <p class="card-text mb-2 color_primario_variante fs_normal">{{ ubicacion.descripcion|default:"Sin descripción" }}</p>
+                    <p class="small text-muted fs_pequena">Creado: {{ ubicacion.created_at|date:"d/m/Y" }}</p>
 
-                    <div class="d-grid gap-2 d-md-flex">
+                    <h5 class="fs_normal fw-bold color_primario mt-3 pt-3 border-top">Resumen del Área</h5>
+                    <ul class="list-group list-group-flush fs_normal mb-3">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 fondo_secundario color_primario">
+                            Total Activos
+                            <span class="badge bg-info rounded-pill fs_pequena">{{ resumen_activos_area }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 fondo_secundario color_primario">
+                            Total Insumos (Unidades)
+                            <span class="badge bg-warning text-dark rounded-pill fs_pequena">{{ resumen_insumos_area }}</span>
+                        </li>
+                         <li class="list-group-item d-flex justify-content-between align-items-center px-0 fw-bold fondo_secundario color_primario">
+                            Total Existencias
+                            <span class="badge bg-primary rounded-pill fs_pequena">{{ resumen_total_area }}</span>
+                        </li>
+                    </ul>
+                    <div class="d-grid gap-2 d-md-flex mt-3 pt-3 border-top">
                         <a class="btn btn-primary me-md-2 fs_normal" href="{% url 'gestion_inventario:ruta_crear_compartimento' ubicacion.id %}">
                             <i class="fa-solid fa-plus"></i> Crear compartimento
                         </a>
@@ -30,22 +52,30 @@
             </div>
         </div>
 
-        <!-- Compartimentos -->
         <div class="col-12 col-lg-8">
             <div class="card shadow-sm">
-                <div class="card-body fondo_secundario">
-                    <h4 class="card-title h6 mb-3 color_primario_variante fs_mediana">Compartimentos</h4>
-
+                <div class="card-header fs_mediana fw-bold">
+                    <i class="fas fa-box me-1"></i> Compartimentos en esta Área
+                </div>
+                <div class="card-body">
                     {% if compartimentos.exists %}
                     <div class="row row-cols-1 row-cols-md-2 g-3">
                         {% for c in compartimentos %}
                         <div class="col">
-                            <div class="card h-100">
-                                <div class="card-body d-flex flex-column fondo_secundario_variante">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body d-flex flex-column">
                                     <h5 class="card-title mb-1 color_primario fs_normal">{{ c.nombre }}</h5>
-                                    <p class="card-text mb-3 color_primario_variante fs_pequena">{{ c.descripcion|default:"Sin descripción" }}</p>
-                                    <div class="mt-auto d-flex justify-content-end">
-                                        {# Aquí puedes añadir botones por compartimento (editar/eliminar) en el futuro #}
+                                    <p class="card-text mb-3 text-muted fs_pequena">{{ c.descripcion|default:"Sin descripción" }}</p>
+                                    
+                                    <ul class="list-unstyled fs_pequena mt-auto pt-2 border-top">
+                                        <li class="d-flex justify-content-between color_primario_muteado">
+                                            Activos: <span class="fw-bold">{{ c.total_activos }}</span>
+                                        </li>
+                                         <li class="d-flex justify-content-between color_primario_muteado">
+                                            Insumos: <span class="fw-bold">{{ c.total_cantidad_insumos }}</span>
+                                        </li>
+                                    </ul>
+                                    <div class="mt-2 d-flex justify-content-end">
                                         <a class="btn btn-sm btn-outline-primary fs_normal" href="#">Ver</a>
                                     </div>
                                 </div>
@@ -55,14 +85,115 @@
                     </div>
                     {% else %}
                     <div class="alert alert-info mb-0" role="alert">
-                        No hay compartimentos creados para este almacén.
+                        No hay compartimentos creados para esta área.
                     </div>
                     {% endif %}
-
                 </div>
             </div>
         </div>
-    </div>
+    </div> <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold fs_mediana">
+                        <i class="fas fa-table me-1"></i> Existencias Detalladas en {{ ubicacion.nombre }}
+                    </span>
+                    </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm align-middle {% if request.session.dark_mode %}table-dark{% endif %}" id="tablaStockEnArea">
+                            <thead class="table-light fs_pequena">
+                                <tr>
+                                    <th>Compartimento</th>
+                                    <th>Producto</th>
+                                    <th>ID Interno / Lote</th>
+                                    <th class="text-center">Tipo</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th class="text-center">Estado</th>
+                                    <th>Recepción</th>
+                                    <th>Fecha Relevante</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="fs_normal">
+                                {% for item in stock_items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.compartimento.nombre }}</strong>
+                                    </td>
 
-</div>
+                                    <td>
+                                        <strong>{{ item.producto.producto_global.nombre_oficial }}</strong>
+                                        <br><small class="text-muted">SKU: {{ item.producto.sku|default:"N/A" }}</small>
+                                    </td>
+                                    
+                                    {% if item.producto.es_serializado %}
+                                        <td class="fs_pequena">ID: <strong>{{ item.codigo_activo|default:"N/A" }}</strong><br><small class="text-muted">N/S: {{ item.numero_serie_fabricante|default:"N/A" }}</small></td>
+                                    {% else %}
+                                        <td class="fs_pequena">Lote: <strong>{{ item.numero_lote_fabricante|default:"N/A" }}</strong></td>
+                                    {% endif %}
+                                    
+                                    <td class="text-center">
+                                        {% if item.producto.es_serializado %}
+                                            <span class="badge bg-info text-dark">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Insumo</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <td class="text-center">
+                                        {% if item.producto.es_serializado %} <strong>1</strong> {% else %} <strong>{{ item.cantidad }}</strong> {% endif %}
+                                    </td>
+                                    
+                                    <td class="text-center">
+                                        {% if item.producto.es_serializado %}
+                                            <span class="badge fs_pequena {% if item.estado.nombre == 'DISPONIBLE' %}bg-success{% elif item.estado.nombre == 'MANTENIMIENTO' %}bg-warning text-dark{% elif item.estado.nombre == 'DE BAJA' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                {{ item.estado.nombre|default:'N/A'|title }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success fs_pequena">Operativo</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <td class="fs_pequena">
+                                       {{ item.fecha_recepcion|date:"d/m/Y"|default:"N/A" }} 
+                                    </td>
+
+                                    <td class="fs_pequena">
+                                        {% if item.producto.es_serializado %}
+                                            {% if item.fin_vida_util %} Vida Útil: {{ item.fin_vida_util|date:"d/m/Y" }}
+                                            {% elif item.fecha_expiracion %} Expira: {{ item.fecha_expiracion|date:"d/m/Y" }}
+                                            {% else %} N/A {% endif %}
+                                        {% else %}
+                                            {% if item.fecha_expiracion %} 
+                                                {% timezone None %}
+                                                    {% if item.fecha_expiracion < today %}
+                                                        <strong class="text-danger">Venció: {{ item.fecha_expiracion|date:"d/m/Y" }}</strong>
+                                                    {% else %}
+                                                        Vence: {{ item.fecha_expiracion|date:"d/m/Y" }}
+                                                    {% endif %}
+                                                {% endtimezone %}
+                                            {% else %} N/A {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <td class="text-center">
+                                        <a href="#" class="btn btn-sm btn-outline-primary fs_normal" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                                        <a href="#" class="btn btn-sm btn-outline-secondary fs_normal" title="Mover Ítem"><i class="fas fa-truck-moving"></i></a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center fst-italic py-4">
+                                        No se encontraron existencias en esta área.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> </div>
 {% endblock %}

@@ -180,19 +180,64 @@ class AreaCrearView(View):
 
 
 
-class AreaDetalleView(View):
-    """Vista para gestionar un almacén/ubicación: mostrar imagen, nombre, descripción, fecha de creación y sus compartimentos."""
+class AreaDetalleView(LoginRequiredMixin, View):
+    """
+    Vista para gestionar un área/ubicación: muestra detalles, 
+    resúmenes de stock, lista de compartimentos con sus totales,
+    y una lista detallada de todas las existencias en el área.
+    """
+    template_name = 'gestion_inventario/pages/gestionar_area.html'
+    login_url = '/acceso/login/'
+
     def get(self, request, ubicacion_id):
         estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        # 1. Obtener la Ubicación (Área) principal
         ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id, estacion_id=estacion_id)
 
-        compartimentos = Compartimento.objects.filter(ubicacion=ubicacion)
+        # 2. Obtener compartimentos con sus totales de stock anotados
+        compartimentos_con_stock = Compartimento.objects.filter(ubicacion=ubicacion).annotate(
+            total_activos=Count('activo', distinct=True),
+            total_cantidad_insumos=Coalesce(Sum('loteinsumo__cantidad'), 0)
+        ).order_by('nombre')
 
+        # 3. Calcular el resumen de stock total para el área (Tarjeta Izquierda)
+        resumen_activos_area = 0
+        resumen_insumos_area = 0
+        for c in compartimentos_con_stock:
+            c.total_existencias = c.total_activos + c.total_cantidad_insumos
+            resumen_activos_area += c.total_activos
+            resumen_insumos_area += c.total_cantidad_insumos
+        
+        resumen_total_area = resumen_activos_area + resumen_insumos_area
+
+        # 4. Obtener la lista detallada de todo el stock en esta área
+        activos_en_area = Activo.objects.filter(compartimento__ubicacion=ubicacion).select_related(
+            'producto__producto_global', 'compartimento', 'estado'
+        )
+        lotes_en_area = LoteInsumo.objects.filter(compartimento__ubicacion=ubicacion).select_related(
+            'producto__producto_global', 'compartimento'
+        )
+
+        stock_items_list = list(chain(activos_en_area, lotes_en_area))
+        
+        # 5. Ordenar la lista detallada (p.ej. por nombre de compartimento, luego por producto)
+        stock_items_list.sort(key=lambda x: (x.compartimento.nombre, x.producto.producto_global.nombre_oficial))
+        
+        # 6. Preparar el contexto completo
         context = {
             'ubicacion': ubicacion,
-            'compartimentos': compartimentos,
+            'compartimentos': compartimentos_con_stock, # Queryset anotado
+            'stock_items': stock_items_list,           # Lista combinada para la tabla
+            'resumen_activos_area': resumen_activos_area,
+            'resumen_insumos_area': resumen_insumos_area,
+            'resumen_total_area': resumen_total_area,
+            'today': timezone.now().date(),
         }
-        return render(request, 'gestion_inventario/pages/gestionar_area.html', context)
+        return render(request, self.template_name, context)
 
 
 
