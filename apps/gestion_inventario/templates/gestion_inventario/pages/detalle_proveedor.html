@@ -1,0 +1,159 @@
+{% extends "gestion_inventario/layouts/base.html" %}
+{% load static %}
+
+{% block titulo_ventana %}Detalle de {{ proveedor.nombre }}{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fs_grande color_primario">
+            <i class="fas fa-truck me-2"></i> Detalle Proveedor: {{ proveedor.nombre }}
+        </h2>
+        <a href="{% url 'gestion_inventario:ruta_lista_proveedores' %}" class="btn btn-outline-secondary fs_normal">
+            <i class="fas fa-arrow-left me-1"></i> Volver a la Lista
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            
+            <div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header fondo_secundario_variante d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fs_normal fw-bold color_primario">Datos Globales de la Entidad</h5>
+                    {% if es_estacion_creadora %}
+                        {% endif %}
+                </div>
+                <div class="card-body fondo_secundario">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 fs_pequena color_primario_muteado">Nombre o Razón Social</dt>
+                        <dd class="col-sm-8 fs_normal color_primario">{{ proveedor.nombre }}</dd>
+
+                        <dt class="col-sm-4 fs_pequena color_primario_muteado">RUT</dt>
+                        <dd class="col-sm-8 fs_normal color_primario">{{ proveedor.rut|default:"No especificado" }}</dd>
+
+                        <dt class="col-sm-4 fs_pequena color_primario_muteado">Estación Creadora</dt>
+                        <dd class="col-sm-8 fs_pequena color_primario_muteado">{{ proveedor.estacion_creadora.nombre|default:"Sistema"|title }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card shadow-sm {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header fondo_secundario_variante d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fs_normal fw-bold color_primario">Contacto Principal (Global)</h5>
+                    {% if es_estacion_creadora %}
+                        <a href="#" class="btn btn-sm btn-outline-primary fs_pequena" title="Editar contacto principal (Próximamente)">
+                            <i class="fas fa-edit me-1"></i> Editar Contacto Principal
+                        </a>
+                    {% endif %}
+                </div>
+                {% if contacto_principal %}
+                    <div class="card-body fondo_secundario">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Nombre</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_principal.nombre_contacto }}</dd>
+
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Teléfono</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_principal.telefono|default:"No especificado" }}</dd>
+
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Email</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_principal.email|default:"No especificado" }}</dd>
+
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Dirección</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_principal.direccion|default:"No especificada" }}</dd>
+                            
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Comuna</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_principal.comuna.nombre|default:"No especificada" }}</dd>
+
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Región</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_principal.comuna.region.nombre|default:"No especificada" }}</dd>
+                            
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Notas</dt>
+                            <dd class="col-sm-8 fs_normal color_primario mb-0">{{ contacto_principal.notas|default:"Sin notas." }}</dd>
+                        </dl>
+                    </div>
+                {% else %}
+                    <div class="card-body fondo_secundario">
+                        <p class="color_primario_muteado fst-italic mb-0">Este proveedor no tiene un contacto principal asignado.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <div class="col-lg-6">
+            
+            <div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header fondo_secundario_variante d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fs_normal fw-bold color_primario">Contacto para mi Estación</h5>
+                </div>
+                <div class="card-body fondo_secundario">
+                    {% if not active_estacion_id %}
+                        <div class="alert alert-info fs_normal color_primario_muteado">
+                            Debes tener una estación activa para gestionar contactos personalizados.
+                        </div>
+                    {% elif contacto_estacion_actual %}
+                        <div class="d-flex justify-content-end mb-3">
+                             <a href="#" class="btn btn-sm btn-primary fs_pequena" title="Editar mi contacto (Próximamente)">
+                                <i class="fas fa-edit me-1"></i> Editar mi Contacto
+                            </a>
+                        </div>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Nombre</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_estacion_actual.nombre_contacto }}</dd>
+
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Teléfono</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_estacion_actual.telefono|default:"No especificado" }}</dd>
+
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Email</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_estacion_actual.email|default:"No especificado" }}</dd>
+
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Dirección</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_estacion_actual.direccion|default:"No especificada" }}</dd>
+                            
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Comuna</dt>
+                            <dd class="col-sm-8 fs_normal color_primario">{{ contacto_estacion_actual.comuna.nombre|default:"No especificada" }}</dd>
+                            
+                            <dt class="col-sm-4 fs_pequena color_primario_muteado">Notas</dt>
+                            <dd class="col-sm-8 fs_normal color_primario mb-0">{{ contacto_estacion_actual.notas|default:"Sin notas." }}</dd>
+                        </dl>
+                    {% else %}
+                        <p class="fs_normal color_primario">Tu estación no ha definido un contacto personalizado para este proveedor.</p>
+                        <p class="fs_pequena color_primario_muteado">Si lo deseas, puedes usar el contacto principal global o agregar uno específico para tu estación.</p>
+                        <a href="#" class="btn btn-success fs_normal" title="Crear contacto para mi estación (Próximamente)">
+                            <i class="fas fa-plus me-1"></i> Crear Contacto para mi Estación
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card shadow-sm {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header fondo_secundario_variante">
+                    <h5 class="mb-0 fs_normal fw-bold color_primario">Contactos de Otras Estaciones</h5>
+                </div>
+                <div class="card-body fondo_secundario">
+                    {% if otros_contactos_personalizados %}
+                        <div class="list-group">
+                            {% for contacto in otros_contactos_personalizados %}
+                                <div class="list-group-item {% if request.session.dark_mode %}dark-mode{% endif %}">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1 color_primario_variante">{{ contacto.estacion_personalizada.nombre_completo }}</h6>
+                                        <small class="text-muted">{{ contacto.comuna.nombre|default:'' }}</small>
+                                    </div>
+                                    <p class="mb-1 fs_normal">{{ contacto.nombre_contacto }}</p>
+                                    <small class="text-muted fs_pequena">
+                                        {{ contacto.telefono|default:'' }}
+                                        {% if contacto.telefono and contacto.email %} / {% endif %}
+                                        {{ contacto.email|default:'' }}
+                                    </small>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="color_primario_muteado fst-italic mb-0 fs_normal">Ninguna otra estación ha registrado un contacto personalizado.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div> </div> </div>
+{% endblock %}

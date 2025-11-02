@@ -110,7 +110,9 @@
 
                                 <td>
                                     {# Aquí puedes poner enlaces a ver detalles, editar, etc. #}
-                                    <a href="#" class="btn btn-sm btn-outline-primary fs_normal" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                                    <a href="{% url 'gestion_inventario:ruta_detalle_proveedor' proveedor.pk %}" class="btn btn-sm btn-outline-primary fs_normal" title="Ver Detalles"><i class="fas fa-eye"></i></a>
+                                    
+                                    {# Dejamos el de editar pendiente para la siguiente vista #}
                                     <a href="#" class="btn btn-sm btn-outline-secondary fs_normal" title="Editar"><i class="fas fa-edit"></i></a>
                                 </td>
                             </tr>

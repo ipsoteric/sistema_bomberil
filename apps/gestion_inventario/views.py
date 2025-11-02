@@ -27,6 +27,7 @@ from .models import (
     Categoria,
     LoteInsumo,
     Proveedor,
+    ContactoProveedor,
     Region,
     Comuna,
     Estado,
@@ -964,6 +965,73 @@ class ProveedorCrearView(View):
             'proveedor_form': proveedor_form,
             'contacto_form': contacto_form
         }
+        return render(request, self.template_name, context)
+
+
+
+
+class ProveedorDetalleView(View):
+    """
+    Muestra el detalle de un Proveedor, separando el contacto principal (global)
+    de los contactos personalizados por estación.
+    """
+    template_name = 'gestion_inventario/pages/detalle_proveedor.html'
+
+    def get(self, request, *args, **kwargs):
+        proveedor_id = self.kwargs.get('pk')
+        estacion_id = request.session.get('active_estacion_id')
+
+        try:
+            # Obtenemos el proveedor y precargamos sus relaciones principales
+            proveedor = Proveedor.objects.select_related(
+                'contacto_principal__comuna__region', 
+                'estacion_creadora' # Asumo que Estacion no necesita más joins
+            ).get(pk=proveedor_id)
+        
+        except Proveedor.DoesNotExist:
+            messages.error(request, "El proveedor solicitado no existe.")
+            return redirect('gestion_inventario:ruta_lista_proveedores')
+
+        # 1. Obtenemos el Contacto Principal (Global)
+        contacto_principal = proveedor.contacto_principal
+
+        # 2. Buscamos si la estación activa tiene un contacto personalizado
+        # Asumo que el modelo ContactoProveedor tiene un campo FK a Estacion
+        # llamado 'estacion_personalizada' (que puede ser Null).
+        contacto_estacion_actual = None
+        if estacion_id:
+            try:
+                contacto_estacion_actual = ContactoProveedor.objects.select_related('comuna__region').get(
+                    proveedor=proveedor,
+                    estacion_especifica=estacion_id
+                )
+            except ContactoProveedor.DoesNotExist:
+                contacto_estacion_actual = None
+
+        # 3. Obtenemos la lista de "otros" contactos personalizados
+        # Es decir, todos los que tienen una estación asignada, excluyendo
+        # el de la estación actual (si existe) para no mostrarlo duplicado.
+        query_otros_contactos = ContactoProveedor.objects.filter(
+            proveedor=proveedor,
+            estacion_especifica__isnull=False
+        ).select_related('estacion_especifica', 'comuna__region')
+
+        if contacto_estacion_actual:
+            query_otros_contactos = query_otros_contactos.exclude(pk=contacto_estacion_actual.pk)
+
+        # 4. Determinamos permisos
+        # Solo la estación creadora puede editar la info "global"
+        es_estacion_creadora = (estacion_id == proveedor.estacion_creadora_id)
+
+        context = {
+            'proveedor': proveedor,
+            'contacto_principal': contacto_principal,
+            'contacto_estacion_actual': contacto_estacion_actual, # El de la sesión
+            'otros_contactos_personalizados': query_otros_contactos,
+            'es_estacion_creadora': es_estacion_creadora,
+            'active_estacion_id': estacion_id, # Para saber si hay sesión activa
+        }
+
         return render(request, self.template_name, context)
 
 

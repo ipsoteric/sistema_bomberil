@@ -17,6 +17,7 @@ from .views import (
     ProductoLocalEditView,
     ProveedorListView,
     ProveedorCrearView,
+    ProveedorDetalleView,
     StockActualListView,
     VehiculoListaView,
     RecepcionStockView
@@ -64,6 +65,8 @@ urlpatterns = [
     path('proveedores/', ProveedorListView.as_view(), name='ruta_lista_proveedores'),
     # Crear proveedor
     path('proveedores/crear/', ProveedorCrearView.as_view(), name='ruta_crear_proveedor'),
+    # Ver detalle proveedor
+    path('proveedores/<int:pk>/', ProveedorDetalleView.as_view(), name='ruta_detalle_proveedor'),
 
     # Stock actual
     path('stock-actual/', StockActualListView.as_view(), name='ruta_stock_actual'),
