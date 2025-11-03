@@ -5,6 +5,7 @@ from .views import (
     grafico_existencias_por_categoria,
     AreaListaView,
     CompartimentoListaView,
+    CompartimentoDetalleView,
     AreaCrearView,
     UbicacionDetalleView,
     CompartimentoCrearView,
@@ -39,6 +40,8 @@ urlpatterns = [
     path('areas/', AreaListaView.as_view(), name="ruta_lista_areas"),
     # Lista de compartimentos
     path('compartimentos/', CompartimentoListaView.as_view(), name='ruta_lista_compartimentos'),
+    # Detalle de Compartimento
+    path('compartimentos/<int:compartimento_id>/detalle/', CompartimentoDetalleView.as_view(), name='ruta_detalle_compartimento'),
     # Crear área
     path('areas/crear/', AreaCrearView.as_view(), name="ruta_crear_area"),
     # Gestionar detalle de una ubicación

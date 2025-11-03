@@ -194,6 +194,8 @@ class Compartimento(models.Model):
 
     nombre = models.CharField(verbose_name="Nombre", max_length=50, help_text="Ingrese el nombre del compartimento")
     descripcion = models.TextField(verbose_name="Descripción (opcional)", null=True, blank=True)
+    imagen = models.ImageField(verbose_name="Imagen (opcional)", upload_to="temporal/estaciones/compartimentos/", blank=True, null=True,help_text="(Opcional) Imagen del compartimento"
+    )
     # Ubicación/sección correspondiente
     ubicacion = models.ForeignKey(Ubicacion, on_delete=models.PROTECT, verbose_name="Ubicación/sección", help_text="Seleccionar ubicación correspondiente")
     created_at = models.DateTimeField(auto_now_add=True)

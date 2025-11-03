@@ -381,6 +381,69 @@ class CompartimentoCrearView(View):
 
 
 
+class CompartimentoDetalleView(LoginRequiredMixin, View):
+    """
+    Vista para ver el detalle de un compartimento: muestra detalles, 
+    resúmenes de stock y una lista detallada de todas las 
+    existencias en el compartimento.
+    """
+    template_name = 'gestion_inventario/pages/detalle_compartimento.html'
+    login_url = '/acceso/login/'
+
+    def get(self, request, compartimento_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        # 1. Obtener el Compartimento principal
+        # Optimizamos la consulta trayendo la ubicación y su tipo de una vez
+        try:
+            compartimento = get_object_or_404(
+                Compartimento.objects.select_related(
+                    'ubicacion', 
+                    'ubicacion__tipo_ubicacion'
+                ),
+                id=compartimento_id,
+                ubicacion__estacion_id=estacion_id
+            )
+        except Compartimento.DoesNotExist:
+            messages.error(request, "El compartimento no existe o no pertenece a su estación.")
+            return redirect('gestion_inventario:ruta_lista_areas') # O a donde estimes
+
+        # 2. Obtener la lista detallada de todo el stock (Activos y Lotes)
+        activos_en_compartimento = Activo.objects.filter(compartimento=compartimento).select_related(
+            'producto__producto_global', 'compartimento', 'estado'
+        )
+        lotes_en_compartimento = LoteInsumo.objects.filter(compartimento=compartimento).select_related(
+            'producto__producto_global', 'compartimento'
+        )
+
+        stock_items_list = list(chain(activos_en_compartimento, lotes_en_compartimento))
+        
+        # 3. Ordenar la lista detallada (p.ej. por nombre de producto)
+        stock_items_list.sort(key=lambda x: x.producto.producto_global.nombre_oficial)
+
+        # 4. Calcular el resumen de stock para la tarjeta de información
+        resumen_activos = activos_en_compartimento.count()
+        resumen_insumos_obj = lotes_en_compartimento.aggregate(total=Coalesce(Sum('cantidad'), 0))
+        resumen_insumos = resumen_insumos_obj['total']
+        resumen_total = resumen_activos + resumen_insumos
+
+        # 5. Preparar el contexto completo
+        context = {
+            'compartimento': compartimento,
+            'stock_items': stock_items_list,       # Lista combinada para la tabla
+            'resumen_activos': resumen_activos,
+            'resumen_insumos': resumen_insumos,
+            'resumen_total': resumen_total,
+            'today': timezone.now().date(),
+        }
+        return render(request, self.template_name, context)
+
+
+
+
 class CatalogoGlobalListView(View):
     """
     Muestra el Catálogo Maestro Global de Productos con filtros avanzados

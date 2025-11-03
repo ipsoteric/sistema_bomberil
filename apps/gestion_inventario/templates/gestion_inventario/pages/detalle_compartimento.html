@@ -2,17 +2,11 @@
 {% load static %}
 {% load tz %} {# Carga la librería de timezone para fechas #}
 
-{# Título de la ventana del navegador dinámico #}
-{% block titulo_ventana %}Gestionar {{ ubicacion.tipo_ubicacion.nombre|title }}: {{ ubicacion.nombre }}{% endblock %}
+{% block titulo_ventana %}Detalle Compartimento: {{ compartimento.nombre }}{% endblock %}
 
 {% block titulo_pagina %}
     <span class="fs_grande color_primario">
-        {# Título e icono de la página dinámicos #}
-        {% if ubicacion.tipo_ubicacion.nombre == 'VEHÍCULO' %}
-            <i class="fas fa-truck me-2"></i> Gestionar Vehículo
-        {% else %}
-            <i class="fas fa-landmark me-2"></i> Gestionar Área
-        {% endif %}
+        <i class="fas fa-box me-2"></i> Detalle de Compartimento
     </span>
 {% endblock %}
 
@@ -24,117 +18,63 @@
         <div class="col-12 col-lg-4">
             <div class="card shadow-sm mb-4">
                 
-                {# Imagen por defecto dinámica #}
-                <img src="{% if ubicacion.imagen %}{{ ubicacion.imagen.url }}{% elif ubicacion.tipo_ubicacion.nombre == 'VEHÍCULO' %}{% static 'gestion_inventario/imagenes/default_vehiculo.png' %}{% else %}{% static 'gestion_inventario/imagenes/default_almacen.png' %}{% endif %}"
-                     class="card-img-top img-fluid" alt="Imagen {{ ubicacion.nombre }}" style="height: 250px; object-fit: cover;">
+                <img src="{% if compartimento.imagen %}{{ compartimento.imagen.url }}{% else %}{% static 'gestion_inventario/imagenes/default_compartimento.png' %}{% endif %}"
+                     class="card-img-top img-fluid" alt="Imagen {{ compartimento.nombre }}" style="height: 250px; object-fit: cover;">
                 
                 <div class="card-body">
-                    <h3 class="card-title h5 color_primario fs_mediana mb-1">{{ ubicacion.nombre }}</h3>
-                    <p class="card-text mb-2 color_primario_variante fs_normal">{{ ubicacion.descripcion|default:"Sin descripción" }}</p>
+                    <h3 class="card-title h5 color_primario fs_mediana mb-1">{{ compartimento.nombre }}</h3>
+                    <p class="card-text mb-2 color_primario_variante fs_normal">{{ compartimento.descripcion|default:"Sin descripción" }}</p>
                     
-                    {# Mostramos detalles extra si es un vehículo (usando la relación inversa 'detalles_vehiculo') #}
-                    {% if ubicacion.tipo_ubicacion.nombre == 'VEHÍCULO' and ubicacion.detalles_vehiculo %}
-                    <div class="fs_normal color_primario_variante">
-                        <p class="mb-1"><strong>Tipo:</strong> {{ ubicacion.detalles_vehiculo.tipo_vehiculo.nombre|default:"N/A" }}</p>
-                        <p class="mb-1"><strong>Patente:</strong> {{ ubicacion.detalles_vehiculo.patente|default:"N/A" }}</p>
-                        <p class="mb-1"><strong>Año:</strong> {{ ubicacion.detalles_vehiculo.anho|default:"N/A" }}</p>
-                    </div>
-                    {% endif %}
+                    <p class="fs_normal mt-2">
+                        <strong class="color_primario_variante">Ubicación:</strong> 
+                        <a href="{% url 'gestion_inventario:ruta_gestionar_ubicacion' compartimento.ubicacion.id %}">
+                            {% if compartimento.ubicacion.tipo_ubicacion.nombre == 'VEHÍCULO' %}<i class="fas fa-truck me-1"></i>{% else %}<i class="fas fa-landmark me-1"></i>{% endif %}
+                            {{ compartimento.ubicacion.nombre }}
+                        </a>
+                    </p>
                     
-                    <p class="small text-muted fs_pequena mt-2">Creado: {{ ubicacion.created_at|date:"d/m/Y" }}</p>
+                    <p class="small text-muted fs_pequena">Creado: {{ compartimento.created_at|date:"d/m/Y" }}</p>
 
-                    {# Título del resumen dinámico #}
-                    <h5 class="fs_normal fw-bold color_primario mt-3 pt-3 border-top">Resumen del {{ ubicacion.tipo_ubicacion.nombre|lower }}</h5>
+                    <h5 class="fs_normal fw-bold color_primario mt-3 pt-3 border-top">Resumen del Compartimento</h5>
                     <ul class="list-group list-group-flush fs_normal mb-3">
                         <li class="list-group-item d-flex justify-content-between align-items-center px-0 fondo_secundario color_primario">
                             Total Activos
-                            <span class="badge bg-info rounded-pill fs_pequena">{{ resumen_activos_area }}</span>
+                            <span class="badge bg-info rounded-pill fs_pequena">{{ resumen_activos }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center px-0 fondo_secundario color_primario">
                             Total Insumos (Unidades)
-                            <span class="badge bg-warning text-dark rounded-pill fs_pequena">{{ resumen_insumos_area }}</span>
+                            <span class="badge bg-warning text-dark rounded-pill fs_pequena">{{ resumen_insumos }}</span>
                         </li>
                          <li class="list-group-item d-flex justify-content-between align-items-center px-0 fw-bold fondo_secundario color_primario">
                             Total Existencias
-                            <span class="badge bg-primary rounded-pill fs_pequena">{{ resumen_total_area }}</span>
+                            <span class="badge bg-primary rounded-pill fs_pequena">{{ resumen_total }}</span>
                         </li>
                     </ul>
                     <div class="d-grid gap-2 d-md-flex mt-3 pt-3 border-top">
-                        <a class="btn btn-primary me-md-2 fs_normal" href="{% url 'gestion_inventario:ruta_crear_compartimento' ubicacion.id %}">
-                            <i class="fa-solid fa-plus"></i> Crear compartimento
+                        <a class="btn btn-primary me-md-2 fs_normal" href="#"> {# TODO: ruta_agregar_stock_a_compartimento #}
+                            <i class="fa-solid fa-plus"></i> Añadir Stock
                         </a>
-                        
-                        {# Botón de editar dinámico, apunta a la URL correcta según el tipo #}
-                        {% if ubicacion.tipo_ubicacion.nombre == 'VEHÍCULO' %}
-                            <a class="btn btn-secondary fs_normal" href="{% url 'gestion_inventario:ruta_editar_vehiculo' ubicacion.id %}"> {# Asegúrate de crear esta URL #}
-                                <i class="fa-solid fa-pen-to-square"></i> Editar vehículo
-                            </a>
-                        {% else %}
-                             <a class="btn btn-secondary fs_normal" href="{% url 'gestion_inventario:ruta_editar_area' ubicacion.id %}">
-                                <i class="fa-solid fa-pen-to-square"></i> Editar área
-                            </a>
-                        {% endif %}
+                        <a class="btn btn-secondary fs_normal" href="#"> {# TODO: ruta_editar_compartimento #}
+                            <i class="fa-solid fa-pen-to-square"></i> Editar
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-lg-8">
-            <div class="card shadow-sm">
-                <div class="card-header fs_mediana fw-bold">
-                    {# Título de compartimentos dinámico (CORREGIDO) #}
-                    <i class="fas fa-box me-1"></i> Compartimentos en est{% if ubicacion.tipo_ubicacion.nombre|lower|slice:"-1" == "a" %}a{% else %}e{% endif %} {{ ubicacion.tipo_ubicacion.nombre|lower }}
-                </div>
-                <div class="card-body">
-                    {% if compartimentos.exists %}
-                    <div class="row row-cols-1 row-cols-md-2 g-3">
-                        {% for c in compartimentos %}
-                        <div class="col">
-                            <div class="card h-100 shadow-sm">
-                                <div class="card-body d-flex flex-column">
-                                    <h5 class="card-title mb-1 color_primario fs_normal">{{ c.nombre }}</h5>
-                                    <p class="card-text mb-3 text-muted fs_pequena">{{ c.descripcion|default:"Sin descripción" }}</p>
-                                    
-                                    <ul class="list-unstyled fs_pequena mt-auto pt-2 border-top">
-                                        <li class="d-flex justify-content-between color_primario_muteado">
-                                            Activos: <span class="fw-bold">{{ c.total_activos }}</span>
-                                        </li>
-                                         <li class="d-flex justify-content-between color_primario_muteado">
-                                            Insumos: <span class="fw-bold">{{ c.total_cantidad_insumos }}</span>
-                                        </li>
-                                    </ul>
-                                    <div class="mt-2 d-flex justify-content-end">
-                                        <a class="btn btn-sm btn-outline-primary fs_normal" href="{% url 'gestion_inventario:ruta_detalle_compartimento' c.id %}">Ver</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="alert alert-info mb-0" role="alert">
-                        {# Mensaje de alerta dinámico (CORREGIDO) #}
-                        No hay compartimentos creados para est{% if ubicacion.tipo_ubicacion.nombre|lower|slice:"-1" == "a" %}a{% else %}e{% endif %} {{ ubicacion.tipo_ubicacion.nombre|lower }}.
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div> <div class="row mt-4">
-        <div class="col-12">
             <div class="card shadow-sm mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span class="fw-bold fs_mediana">
-                        {# Título de tabla genérico #}
-                        <i class="fas fa-table me-1"></i> Existencias Detalladas en {{ ubicacion.nombre }}
+                        <i class="fas fa-table me-1"></i> Existencias en {{ compartimento.nombre }}
                     </span>
                     </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover table-sm align-middle {% if request.session.dark_mode %}table-dark{% endif %}" id="tablaStockEnArea">
+                        
+                        <table class="table table-hover table-sm align-middle {% if request.session.dark_mode %}table-dark{% endif %}" id="tablaStockEnCompartimento">
                             <thead class="table-light fs_pequena">
                                 <tr>
-                                    <th>Compartimento</th>
                                     <th>Producto</th>
                                     <th>ID Interno / Lote</th>
                                     <th class="text-center">Tipo</th>
@@ -148,10 +88,6 @@
                             <tbody class="fs_normal">
                                 {% for item in stock_items %}
                                 <tr>
-                                    <td>
-                                        <strong>{{ item.compartimento.nombre }}</strong>
-                                    </td>
-
                                     <td>
                                         <strong>{{ item.producto.producto_global.nombre_oficial }}</strong>
                                         <br><small class="text-muted">SKU: {{ item.producto.sku|default:"N/A" }}</small>
@@ -214,12 +150,11 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="9" class="text-center fst-italic py-4">
-                                        {# Mensaje de tabla vacía dinámico (CORREGIDO) #}
-                                        No se encontraron existencias en est{% if ubicacion.tipo_ubicacion.nombre|lower|slice:"-1" == "a" %}a{% else %}e{% endif %} {{ ubicacion.tipo_ubicacion.nombre|lower }}.
+                                    <td colspan="8" class="text-center fst-italic py-4">
+                                        No se encontraron existencias en este compartimento.
                                     </td>
-                                T</tr>
-                                {% endfor %}
+                                </tr>
+S                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
