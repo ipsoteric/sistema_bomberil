@@ -4,12 +4,13 @@ from .views import (
     InventarioPruebasView, 
     grafico_existencias_por_categoria,
     AreaListaView,
+    AreaCrearView,
+    AreaEditarView,
+    UbicacionDetalleView,
     CompartimentoListaView,
     CompartimentoDetalleView,
-    AreaCrearView,
-    UbicacionDetalleView,
     CompartimentoCrearView,
-    AreaEditarView,
+    CompartimentoEditView,
     CatalogoGlobalListView,
     ApiGetProductoGlobalSKU,
     ApiAnadirProductoLocal,
@@ -42,6 +43,8 @@ urlpatterns = [
     path('compartimentos/', CompartimentoListaView.as_view(), name='ruta_lista_compartimentos'),
     # Detalle de Compartimento
     path('compartimentos/<int:compartimento_id>/detalle/', CompartimentoDetalleView.as_view(), name='ruta_detalle_compartimento'),
+    # Editar Compartimento
+    path('compartimentos/<int:compartimento_id>/editar/', CompartimentoEditView.as_view(), name='ruta_editar_compartimento'),
     # Crear área
     path('areas/crear/', AreaCrearView.as_view(), name="ruta_crear_area"),
     # Gestionar detalle de una ubicación

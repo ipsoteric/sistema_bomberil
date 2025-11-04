@@ -53,6 +53,30 @@ class CompartimentoForm(forms.ModelForm):
 
 
 
+class CompartimentoEditForm(forms.ModelForm):
+    """
+    Formulario para editar los detalles de un compartimento.
+    No permite cambiar la ubicación (Ubicacion) a la que pertenece.
+    """
+    class Meta:
+        model = Compartimento
+        fields = ['nombre', 'descripcion', 'imagen']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control fs_normal color_primario fondo_secundario_variante border-0'
+            }),
+            'descripcion': forms.Textarea(attrs={
+                'class': 'form-control fs_normal color_primario fondo_secundario_variante border-0', 
+                'rows': 4
+            }),
+            'imagen': forms.FileInput(attrs={
+                'class': 'form-control fs_normal color_primario fondo_secundario_variante border-0'
+            }),
+        }
+
+
+
+
 class ProductoGlobalForm(forms.ModelForm):
     """
     Formulario para la creación de un nuevo Producto Global.

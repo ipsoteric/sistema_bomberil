@@ -1,0 +1,98 @@
+{% extends 'gestion_inventario/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Editar: {{ compartimento.nombre }}{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-edit me-2"></i> Editar Compartimento
+    </span>
+{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10 col-xl-8">
+
+            <div class="card shadow-sm mb-4 fondo_secundario">
+                <div class="card-body p-4 p-md-5">
+
+                    <form method="POST" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+
+                        <div class="row g-4">
+                            <div class="col-12 col-md-5">
+                                <h5 class="color_primario fs_mediana fw-bold">Imagen Actual</h5>
+                                <img src="{% if compartimento.imagen %}{{ compartimento.imagen.url }}{% else %}{% static 'gestion_inventario/imagenes/default_compartimento.png' %}{% endif %}"
+                                     class="img-fluid rounded-3 shadow-sm mb-3" alt="Imagen {{ compartimento.nombre }}" 
+                                     style="height: 250px; width: 100%; object-fit: cover;">
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.imagen.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Subir nueva imagen</label>
+                                    {{ form.imagen }}
+                                    {% if form.imagen.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.imagen.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-7">
+                                <h5 class="color_primario fs_mediana fw-bold">Detalles del Compartimento</h5>
+                                <p class="fs_normal color_primario_variante mb-3">
+                                    Modificando: <strong>{{ compartimento.nombre }}</strong><br>
+                                    Perteneciente a: 
+                                    <a href="{% url 'gestion_inventario:ruta_gestionar_ubicacion' compartimento.ubicacion.id %}">
+                                        {{ compartimento.ubicacion.nombre }}
+                                    </a>
+                                </p>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.nombre.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Nombre del compartimento</label>
+                                    {{ form.nombre }}
+                                    {% if form.nombre.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.nombre.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.descripcion.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Descripción (opcional)</label>
+                                    {{ form.descripcion }}
+                                    {% if form.descripcion.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.descripcion.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4 pt-4 border-top">
+                            <div class="col-12 d-flex justify-content-end">
+                                <a href="{% url 'gestion_inventario:ruta_detalle_compartimento' compartimento.id %}" class="btn btn-secondary fs_normal me-2">
+                                    <i class="fas fa-times me-1"></i> Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary fs_normal">
+                                    <i class="fas fa-save me-1"></i> Guardar Cambios
+                                </button>
+                            </div>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

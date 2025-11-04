@@ -39,6 +39,7 @@ from .models import (
 from .forms import (
     AreaForm, 
     CompartimentoForm, 
+    CompartimentoEditForm, 
     ProductoGlobalForm, 
     ProductoLocalEditForm,
     ProveedorForm,
@@ -438,6 +439,64 @@ class CompartimentoDetalleView(LoginRequiredMixin, View):
             'resumen_insumos': resumen_insumos,
             'resumen_total': resumen_total,
             'today': timezone.now().date(),
+        }
+        return render(request, self.template_name, context)
+
+
+
+
+class CompartimentoEditView(LoginRequiredMixin, View):
+    """
+    Vista para editar los detalles de un compartimento (nombre, descripción, imagen).
+    """
+    template_name = 'gestion_inventario/pages/editar_compartimento.html'
+    login_url = '/acceso/login/'
+
+    def get(self, request, compartimento_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        # Obtenemos el compartimento asegurándonos que pertenece a la estación activa
+        compartimento = get_object_or_404(
+            Compartimento.objects.select_related('ubicacion'),
+            id=compartimento_id,
+            ubicacion__estacion_id=estacion_id
+        )
+        
+        form = CompartimentoEditForm(instance=compartimento)
+        
+        context = {
+            'form': form,
+            'compartimento': compartimento
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, compartimento_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+
+        compartimento = get_object_or_404(
+            Compartimento.objects.select_related('ubicacion'),
+            id=compartimento_id,
+            ubicacion__estacion_id=estacion_id
+        )
+
+        form = CompartimentoEditForm(request.POST, request.FILES, instance=compartimento)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"El compartimento '{compartimento.nombre}' se actualizó correctamente.")
+            # Redirigimos de vuelta al detalle del compartimento
+            return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento.id)
+        
+        messages.error(request, "Hubo un error al actualizar el compartimento. Por favor, revisa los campos.")
+        context = {
+            'form': form,
+            'compartimento': compartimento
         }
         return render(request, self.template_name, context)
 
