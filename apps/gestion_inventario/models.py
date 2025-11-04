@@ -468,6 +468,7 @@ class LoteInsumo(models.Model):
     el seguimiento de fechas de expiración individuales.
     """
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE, limit_choices_to={'es_serializado': False})
+    codigo_lote = models.CharField(verbose_name="Código de Lote (ID Interno)", max_length=50, unique=True, blank=True, editable=False, help_text="ID Interno único generado por el sistema (Ej: E1-LOT-00001)")
     compartimento = models.ForeignKey(Compartimento, on_delete=models.PROTECT, verbose_name="Compartimento")
     cantidad = models.PositiveIntegerField(default=0)
     fecha_expiracion = models.DateField(verbose_name="Fecha de expiración", null=True, blank=True)
@@ -480,9 +481,58 @@ class LoteInsumo(models.Model):
         verbose_name = "Lote de Insumo"
         verbose_name_plural = "Lotes de Insumos"
 
+    
     def __str__(self):
         exp_date = self.fecha_expiracion.strftime('%Y-%m-%d') if self.fecha_expiracion else "N/A"
-        return f"{self.cantidad} x {self.producto.sku} | Exp: {exp_date}"
+        codigo = self.codigo_lote if self.codigo_lote else "SIN CODIGO"
+        return f"{self.cantidad} x {self.producto.sku} ({codigo}) | Exp: {exp_date}"
+    
+
+    def save(self, *args, **kwargs):
+        """
+        Sobrescribe el método save para generar un 'codigo_lote' único 
+        al crear un nuevo lote, similar a como lo hace el modelo Activo.
+        """
+        
+        # Comprueba si es un objeto nuevo (not self.pk) y si el código aún no se ha generado
+        if not self.codigo_lote and not self.pk and self.compartimento:
+            
+            # Obtenemos la estación a través de la relación (Compartimento -> Ubicacion -> Estacion)
+            estacion = self.compartimento.ubicacion.estacion
+            
+            # Construye el prefijo usando 'E' y el ID de la estación
+            prefix = f"E{estacion.id}-LOT-" # Ej: "E1-LOT-", "E2-LOT-"
+
+            # Busca el último lote de ESA estación que comience con el prefijo
+            last_lote = LoteInsumo.objects.filter(
+                compartimento__ubicacion__estacion=estacion, 
+                codigo_lote__startswith=prefix
+            ).order_by('codigo_lote').last()
+            
+            next_num = 1
+            if last_lote and last_lote.codigo_lote:
+                try:
+                    # Intenta extraer el número del último código
+                    last_num_str = last_lote.codigo_lote.split(prefix)[-1]
+                    next_num = int(last_num_str) + 1
+                except (IndexError, ValueError):
+                    # Si falla (ej. código malformado), simplemente usa 1
+                    pass 
+
+            # Asigna el nuevo código formateado (ej: "E1-LOT-00001")
+            self.codigo_lote = f"{prefix}{next_num:05d}"
+            
+            # Bucle de seguridad: verifica que el código sea realmente único
+            # (En caso de concurrencia o un ID borrado)
+            while LoteInsumo.objects.filter(
+                compartimento__ubicacion__estacion=estacion, 
+                codigo_lote=self.codigo_lote
+            ).exists():
+                 next_num += 1
+                 self.codigo_lote = f"{prefix}{next_num:05d}"
+            
+        # Llama al método save() original para guardar el objeto
+        super().save(*args, **kwargs)
 
 
 
