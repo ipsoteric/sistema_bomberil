@@ -1529,18 +1529,31 @@ class RecepcionStockView(LoginRequiredMixin, View):
         try:
             estacion = Estacion.objects.get(id=estacion_id)
         except Estacion.DoesNotExist:
-             messages.error(request, "Estación no válida.")
-             return redirect('gestion_inventario:ruta_inicio')
+            messages.error(request, "Estación no válida.")
+            return redirect('gestion_inventario:ruta_inicio')
 
         cabecera_form = RecepcionCabeceraForm(estacion=estacion)
         # Pasamos la estación al formset para que filtre los selects
         detalle_formset = RecepcionDetalleFormSet(form_kwargs={'estacion': estacion}, prefix='detalles')
 
+        # --- MEJORA: Crear el JSON con los datos del producto ---
+        # (Esto es necesario para tu requisito de 'es_expirable')
+        productos = Producto.objects.filter(estacion=estacion)
+        product_data = {}
+        for producto in productos:
+            product_data[producto.id] = {
+                'es_serializado': producto.es_serializado,
+                'es_expirable': producto.es_expirable
+            }
+        # -----------------------------------------------------
+
         context = {
             'cabecera_form': cabecera_form,
             'detalle_formset': detalle_formset,
+            'product_data_json': json.dumps(product_data)
         }
         return render(request, self.template_name, context)
+
 
     def post(self, request, *args, **kwargs):
         estacion_id = request.session.get('active_estacion_id')
@@ -1584,7 +1597,7 @@ class RecepcionStockView(LoginRequiredMixin, View):
                                     compartimento=compartimento,
                                     proveedor=proveedor, # Proveedor de la cabecera
                                     estado_id=Estado.objects.get(nombre='DISPONIBLE', tipo_estado__nombre='OPERATIVO').id,
-                                    codigo_activo=form.cleaned_data.get('codigo_activo'),
+                                    # codigo_activo=form.cleaned_data.get('codigo_activo'),
                                     numero_serie_fabricante=form.cleaned_data.get('numero_serie'),
                                     fecha_fabricacion=form.cleaned_data.get('fecha_fabricacion'),
                                     fecha_recepcion=fecha_recepcion, # Usamos fecha recepción como puesta en servicio inicial
@@ -1641,6 +1654,7 @@ class RecepcionStockView(LoginRequiredMixin, View):
         context = {
             'cabecera_form': cabecera_form,
             'detalle_formset': detalle_formset,
+            'product_data_json': self.get(request).context_data['product_data_json']
         }
         return render(request, self.template_name, context)
 
