@@ -51,7 +51,8 @@ from .forms import (
     RecepcionCabeceraForm,
     RecepcionDetalleFormSet,
     ActivoSimpleCreateForm,
-    LoteInsumoSimpleCreateForm
+    LoteInsumoSimpleCreateForm,
+    LoteAjusteForm
     )
 from .utils import generar_sku_sugerido
 from core.settings import INVENTARIO_AREA_NOMBRE as AREA_NOMBRE
@@ -2221,3 +2222,96 @@ class AnularExistenciaView(LoginRequiredMixin, View):
         except Exception as e:
             messages.error(request, f"Ocurrió un error inesperado al anular: {e}")
             return redirect('gestion_inventario:ruta_stock_actual')
+
+
+
+
+class AjustarStockLoteView(LoginRequiredMixin, View):
+    """
+    Vista para ajustar la cantidad de un LoteInsumo y crear
+    un MovimientoInventario de tipo AJUSTE.
+    """
+    template_name = 'gestion_inventario/pages/ajustar_stock_lote.html'
+    login_url = '/acceso/login/'
+
+    def _get_lote_and_check_permission(self, estacion_id, lote_id):
+        """ Helper para obtener el Lote y verificar permisos """
+        lote = get_object_or_404(
+            LoteInsumo.objects.select_related(
+                'producto__producto_global', 
+                'compartimento__ubicacion',
+                'estado'
+            ),
+            id=lote_id, 
+            compartimento__ubicacion__estacion_id=estacion_id
+        )
+        
+        if lote.estado.nombre == 'ANULADO POR ERROR':
+            messages.error(self.request, "No se puede ajustar un lote que ha sido anulado.")
+            return None
+        
+        return lote
+
+    def get(self, request, lote_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+
+        lote = self._get_lote_and_check_permission(estacion_id, lote_id)
+        if not lote:
+            return redirect('gestion_inventario:ruta_stock_actual')
+        
+        form = LoteAjusteForm(initial={'nueva_cantidad_fisica': lote.cantidad})
+        context = {'lote': lote, 'form': form}
+        return render(request, self.template_name, context)
+
+    def post(self, request, lote_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        lote = self._get_lote_and_check_permission(estacion_id, lote_id)
+        if not lote:
+            return redirect('gestion_inventario:ruta_stock_actual')
+
+        form = LoteAjusteForm(request.POST)
+
+        if form.is_valid():
+            nueva_cantidad = form.cleaned_data['nueva_cantidad_fisica']
+            notas = form.cleaned_data['notas']
+            cantidad_actual = lote.cantidad
+            
+            # Cálculo de la diferencia
+            cantidad_movida = nueva_cantidad - cantidad_actual # (Ej: 48 - 50 = -2)
+            
+            if cantidad_movida == 0:
+                messages.warning(request, "No se realizó ningún cambio (la cantidad es la misma).")
+                return redirect('gestion_inventario:ruta_stock_actual')
+
+            try:
+                with transaction.atomic():
+                    # 1. Actualizar la cantidad del lote
+                    lote.cantidad = nueva_cantidad
+                    lote.save(update_fields=['cantidad', 'updated_at'])
+
+                    # 2. Crear el registro de Movimiento (la auditoría)
+                    MovimientoInventario.objects.create(
+                        tipo_movimiento=TipoMovimiento.AJUSTE,
+                        usuario=request.user,
+                        estacion_id=estacion_id,
+                        compartimento_origen=lote.compartimento, # Lugar del ajuste
+                        lote_insumo=lote,
+                        cantidad_movida=cantidad_movida, # Guardamos la diferencia (ej: -2)
+                        notas=notas # Guardamos el motivo
+                    )
+                
+                messages.success(request, f"Stock del lote {lote.codigo_lote} ajustado a {nueva_cantidad}.")
+                return redirect('gestion_inventario:ruta_stock_actual')
+                
+            except Exception as e:
+                messages.error(request, f"Error al guardar el ajuste: {e}")
+        
+        context = {'lote': lote, 'form': form}
+        return render(request, self.template_name, context)

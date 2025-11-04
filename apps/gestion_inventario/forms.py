@@ -566,3 +566,28 @@ class LoteInsumoSimpleCreateForm(forms.ModelForm):
             'fecha_recepcion', 
             'fecha_expiracion'
         ]
+
+
+
+
+class LoteAjusteForm(forms.Form):
+    """
+    Formulario para ajustar la cantidad de un lote y registrar el motivo.
+    """
+    nueva_cantidad_fisica = forms.IntegerField(
+        label="Nueva Cantidad Física",
+        min_value=0, # Puede ajustarse a 0 si el lote se perdió
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control fs_grande text-center', 
+            'style': 'max-width: 200px; margin: 0 auto;' # Centrar y limitar ancho
+        })
+    )
+    notas = forms.CharField(
+        label="Motivo del Ajuste (Obligatorio)",
+        required=True,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control fs_normal color_primario fondo_secundario_variante border-0', 
+            'rows': 3,
+            'placeholder': 'Ej: Conteo físico 04/11/2025, se encontraron 2 unidades rotas.'
+        })
+    )

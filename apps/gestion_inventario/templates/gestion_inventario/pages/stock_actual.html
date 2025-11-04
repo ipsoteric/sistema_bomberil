@@ -191,12 +191,13 @@
                         <!-- Cantidad -->
                         <td class="text-center">
                             {% if item.producto.es_serializado %}
-                                <strong>1</strong>
+                            <strong>1</strong>
                             {% else %}
-                                <strong>{{ item.cantidad }}</strong>
+                            <strong>{{ item.cantidad }}</strong>
                             {% endif %}
                         </td>
                         
+                        <!-- Estado -->
                         <td class="text-center">
                             {# --- LÓGICA DE ESTADO UNIFICADA --- #}
                             {% with estado_nombre=item.estado.nombre|default:'N/A' %}
@@ -216,6 +217,7 @@
                             {% endif %}
                         </td>
 
+                        <!-- Fecha de recepción -->
                         <td class="fs_pequena">
                            {# Muestra la fecha_recepcion usando el filtro date #}
                            {{ item.fecha_recepcion|date:"d/m/Y"|default:"N/A" }} 
@@ -228,11 +230,18 @@
                                 <a href="#" class="btn btn-sm btn-outline-secondary fs_normal" title="Mover Ítem"><i class="fas fa-truck-moving"></i></a>
 
                                 {% if item.producto.es_serializado %}
+                                    <!-- Anular Activo -->
                                     <a href="{% url 'gestion_inventario:ruta_anular_existencia' tipo_item='activo' item_id=item.id %}" 
                                        class="btn btn-sm btn-outline-danger fs_normal" title="Anular Registro (Error de Ingreso)">
                                         <i class="fas fa-times-circle"></i>
                                     </a>
                                 {% else %}
+                                    <!-- Ajustar stock -->
+                                    <a href="{% url 'gestion_inventario:ruta_ajustar_stock_lote' item.id %}"
+                                       class="btn btn-sm btn-outline-warning fs_normal" title="Ajustar Cantidad">
+                                        <i class="fas fa-balance-scale"></i>
+                                    </a>
+                                    <!--Anular Lote-->
                                     <a href="{% url 'gestion_inventario:ruta_anular_existencia' tipo_item='lote' item_id=item.id %}" 
                                        class="btn btn-sm btn-outline-danger fs_normal" title="Anular Registro (Error de Ingreso)">
                                         <i class="fas fa-times-circle"></i>
