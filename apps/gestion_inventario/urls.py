@@ -14,6 +14,7 @@ from .views import (
     CompartimentoDetalleView,
     CompartimentoCrearView,
     CompartimentoEditView,
+    CompartimentoDeleteView,
     CatalogoGlobalListView,
     ApiGetProductoGlobalSKU,
     ApiAnadirProductoLocal,
@@ -49,6 +50,8 @@ urlpatterns = [
     path('compartimentos/<int:compartimento_id>/detalle/', CompartimentoDetalleView.as_view(), name='ruta_detalle_compartimento'),
     # Editar Compartimento
     path('compartimentos/<int:compartimento_id>/editar/', CompartimentoEditView.as_view(), name='ruta_editar_compartimento'),
+    # Eliminar Compartimento
+    path('compartimentos/<int:compartimento_id>/eliminar/', CompartimentoDeleteView.as_view(), name='ruta_eliminar_compartimento'),
     # Crear área
     path('areas/crear/', AreaCrearView.as_view(), name="ruta_crear_area"),
     # Gestionar detalle de una ubicación

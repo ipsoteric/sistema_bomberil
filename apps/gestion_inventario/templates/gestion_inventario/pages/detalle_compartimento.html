@@ -57,6 +57,9 @@
                         <a class="btn btn-secondary fs_normal" href="{% url 'gestion_inventario:ruta_editar_compartimento' compartimento.id %}">
                             <i class="fa-solid fa-pen-to-square"></i> Editar
                         </a>
+                        <a class="btn btn-outline-danger fs_normal ms-md-auto" href="{% url 'gestion_inventario:ruta_eliminar_compartimento' compartimento.id %}">
+                            <i class="fa-solid fa-trash"></i> Eliminar
+                        </a>
                     </div>
                 </div>
             </div>

@@ -743,6 +743,67 @@ class CompartimentoEditView(LoginRequiredMixin, View):
 
 
 
+class CompartimentoDeleteView(LoginRequiredMixin, View):
+    """
+    Vista para confirmar y ejecutar la eliminación de un Compartimento.
+    Maneja ProtectedError si el compartimento aún tiene existencias (Activos o Lotes).
+    """
+    template_name = 'gestion_inventario/pages/eliminar_compartimento.html'
+    login_url = '/acceso/login/'
+
+    def get(self, request, compartimento_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        compartimento = get_object_or_404(
+            Compartimento.objects.select_related('ubicacion'),
+            id=compartimento_id,
+            ubicacion__estacion_id=estacion_id
+        )
+        
+        context = { 'compartimento': compartimento }
+        return render(request, self.template_name, context)
+
+    def post(self, request, compartimento_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+
+        compartimento = get_object_or_404(
+            Compartimento.objects.select_related('ubicacion'),
+            id=compartimento_id,
+            ubicacion__estacion_id=estacion_id
+        )
+        
+        # Guardamos datos para la redirección y mensajes
+        ubicacion_padre_id = compartimento.ubicacion.id
+        compartimento_nombre = compartimento.nombre
+        
+        try:
+            # Intento de eliminación
+            compartimento.delete()
+            
+            messages.success(request, f"El compartimento '{compartimento_nombre}' ha sido eliminado exitosamente.")
+            
+            # Redirigir a la página de la ubicación padre
+            return redirect('gestion_inventario:ruta_gestionar_ubicacion', ubicacion_id=ubicacion_padre_id)
+
+        except ProtectedError:
+            # Si falla (on_delete=PROTECT), capturamos el error
+            messages.error(request, f"No se puede eliminar '{compartimento_nombre}'. Asegúrese de que el compartimento esté completamente vacío (sin Activos ni Lotes).")
+            # Devolvemos al usuario a la página de detalle del compartimento
+            return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento.id)
+        
+        except Exception as e:
+            messages.error(request, f"Ocurrió un error inesperado: {e}")
+            return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento.id)
+
+
+
+
 class CatalogoGlobalListView(View):
     """
     Muestra el Catálogo Maestro Global de Productos con filtros avanzados
