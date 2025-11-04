@@ -45,7 +45,9 @@ from .forms import (
     ProveedorForm,
     ContactoProveedorForm,
     RecepcionCabeceraForm,
-    RecepcionDetalleFormSet
+    RecepcionDetalleFormSet,
+    ActivoSimpleCreateForm,
+    LoteInsumoSimpleCreateForm
     )
 from .utils import generar_sku_sugerido
 from core.settings import INVENTARIO_AREA_NOMBRE as AREA_NOMBRE
@@ -1641,3 +1643,108 @@ class RecepcionStockView(LoginRequiredMixin, View):
             'detalle_formset': detalle_formset,
         }
         return render(request, self.template_name, context)
+
+
+
+
+class AgregarStockACompartimentoView(LoginRequiredMixin, View):
+    """
+    Vista para añadir stock (Activos o Lotes) directamente
+    a un compartimento específico.
+    """
+    template_name = 'gestion_inventario/pages/agregar_stock_compartimento.html'
+    login_url = '/acceso/login/'
+
+    def get_context_data(self, request, compartimento_id, **kwargs):
+        """Helper para construir el contexto básico."""
+        estacion_id = request.session.get('active_estacion_id')
+        
+        compartimento = get_object_or_404(
+            Compartimento.objects.select_related('ubicacion'),
+            id=compartimento_id,
+            ubicacion__estacion_id=estacion_id
+        )
+
+        context = {
+            'compartimento': compartimento,
+            'activo_form': kwargs.get(
+                'activo_form', 
+                ActivoSimpleCreateForm(
+                    initial={'compartimento': compartimento}, 
+                    estacion_id=estacion_id
+                )
+            ),
+            'lote_form': kwargs.get(
+                'lote_form', 
+                LoteInsumoSimpleCreateForm(
+                    initial={'compartimento': compartimento}, 
+                    estacion_id=estacion_id
+                )
+            )
+        }
+        return context
+
+    def get(self, request, compartimento_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        context = self.get_context_data(request, compartimento_id)
+        return render(request, self.template_name, context)
+
+    def post(self, request, compartimento_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        # Identificamos qué formulario se envió
+        action = request.POST.get('action')
+        
+        # Pasamos el 'estacion_id' al constructor del form
+        activo_form = ActivoSimpleCreateForm(request.POST, estacion_id=estacion_id)
+        lote_form = LoteInsumoSimpleCreateForm(request.POST, estacion_id=estacion_id)
+        
+        if action == 'add_activo':
+            if activo_form.is_valid():
+
+                try:
+                    # Buscamos el estado 'DISPONIBLE' (ID 1 según tu SQL)
+                    estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
+                except Estado.DoesNotExist:
+                    # Error crítico si el estado no existe en la BD
+                    messages.error(request, "Error crítico: No se encontró el estado 'DISPONIBLE'. Contacte al administrador.")
+                    context = self.get_context_data(request, compartimento_id, activo_form=activo_form)
+                    context['active_tab'] = 'activo'
+                    return render(request, self.template_name, context)
+                
+                # Hacemos commit=False para añadir la estación
+                activo = activo_form.save(commit=False)
+                # El modelo Activo REQUIERE una estacion_id
+                activo.estacion_id = estacion_id 
+                activo.estado = estado_disponible
+                activo.save()
+                
+                messages.success(request, f"Activo '{activo.producto.producto_global.nombre_oficial}' añadido correctamente.")
+                return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento_id)
+            else:
+                messages.error(request, "Error al añadir el Activo. Revisa los campos.")
+                context = self.get_context_data(request, compartimento_id, activo_form=activo_form)
+                context['active_tab'] = 'activo' # Para reabrir la pestaña correcta
+                return render(request, self.template_name, context)
+
+        elif action == 'add_insumo':
+            if lote_form.is_valid():
+                # El modelo LoteInsumo no tiene 'estacion_id', se guarda directo
+                lote = lote_form.save()
+                messages.success(request, f"Lote de '{lote.producto.producto_global.nombre_oficial}' (x{lote.cantidad}) añadido correctamente.")
+                return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento_id)
+            else:
+                messages.error(request, "Error al añadir el Lote. Revisa los campos.")
+                context = self.get_context_data(request, compartimento_id, lote_form=lote_form)
+                context['active_tab'] = 'insumo' # Para reabrir la pestaña correcta
+                return render(request, self.template_name, context)
+
+        # Si 'action' no es válido, redirigir
+        return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento_id)

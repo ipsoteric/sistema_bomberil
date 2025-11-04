@@ -1,6 +1,9 @@
 from django import forms
 from django.utils import timezone
 from .models import (
+    Region,
+    Comuna,
+    Estado,
     Ubicacion, 
     Compartimento, 
     Categoria, 
@@ -9,8 +12,8 @@ from .models import (
     Producto, 
     Proveedor,
     ContactoProveedor,
-    Region,
-    Comuna
+    Activo,
+    LoteInsumo
     )
 
 
@@ -368,3 +371,130 @@ RecepcionDetalleFormSet = forms.formset_factory(
     extra=1, # Empieza con una línea vacía
     can_delete=True # Permite eliminar líneas
 )
+
+
+
+
+class ActivoSimpleCreateForm(forms.ModelForm):
+    """
+    Formulario rápido para crear un Activo y asignarlo a un compartimento.
+    """
+
+    def __init__(self, *args, **kwargs):
+        # Recibimos el estacion_id desde la vista para filtrar
+        estacion_id = kwargs.pop('estacion_id', None)
+        super().__init__(*args, **kwargs)
+
+        if estacion_id:
+            # Filtramos productos: solo de esta estación Y que sean serializados
+            self.fields['producto'].queryset = Producto.objects.filter(
+                estacion_id=estacion_id, 
+                es_serializado=True
+            ).select_related('producto_global')
+            
+            # Filtramos proveedores: solo los de esta estación (basado en tu RecepcionCabeceraForm)
+            self.fields['proveedor'].queryset = Proveedor.objects.filter(
+                estacion_creadora=estacion_id
+            ).order_by('nombre')
+        
+        # Ocultamos el campo compartimento, se asigna desde la vista
+        if 'compartimento' in self.fields:
+            self.fields['compartimento'].widget = forms.HiddenInput()
+        
+        # Ponemos la fecha de recepción por defecto
+        if 'fecha_recepcion' in self.fields:
+            self.fields['fecha_recepcion'].initial = timezone.now().date()
+        
+        # Aplicamos clases de estilo
+        css_class = 'form-control fs_normal color_primario fondo_secundario_variante border-0'
+        css_class_select = 'form-select fs_normal color_primario fondo_secundario_variante border-0'
+        
+        self.fields['producto'].widget.attrs.update({'class': css_class_select})
+        self.fields['proveedor'].widget.attrs.update({'class': css_class_select})
+        self.fields['numero_serie_fabricante'].widget.attrs.update({'class': css_class})
+        self.fields['notas_adicionales'].widget.attrs.update({'class': css_class, 'rows': 3})
+        
+        date_widget_attrs = {'class': css_class, 'type': 'date'}
+        self.fields['fecha_fabricacion'].widget = forms.DateInput(attrs=date_widget_attrs)
+        self.fields['fecha_recepcion'].widget = forms.DateInput(attrs=date_widget_attrs)
+        self.fields['fecha_expiracion'].widget = forms.DateInput(attrs=date_widget_attrs)
+
+
+    class Meta:
+        model = Activo
+        # 'codigo_activo' se genera solo, 'estacion' se pasa en la vista
+        fields = [
+            'producto', 
+            'compartimento', 
+            'proveedor',
+            'numero_serie_fabricante', 
+            'fecha_recepcion', 
+            'fecha_fabricacion',
+            'fecha_expiracion',
+            'notas_adicionales',
+        ]
+
+
+
+
+class LoteInsumoSimpleCreateForm(forms.ModelForm):
+    """
+    Formulario rápido para crear un Lote de Insumo y asignarlo a un compartimento.
+    """
+    
+    def __init__(self, *args, **kwargs):
+        # Recibimos el estacion_id desde la vista para filtrar
+        estacion_id = kwargs.pop('estacion_id', None)
+        super().__init__(*args, **kwargs)
+
+        if estacion_id:
+            # Filtramos productos: solo de esta estación Y que NO sean serializados
+            self.fields['producto'].queryset = Producto.objects.filter(
+                estacion_id=estacion_id, 
+                es_serializado=False
+            ).select_related('producto_global')
+
+        # Ocultamos el campo compartimento, se asigna desde la vista
+        if 'compartimento' in self.fields:
+            self.fields['compartimento'].widget = forms.HiddenInput()
+
+        # Ponemos la fecha de recepción por defecto
+        if 'fecha_recepcion' in self.fields:
+            self.fields['fecha_recepcion'].initial = timezone.now().date()
+
+        # Aplicamos clases de estilo
+        css_class = 'form-control fs_normal color_primario fondo_secundario_variante border-0'
+        css_class_select = 'form-select fs_normal color_primario fondo_secundario_variante border-0'
+
+        self.fields['producto'].widget.attrs.update({'class': css_class_select})
+        self.fields['cantidad'].widget.attrs.update({'class': css_class, 'type': 'number', 'min': '1', 'step': '1'})
+        self.fields['numero_lote_fabricante'].widget.attrs.update({'class': css_class})
+        
+        date_widget_attrs = {'class': css_class, 'type': 'date'}
+        self.fields['fecha_recepcion'].widget = forms.DateInput(attrs=date_widget_attrs)
+        self.fields['fecha_expiracion'].widget = forms.DateInput(attrs=date_widget_attrs)
+        
+    def clean(self):
+        """
+        Validación basada en la lógica de tu RecepcionDetalleForm:
+        Si el producto 'es_expirable', la fecha de expiración es obligatoria.
+        """
+        cleaned_data = super().clean()
+        producto = cleaned_data.get('producto')
+        fecha_expiracion = cleaned_data.get('fecha_expiracion')
+
+        if producto and producto.es_expirable and not fecha_expiracion:
+            self.add_error('fecha_expiracion', 'La fecha de expiración es requerida para este producto.')
+        
+        return cleaned_data
+
+    class Meta:
+        model = LoteInsumo
+        fields = [
+            'producto', 
+            'compartimento', 
+            'cantidad', 
+            'numero_lote_fabricante', 
+            'fecha_recepcion', 
+            'fecha_expiracion'
+        ]

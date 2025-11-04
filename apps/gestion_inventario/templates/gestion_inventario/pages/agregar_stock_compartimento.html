@@ -1,0 +1,157 @@
+{% extends 'gestion_inventario/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Añadir Stock a {{ compartimento.nombre }}{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-plus-circle me-2"></i> Añadir Stock
+    </span>
+{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10 col-xl-8">
+
+            <div class="card shadow-sm mb-4 fondo_secundario border-0">
+                <div class="card-body p-4">
+                    <h5 class="color_primario fs_mediana fw-bold">Destino del Stock</h5>
+                    <p class="fs_normal color_primario_variante mb-1">
+                        Añadiendo existencias a: <strong>{{ compartimento.nombre }}</strong>
+                    </p>
+                    <p class="fs_normal color_primario_variante mb-0">
+                        Ubicación: 
+                        <a href="{% url 'gestion_inventario:ruta_gestionar_ubicacion' compartimento.ubicacion.id %}">
+                            {{ compartimento.ubicacion.nombre }}
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4 fondo_secundario border-0">
+                <div class="card-header fondo_secundario_variante border-0 p-0">
+                    <ul class="nav nav-tabs nav-fill" id="myTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fs_normal p-3 {% if active_tab != 'insumo' %}active{% endif %}" id="activo-tab" data-bs-toggle="tab" data-bs-target="#activo-tab-pane" type="button" role="tab" aria-controls="activo-tab-pane" aria-selected="true">
+                                <i class="fas fa-barcode me-1"></i> Añadir Activo (Serializado)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fs_normal p-3 {% if active_tab == 'insumo' %}active{% endif %}" id="insumo-tab" data-bs-toggle="tab" data-bs-target="#insumo-tab-pane" type="button" role="tab" aria-controls="insumo-tab-pane" aria-selected="false">
+                                <i class="fas fa-boxes me-1"></i> Añadir Insumo (Lote)
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body p-4 p-md-5">
+                    <div class="tab-content" id="myTabContent">
+                        
+                        <div class="tab-pane fade {% if active_tab != 'insumo' %}show active{% endif %}" id="activo-tab-pane" role="tabpanel" aria-labelledby="activo-tab" tabindex="0">
+                            
+                            <form method="POST" novalidate>
+                                {% csrf_token %}
+                                {{ activo_form.compartimento }} <div class="row g-3">
+                                    <div class="col-12">
+                                        <label for="{{ activo_form.producto.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Producto (Activo)</label>
+                                        {{ activo_form.producto }}
+                                        {% if activo_form.producto.errors %}<div class="invalid-feedback d-block">{{ activo_form.producto.errors.0 }}</div>{% endif %}
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="{{ activo_form.proveedor.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Proveedor</label>
+                                        {{ activo_form.proveedor }}
+                                        {% if activo_form.proveedor.errors %}<div class="invalid-feedback d-block">{{ activo_form.proveedor.errors.0 }}</div>{% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <label for="{{ activo_form.numero_serie_fabricante.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">N° Serie Fabricante (Opcional)</label>
+                                        {{ activo_form.numero_serie_fabricante }}
+                                        {% if activo_form.numero_serie_fabricante.errors %}<div class="invalid-feedback d-block">{{ activo_form.numero_serie_fabricante.errors.0 }}</div>{% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <label for="{{ activo_form.fecha_recepcion.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Fecha Recepción</label>
+                                        {{ activo_form.fecha_recepcion }}
+                                        {% if activo_form.fecha_recepcion.errors %}<div class="invalid-feedback d-block">{{ activo_form.fecha_recepcion.errors.0 }}</div>{% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <label for="{{ activo_form.fecha_fabricacion.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Fecha Fabricación (Opcional)</jlabel>
+                                        {{ activo_form.fecha_fabricacion }}
+                                        {% if activo_form.fecha_fabricacion.errors %}<div class="invalid-feedback d-block">{{ activo_form.fecha_fabricacion.errors.0 }}</div>{% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="{{ activo_form.fecha_expiracion.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Fecha Expiración (Opcional)</label>
+                                        {{ activo_form.fecha_expiracion }}
+                                        {% if activo_form.fecha_expiracion.errors %}<div class="invalid-feedback d-block">{{ activo_form.fecha_expiracion.errors.0 }}</div>{% endif %}
+                                    </div>
+                                    
+                                    <div class="col-12">
+                                        <label for="{{ activo_form.notas_adicionales.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Notas (Opcional)</label>
+                                        {{ activo_form.notas_adicionales }}
+                                        {% if activo_form.notas_adicionales.errors %}<div class="invalid-feedback d-block">{{ activo_form.notas_adicionales.errors.0 }}</div>{% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-end mt-4 pt-4 border-top">
+                                    <a href="{% url 'gestion_inventario:ruta_detalle_compartimento' compartimento.id %}" class="btn btn-secondary fs_normal me-2">Cancelar</a>
+                                    <button type="submit" name="action" value="add_activo" class="btn btn-primary fs_normal">
+                                        <i class="fas fa-save me-1"></i> Guardar Activo
+                                    </button>
+                                </div>
+                            </form>
+
+                        </div>
+                        
+                        <div class="tab-pane fade {% if active_tab == 'insumo' %}show active{% endif %}" id="insumo-tab-pane" role="tabpanel" aria-labelledby="insumo-tab" tabindex="0">
+
+                            <form method="POST" novalidate>
+                                {% csrf_token %}
+                                {{ lote_form.compartimento }} <div class="row g-3">
+                                    <div class="col-12">
+                                        <label for="{{ lote_form.producto.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Producto (Insumo)</label>
+                                        {{ lote_form.producto }}
+                                        {% if lote_form.producto.errors %}<div class="invalid-feedback d-block">{{ lote_form.producto.errors.0 }}</div>{% endif %}
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="{{ lote_form.cantidad.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Cantidad</label>
+                                        {{ lote_form.cantidad }}
+                                        {% if lote_form.cantidad.errors %}<div class="invalid-feedback d-block">{{ lote_form.cantidad.errors.0 }}</div>{% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="{{ lote_form.numero_lote_fabricante.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">N° Lote (Opcional)</label>
+                                        {{ lote_form.numero_lote_fabricante }}
+                                        {% if lote_form.numero_lote_fabricante.errors %}<div class="invalid-feedback d-block">{{ lote_form.numero_lote_fabricante.errors.0 }}</div>{% endif %}
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="{{ lote_form.fecha_recepcion.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Fecha Recepción</label>
+                                        {{ lote_form.fecha_recepcion }}
+                                        {% if lote_form.fecha_recepcion.errors %}<div class="invalid-feedback d-block">{{ lote_form.fecha_recepcion.errors.0 }}</div>{% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="{{ lote_form.fecha_expiracion.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">Fecha Expiración (Opcional)</label>
+                                        {{ lote_form.fecha_expiracion }}
+                                        {% if lote_form.fecha_expiracion.errors %}<div class="invalid-feedback d-block">{{ lote_form.fecha_expiracion.errors.0 }}</div>{% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-end mt-4 pt-4 border-top">
+                                    <a href="{% url 'gestion_inventario:ruta_detalle_compartimento' compartimento.id %}" class="btn btn-secondary fs_normal me-2">Cancelar</a>
+                                    <button type="submit" name="action" value="add_insumo" class="btn btn-primary fs_normal">
+                                        <i class="fas fa-save me-1"></i> Guardar Lote
+                                    </button>
+                                </div>
+                            </form>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
