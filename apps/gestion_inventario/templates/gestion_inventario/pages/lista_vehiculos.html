@@ -89,8 +89,8 @@
                         <td class="text-center">{{ vehiculo.total_existencias }}</td>
                         <td class="text-center">
                             <a class="btn btn-sm btn-outline-primary fs_normal" 
-                               href="#">Gestionar</a> <a class="btn btn-sm btn-outline-secondary fs_normal" 
-                               href="#">Editar</a> </td>
+                               href="{% url 'gestion_inventario:ruta_gestionar_ubicacion' vehiculo.id %}">Gestionar</a> <a class="btn btn-sm btn-outline-secondary fs_normal" 
+                               href="{% url 'gestion_inventario:ruta_editar_vehiculo' vehiculo.id %}">Editar</a> </td>
                     </tr>
                     {% empty %}
                     <tr>

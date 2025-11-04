@@ -73,14 +73,14 @@
                     {% for c in compartimentos %}
                     <tr>
                         <td>
-                            <a href="{% url 'gestion_inventario:ruta_gestionar_area' c.ubicacion.id %}">{{ c.ubicacion.nombre }}</a>
+                            <a href="{% url 'gestion_inventario:ruta_gestionar_ubicacion' c.ubicacion.id %}">{{ c.ubicacion.nombre }}</a>
                         </td>
                         <td><strong>{{ c.nombre }}</strong></td>
                         <td>{{ c.descripcion|default:'-' }}</td>
                         <td class="text-center">
-                            <a class="btn btn-sm btn-outline-primary fs_normal" href="#">Ver</a>
-                            <a class="btn btn-sm btn-outline-secondary fs_normal" href="#">Editar</a>
-                            <a class="btn btn-sm btn-outline-danger fs_normal" href="#">Eliminar</a>
+                            <a class="btn btn-sm btn-outline-primary fs_normal" href="{% url 'gestion_inventario:ruta_detalle_compartimento' compartimento_id=c.id %}">Ver</a>
+                            <a class="btn btn-sm btn-outline-secondary fs_normal" href="{% url 'gestion_inventario:ruta_editar_compartimento' compartimento_id=c.id %}">Editar</a>
+                            <a class="btn btn-sm btn-outline-danger fs_normal" href="{% url 'gestion_inventario:ruta_eliminar_compartimento' compartimento_id=c.id %}">Eliminar</a>
                         </td>
                     </tr>
                     {% empty %}
