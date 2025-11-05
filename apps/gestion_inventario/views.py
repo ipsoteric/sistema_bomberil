@@ -52,7 +52,8 @@ from .forms import (
     RecepcionDetalleFormSet,
     ActivoSimpleCreateForm,
     LoteInsumoSimpleCreateForm,
-    LoteAjusteForm
+    LoteAjusteForm,
+    MovimientoFilterForm
     )
 from .utils import generar_sku_sugerido
 from core.settings import INVENTARIO_AREA_NOMBRE as AREA_NOMBRE
@@ -2314,4 +2315,87 @@ class AjustarStockLoteView(LoginRequiredMixin, View):
                 messages.error(request, f"Error al guardar el ajuste: {e}")
         
         context = {'lote': lote, 'form': form}
+        return render(request, self.template_name, context)
+
+
+
+
+class MovimientoInventarioListView(LoginRequiredMixin, View):
+    """
+    Muestra una lista paginada y filtrable de todos los 
+    movimientos de inventario de la estación activa.
+    """
+    template_name = 'gestion_inventario/pages/historial_movimientos.html'
+    login_url = '/acceso/login/'
+    paginate_by = 50 # 50 movimientos por página
+
+    def get(self, request):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        try:
+            estacion = Estacion.objects.get(id=estacion_id)
+        except Estacion.DoesNotExist:
+            messages.error(request, "Estación activa no encontrada.")
+            return redirect('gestion_inventario:ruta_inicio')
+
+        # Consulta base (optimizada con select_related)
+        movimientos_list = MovimientoInventario.objects.filter(
+            estacion=estacion
+        ).select_related(
+            'usuario', 
+            'proveedor_origen', 
+            'compartimento_origen__ubicacion', 
+            'compartimento_destino__ubicacion', 
+            'activo__producto__producto_global', 
+            'lote_insumo__producto__producto_global'
+        ).order_by('-fecha_hora') # El 'ordering' de tu Meta
+
+        # Inicializar formulario de filtros (pasamos la estación)
+        filter_form = MovimientoFilterForm(request.GET, estacion=estacion)
+        
+        # Aplicar filtros si el formulario es válido (o si hay datos GET)
+        if request.GET:
+            # Filtro de Búsqueda (q)
+            q = request.GET.get('q')
+            if q:
+                movimientos_list = movimientos_list.filter(
+                    Q(activo__producto__producto_global__nombre_oficial__icontains=q) |
+                    Q(lote_insumo__producto__producto_global__nombre_oficial__icontains=q) |
+                    Q(activo__codigo_activo__icontains=q) |
+                    Q(lote_insumo__codigo_lote__icontains=q) |
+                    Q(notas__icontains=q)
+                ).distinct()
+
+            # Filtro por Tipo de Movimiento
+            tipo = request.GET.get('tipo_movimiento')
+            if tipo:
+                movimientos_list = movimientos_list.filter(tipo_movimiento=tipo)
+
+            # Filtro por Usuario
+            usuario_id = request.GET.get('usuario')
+            if usuario_id:
+                movimientos_list = movimientos_list.filter(usuario_id=usuario_id)
+
+            # Filtro por Fecha
+            fecha_inicio = request.GET.get('fecha_inicio')
+            if fecha_inicio:
+                movimientos_list = movimientos_list.filter(fecha_hora__gte=fecha_inicio)
+            
+            fecha_fin = request.GET.get('fecha_fin')
+            if fecha_fin:
+                movimientos_list = movimientos_list.filter(fecha_hora__lte=fecha_fin)
+
+        # Paginación
+        paginator = Paginator(movimientos_list, self.paginate_by)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context = {
+            'filter_form': filter_form,
+            'movimientos': page_obj,
+            'page_obj': page_obj, # Para la plantilla de paginación
+        }
         return render(request, self.template_name, context)

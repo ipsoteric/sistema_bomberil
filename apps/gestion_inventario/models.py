@@ -551,11 +551,11 @@ class LoteInsumo(models.Model):
 
 
 class TipoMovimiento(models.TextChoices):
-    ENTRADA = 'ENT', 'Entrada (Recepción)'
-    SALIDA = 'SAL', 'Salida (Consumo/Baja)'
+    ENTRADA = 'ENT', 'Entrada'
+    SALIDA = 'SAL', 'Salida'
     TRANSFERENCIA_INTERNA = 'TRA', 'Transferencia'
-    AJUSTE = 'AJU', 'Ajuste de Inventario'
-    TRASLADO = 'TRAS', 'Traslado de inventario a otra estación'
+    AJUSTE = 'AJU', 'Ajuste'
+    TRASLADO = 'TRAS', 'Traslado'
 
 class MovimientoInventario(models.Model):
     """

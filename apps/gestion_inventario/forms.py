@@ -15,8 +15,10 @@ from .models import (
     Proveedor,
     ContactoProveedor,
     Activo,
-    LoteInsumo
-    )
+    LoteInsumo,
+    TipoMovimiento
+)
+from apps.gestion_usuarios.models import Usuario
 
 
 class AreaForm(forms.ModelForm):
@@ -591,3 +593,55 @@ class LoteAjusteForm(forms.Form):
             'placeholder': 'Ej: Conteo físico 04/11/2025, se encontraron 2 unidades rotas.'
         })
     )
+
+
+
+
+class MovimientoFilterForm(forms.Form):
+    
+    # Usamos required=False para que no sean obligatorios
+    q = forms.CharField(
+        label="Buscar", 
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control form-control-sm fs_normal', 
+            'placeholder': 'Producto, SKU, Lote, Notas...'
+        })
+    )
+    
+    tipo_movimiento = forms.ChoiceField(
+        label="Tipo de Movimiento",
+        required=False,
+        choices=[('', '-- Todos --')] + TipoMovimiento.choices, # Añade "Todos"
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm fs_normal'})
+    )
+    
+    usuario = forms.ModelChoiceField(
+        label="Usuario",
+        required=False,
+        queryset=Usuario.objects.none(), # Se poblará en la vista
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm fs_normal'})
+    )
+    
+    fecha_inicio = forms.DateField(
+        label="Desde",
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control form-control-sm fs_normal'})
+    )
+    
+    fecha_fin = forms.DateField(
+        label="Hasta",
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control form-control-sm fs_normal'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        # Recibimos la estación desde la vista para filtrar el queryset de usuarios
+        estacion = kwargs.pop('estacion', None)
+        super().__init__(*args, **kwargs)
+        
+        if estacion:
+            # CORRECCIÓN: Usamos la relación 'membresias' definida en tu modelo Membresia
+            self.fields['usuario'].queryset = Usuario.objects.filter(
+                membresias__estacion=estacion
+            ).order_by('first_name').distinct()

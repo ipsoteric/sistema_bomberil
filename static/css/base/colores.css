@@ -200,3 +200,7 @@
 .color_negro {
     color: var(--color-negro);
 }
+
+.color_amarillo {
+    color: var(--color-amarillo);
+}
