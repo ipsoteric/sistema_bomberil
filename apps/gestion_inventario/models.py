@@ -550,12 +550,57 @@ class LoteInsumo(models.Model):
 
 
 
+class Destinatario(models.Model):
+    """(Local) Modelo para registrar a quién le prestamos cosas"""
+    estacion = models.ForeignKey(Estacion, on_delete=models.CASCADE)
+    nombre_entidad = models.CharField(max_length=255, help_text="Ej: Clínica XYZ, Bomberos de Iquique")
+    nombre_contacto = models.CharField(max_length=255, blank=True, null=True, help_text="Persona que recibe")
+    telefono_contacto = models.CharField(max_length=20, blank=True, null=True)
+    rut_entidad = models.CharField(max_length=12, blank=True, null=True)
+
+    def __str__(self):
+        return self.nombre_entidad
+
+
+
+
+class Prestamo(models.Model):
+    """Modelo para registrar los préstamos/asignaciones de existencias a entidades externas"""
+    class EstadoPrestamo(models.TextChoices):
+        PENDIENTE = 'PEN', 'Pendiente'
+        DEVUELTO_PARCIAL = 'PAR', 'Devuelto Parcialmente'
+        COMPLETADO = 'COM', 'Completado'
+
+    estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT)
+    usuario_responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    destinatario = models.ForeignKey(Destinatario, on_delete=models.PROTECT)
+    fecha_prestamo = models.DateTimeField(default=timezone.now)
+    fecha_devolucion_esperada = models.DateField(blank=True, null=True)
+    estado = models.CharField(max_length=3, choices=EstadoPrestamo.choices, default=EstadoPrestamo.PENDIENTE)
+    notas_prestamo = models.TextField(blank=True, null=True)
+
+
+class PrestamoDetalle(models.Model):
+    """Modelo para registrar los ítems específicos de cada préstamo"""
+    prestamo = models.ForeignKey(Prestamo, on_delete=models.CASCADE, related_name="items")
+    # Si prestamos un Activo (ej. Tabla Espinal)
+    activo = models.ForeignKey(Activo, on_delete=models.PROTECT, null=True, blank=True)
+    # Si prestamos un Insumo (ej. Cuellos)
+    lote = models.ForeignKey(LoteInsumo, on_delete=models.PROTECT, null=True, blank=True)
+    cantidad_prestada = models.PositiveIntegerField(default=1)
+    cantidad_devuelta = models.PositiveIntegerField(default=0)
+
+
+
+
 class TipoMovimiento(models.TextChoices):
     ENTRADA = 'ENT', 'Entrada'
     SALIDA = 'SAL', 'Salida'
     TRANSFERENCIA_INTERNA = 'TRA', 'Transferencia'
     AJUSTE = 'AJU', 'Ajuste'
     TRASLADO = 'TRAS', 'Traslado'
+    PRESTAMO = 'PRE', 'Préstamo Externo'
+    DEVOLUCION = 'DEV', 'Devolución de Préstamo'
 
 class MovimientoInventario(models.Model):
     """
