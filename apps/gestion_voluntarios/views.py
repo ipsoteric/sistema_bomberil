@@ -18,11 +18,11 @@ class VoluntariosListaView(View):
 # Crear voluntario
 class VoluntariosCrearView(View):
     def get(self, request):
-        return render(request, "gestion_voluntarios/pages/crear_voluntarios.html")
+        return render(request, "gestion_voluntarios/pages/crear_voluntario.html")
 
     def post(self, request):
         # Lógica para guardar voluntario (más adelante)
-        return render(request, "gestion_voluntarios/pages/crear_voluntarios.html")
+        return render(request, "gestion_voluntarios/pages/crear_voluntario.html")
 
 
 # Ver voluntario

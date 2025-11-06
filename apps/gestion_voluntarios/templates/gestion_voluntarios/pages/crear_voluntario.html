@@ -1,0 +1,70 @@
+{# Plantilla base #}{% extends 'gestion_voluntarios/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Título de la ventana #} {% block titulo_ventana %}Módulo{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Título de la Página{% endblock %}
+
+{% block contenido %}
+
+
+    <div class="container">
+        <h1>Agregar Nuevo Voluntario</h1>
+        <form action="#" method="POST">
+
+            <div class="form-section">
+                <h2>Información Personal</h2>
+                <div class="form-group">
+                    <label for="nombre">Nombre Completo:</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="rut">RUT/DNI:</label>
+                    <input type="text" id="rut" name="rut" placeholder="Ej: 12.345.678-9" required>
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfonos:</label>
+                    <input type="tel" id="telefono" name="telefono" placeholder="Separar por comas">
+                </div>
+                <div class="form-group">
+                    <label for="email">Correo Electrónico:</label>
+                    <input type="email" id="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="imagen">Foto de Perfil:</label>
+                    <input type="file" id="imagen" name="imagen" accept="image/*">
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Información Bomberil</h2>
+                <div class="form-group">
+                    <label for="estacion">Estación Actual:</label>
+                    <select id="estacion" name="estacion" required>
+                        <option value="">Seleccione una estación</option>
+                        <option value="1">Compañía 1</option>
+                        <option value="2">Compañía 2</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rango">Rango Bomberil:</label>
+                    <select id="rango" name="rango" required>
+                        <option value="">Seleccione un rango</option>
+                        <option value="voluntario">Voluntario</option>
+                        <option value="teniente">Teniente</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="fecha_ingreso">Fecha de Ingreso:</label>
+                    <input type="date" id="fecha_ingreso" name="fecha_ingreso" required>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="btn-primary">Guardar</button>
+                <button type="button" class="btn-secondary">Cancelar</button>
+            </div>
+
+        </form>
+    </div>
+
+
+{% endblock %}
