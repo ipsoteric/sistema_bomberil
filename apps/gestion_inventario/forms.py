@@ -662,3 +662,20 @@ class BajaExistenciaForm(forms.Form):
             'placeholder': 'Ej: Fin de vida útil, casco roto en emergencia, lote vencido.'
         })
     )
+
+
+
+
+class ExtraviadoExistenciaForm(forms.Form):
+    """
+    Formulario para registrar el motivo al reportar una existencia como extraviada.
+    """
+    notas = forms.CharField(
+        label="Notas (Obligatorio)",
+        required=True,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control fs_normal color_primario fondo_secundario_variante border-0', 
+            'rows': 3,
+            'placeholder': 'Ej: No encontrado durante el inventario físico 05/11/2025.'
+        })
+    )

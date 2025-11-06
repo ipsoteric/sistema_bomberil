@@ -33,7 +33,8 @@ from .views import (
     AnularExistenciaView,
     AjustarStockLoteView,
     MovimientoInventarioListView,
-    BajaExistenciaView
+    BajaExistenciaView,
+    ExtraviadoExistenciaView
     )
 
 app_name = 'gestion_inventario'
@@ -112,6 +113,8 @@ urlpatterns = [
     path('lotes/<int:lote_id>/ajustar-stock/', AjustarStockLoteView.as_view(), name='ruta_ajustar_stock_lote'),
     # Dar de baja existencia
     path('existencia/<str:tipo_item>/<int:item_id>/dar-de-baja/', BajaExistenciaView.as_view(), name='ruta_dar_de_baja_existencia'),
+    # Reportar extravío de existencia
+    path('existencia/<str:tipo_item>/<int:item_id>/extraviado/', ExtraviadoExistenciaView.as_view(), name='ruta_extraviado_existencia'),
 
     # Historial de movimientos
     path('movimientos/', MovimientoInventarioListView.as_view(), name='ruta_historial_movimientos')

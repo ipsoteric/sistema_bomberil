@@ -53,8 +53,9 @@ from .forms import (
     ActivoSimpleCreateForm,
     LoteInsumoSimpleCreateForm,
     LoteAjusteForm,
-    MovimientoFilterForm,
-    BajaExistenciaForm
+    BajaExistenciaForm,
+    ExtraviadoExistenciaForm,
+    MovimientoFilterForm
     )
 from .utils import generar_sku_sugerido
 from core.settings import INVENTARIO_AREA_NOMBRE as AREA_NOMBRE
@@ -2423,6 +2424,160 @@ class BajaExistenciaView(LoginRequiredMixin, View):
 
             except Exception as e:
                 messages.error(request, f"Ocurrió un error inesperado al dar de baja: {e}")
+                return redirect('gestion_inventario:ruta_stock_actual')
+
+        # Si el formulario (notas) no es válido
+        context = {
+            'item': item,
+            'tipo_item': tipo_item,
+            'form': form
+        }
+        return render(request, self.template_name, context)
+
+
+
+
+def get_or_create_extraviado_compartment(estacion: Estacion) -> Compartimento:
+    """
+    Busca o crea la ubicación (ADMINISTRATIVA) y el compartimento 'limbo' 
+    para los registros extraviados de una estación.
+    """
+    tipo_admin, _ = TipoUbicacion.objects.get_or_create(nombre='ADMINISTRATIVA')
+    
+    ubicacion_admin, _ = Ubicacion.objects.get_or_create(
+        nombre="Registros Administrativos",
+        estacion=estacion,
+        tipo_ubicacion=tipo_admin,
+        defaults={'descripcion': 'Ubicación simbólica para registros anulados o dados de baja.'}
+    )
+
+    # Creamos un compartimento separado para extraviados
+    compartimento_extraviado, _ = Compartimento.objects.get_or_create(
+        nombre="Stock Extraviado",
+        ubicacion=ubicacion_admin,
+        defaults={'descripcion': 'Existencias que fueron reportadas como extraviadas.'}
+    )
+    return compartimento_extraviado
+
+
+
+
+class ExtraviadoExistenciaView(LoginRequiredMixin, View):
+    """
+    Vista para reportar una existencia como Extraviada (Activo o LoteInsumo),
+    cambiando su estado, moviéndola al limbo y generando un movimiento de SALIDA.
+    """
+    template_name = 'gestion_inventario/pages/extraviado_existencia.html'
+    login_url = '/acceso/login/'
+
+    def _get_item_and_check_permission(self, estacion_id, tipo_item, item_id):
+        """ Helper para obtener el ítem y verificar estado """
+        item = None
+        if tipo_item == 'activo':
+            item = get_object_or_404(
+                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
+                id=item_id, 
+                estacion_id=estacion_id
+            )
+        elif tipo_item == 'lote':
+            item = get_object_or_404(
+                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
+                id=item_id, 
+                compartimento__ubicacion__estacion_id=estacion_id
+            )
+        
+        # Comprobamos todos los estados no operativos
+        if item and item.estado.nombre in ['ANULADO POR ERROR', 'DE BAJA', 'EXTRAVIADO']:
+            messages.warning(self.request, "Esta existencia ya no está operativa y no se puede reportar como extraviada.")
+            return None
+            
+        return item
+
+    def get(self, request, tipo_item, item_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+
+        item = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
+        if not item:
+            return redirect('gestion_inventario:ruta_stock_actual')
+        
+        form = ExtraviadoExistenciaForm()
+        context = {
+            'item': item,
+            'tipo_item': tipo_item,
+            'form': form
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, tipo_item, item_id):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            messages.error(request, "No se ha seleccionado una estación activa.")
+            return redirect('gestion_inventario:ruta_inicio')
+        
+        try:
+            estacion_obj = Estacion.objects.get(id=estacion_id)
+        except Estacion.DoesNotExist:
+            messages.error(request, "Estación activa no encontrada.")
+            return redirect('gestion_inventario:ruta_inicio')
+
+        item = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
+        if not item:
+            return redirect('gestion_inventario:ruta_stock_actual')
+
+        form = ExtraviadoExistenciaForm(request.POST)
+
+        if form.is_valid():
+            notas = form.cleaned_data['notas']
+            
+            try:
+                estado_extraviado = Estado.objects.get(nombre='EXTRAVIADO')
+                # Usamos el nuevo helper
+                compartimento_limbo = get_or_create_extraviado_compartment(estacion_obj)
+                compartimento_original = item.compartimento
+            except Estado.DoesNotExist:
+                messages.error(request, "Error crítico: No se encontró el estado 'EXTRAVIADO'. Contacte al administrador.")
+                return redirect('gestion_inventario:ruta_stock_actual')
+            except Exception as e:
+                messages.error(request, f"Error de configuración al buscar compartimento 'Stock Extraviado': {e}")
+                return redirect('gestion_inventario:ruta_stock_actual')
+
+            try:
+                with transaction.atomic():
+                    cantidad_a_mover = 0
+                    
+                    # 1. Actualizar el ítem
+                    item.estado = estado_extraviado
+                    item.compartimento = compartimento_limbo # Mover al limbo
+                    
+                    if tipo_item == 'lote':
+                        cantidad_a_mover = item.cantidad * -1
+                        item.cantidad = 0
+                    else: # tipo_item == 'activo'
+                        cantidad_a_mover = -1
+
+                    item.save()
+                    
+                    # 2. Crear el MovimientoInventario de SALIDA (tu suposición era correcta)
+                    MovimientoInventario.objects.create(
+                        tipo_movimiento=TipoMovimiento.SALIDA,
+                        usuario=request.user,
+                        estacion_id=estacion_id,
+                        compartimento_origen=compartimento_original,
+                        compartimento_destino=compartimento_limbo, # Destino administrativo
+                        activo=item if tipo_item == 'activo' else None,
+                        lote_insumo=item if tipo_item == 'lote' else None,
+                        cantidad_movida=cantidad_a_mover,
+                        notas=f"Reportado como extraviado. {notas}" # Motivo del extravío
+                    )
+
+                messages.success(request, f"La existencia '{item.producto.producto_global.nombre_oficial}' ha sido reportada como extraviada.")
+                return redirect('gestion_inventario:ruta_stock_actual')
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado: {e}")
                 return redirect('gestion_inventario:ruta_stock_actual')
 
         # Si el formulario (notas) no es válido
