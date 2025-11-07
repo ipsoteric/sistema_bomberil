@@ -1,0 +1,72 @@
+{# Plantilla base #}{% extends 'gestion_voluntarios/layouts/base.html' %}
+{# Cargar assets #}{% load static %}
+{# Título de la ventana #} {% block titulo_ventana %}Módulo{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Título de la Página{% endblock %}
+
+{% block contenido %}
+
+    <div class="container profile-container">
+        <a href="listado.html" class="back-link"><i class="fas fa-arrow-left"></i> Volver al listado</a>
+
+        <div class="profile-header-main">
+            <div class="profile-image-container">
+                <img src="https://via.placeholder.com/150" alt="Foto de perfil de Juan Pérez">
+                <span class="status-indicator active large"></span>
+            </div>
+            <div class="profile-main-info">
+                <h1>Juan Pérez</h1>
+                <p class="main-rank">Bombero Voluntario</p>
+                <p class="main-station">Estación: Quinta Compañía</p>
+            </div>
+            <div class="profile-actions">
+                <button class="action-btn pdf-btn"><i class="fas fa-file-pdf"></i> Generar Hoja de Vida</button>
+                <button class="action-btn edit-btn"><i class="fas fa-user-edit"></i> Modificar Perfil</button>
+            </div>
+        </div>
+
+        <div class="profile-tabs">
+            <button class="tab-btn active" onclick="openTab('info')">Información General</button>
+            <button class="tab-btn" onclick="openTab('experience')">Experiencia Bomberil</button>
+            <button class="tab-btn" onclick="openTab('recognitions')">Reconocimientos</button>
+            <button class="tab-btn" onclick="openTab('sanctions')">Sanciones</button>
+        </div>
+
+        <div id="info" class="tab-content active">
+            <h2>Datos Personales</h2>
+            <div class="info-grid">
+                <div class="info-item"><strong>RUT:</strong> 12.345.678-9</div>
+                <div class="info-item"><strong>Fecha de Nacimiento:</strong> 01/01/1990</div>
+                <div class="info-item"><strong>Teléfono:</strong> +56 9 1234 5678</div>
+                <div class="info-item"><strong>Correo:</strong> juan.perez@email.com</div>
+                <div class="info-item full-width"><strong>Dirección:</strong> Calle Falsa 123, Santiago, Chile</div>
+            </div>
+        </div>
+
+        <div id="experience" class="tab-content">
+            <h2>Historial de Servicio</h2>
+            <ul class="history-list">
+                <li><strong>Bombero</strong> - Primera Compañía (2010 - 2015)</li>
+                <li><strong>Teniente 1°</strong> - Quinta Compañía (2015 - Actualidad)</li>
+            </ul>
+        </div>
+
+        <div id="recognitions" class="tab-content">
+            <h2>Reconocimientos y Logros</h2>
+            <ul class="history-list">
+                <li>Medalla por 10 años de servicio (2020)</li>
+                <li>Mención Honrosa por rescate en altura (2021)</li>
+            </ul>
+        </div>
+        
+        <div id="sanctions" class="tab-content">
+            <h2>Registro de Sanciones</h2>
+            <p>No existen sanciones registradas para este voluntario.</p>
+        </div>
+
+    </div>
+    
+{% endblock  %}
+
+{% block scripts %}
+<script src="{% static 'gestion_voluntarios/js/ver.js' %}"></script>
+{% endblock  %}
