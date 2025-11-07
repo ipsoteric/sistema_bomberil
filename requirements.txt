@@ -9,8 +9,8 @@ django-simple-history==3.10.1
 django-storages==1.14.6
 djangorestframework==3.16.1
 jmespath==1.0.1
-mysqlclient==2.2.7
 pillow==11.2.1
+PyMySQL==1.1.2
 python-dateutil==2.9.0.post0
 qrcode==8.2
 s3transfer==0.13.1

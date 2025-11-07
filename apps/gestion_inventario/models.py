@@ -83,8 +83,8 @@ class Estacion(models.Model):
     imagen = models.ImageField(verbose_name="Imagen de la compañía", null=True, blank=True, upload_to="temporal/estaciones/imagenes/")
     logo = models.ImageField(verbose_name="Logo de la compañía", null=True, blank=True, upload_to="temporal/estaciones/logos/")
     comuna = models.ForeignKey(Comuna, on_delete=models.PROTECT, verbose_name="Comuna", help_text="Seleccione la comuna correspondiente")
-    fecha_creacion = models.DateTimeField(verbose_name="Fecha de creación", default=timezone.now, editable=False)
-    fecha_modificacion = models.DateTimeField(verbose_name="Última modificación", default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Estación"

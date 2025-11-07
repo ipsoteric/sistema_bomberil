@@ -1,0 +1,132 @@
+[
+{
+  "model": "gestion_usuarios.usuario",
+  "pk": 1,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$RgJM4QhhL2X28ga9dePa5m$Su66cpcda9JYN9ypO4pxzRunhwVvKkOd4It0BNDsZAk=",
+    "rut": "19980425-1",
+    "email": "juan@bomberil.cl",
+    "first_name": "JUAN",
+    "last_name": "CASTILLO LIZAMA",
+    "is_staff": true,
+    "is_superuser": true,
+    "is_verified": true,
+    "is_active": true,
+    "birthdate": null,
+    "phone": null,
+    "avatar": "",
+    "avatar_thumb_small": "",
+    "avatar_thumb_medium": "",
+    "created_at": "2025-09-08T19:49:26.802Z",
+    "updated_at": "2025-09-08T19:49:26.802Z",
+    "last_login": null,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "gestion_usuarios.usuario",
+  "pk": 2,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$fpxm0z9ZYcqf28E8ayGkHj$CvICXhLMfB2M06lSTvHE+Y6qoKKkFdubuUHKOCSv++s=",
+    "rut": "11111111-1",
+    "email": "polett@bomberil.cl",
+    "first_name": "POLETT",
+    "last_name": "CASANGA ROJAS",
+    "is_staff": true,
+    "is_superuser": true,
+    "is_verified": true,
+    "is_active": true,
+    "birthdate": null,
+    "phone": null,
+    "avatar": "",
+    "avatar_thumb_small": "",
+    "avatar_thumb_medium": "",
+    "created_at": "2025-09-08T19:50:08.668Z",
+    "updated_at": "2025-09-08T19:50:08.668Z",
+    "last_login": null,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "gestion_usuarios.usuario",
+  "pk": 3,
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$Sf9g3wrfEoF0jQukjuEYqT$aSGeq5KftJp6xA7JK1ONopBzInA0qlsnOlB88/WbHnw=",
+    "rut": "22222222-2",
+    "email": "guiliano@bomberil.cl",
+    "first_name": "GUILIANO",
+    "last_name": "PUNULAF GARGANO",
+    "is_staff": true,
+    "is_superuser": true,
+    "is_verified": true,
+    "is_active": true,
+    "birthdate": null,
+    "phone": null,
+    "avatar": "",
+    "avatar_thumb_small": "",
+    "avatar_thumb_medium": "",
+    "created_at": "2025-09-08T19:51:36.645Z",
+    "updated_at": "2025-09-08T19:51:36.645Z",
+    "last_login": null,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "gestion_usuarios.rol",
+  "pk": 1,
+  "fields": {
+    "nombre": "ADMINISTRADOR",
+    "descripcion": "Rol por defecto que otorga todos los permisos de alto nivel disponibles en el sistema.",
+    "estacion": null,
+    "permisos": []
+  }
+},
+{
+  "model": "gestion_usuarios.membresia",
+  "pk": 1,
+  "fields": {
+    "usuario": 1,
+    "estacion": 2,
+    "estado": "ACTIVO",
+    "fecha_inicio": "2025-09-08",
+    "fecha_fin": null,
+    "created_at": "2025-09-08T19:57:40.089Z",
+    "roles": [
+      1
+    ]
+  }
+},
+{
+  "model": "gestion_usuarios.membresia",
+  "pk": 2,
+  "fields": {
+    "usuario": 2,
+    "estacion": 2,
+    "estado": "ACTIVO",
+    "fecha_inicio": "2025-09-08",
+    "fecha_fin": null,
+    "created_at": "2025-09-08T19:57:53.840Z",
+    "roles": [
+      1
+    ]
+  }
+},
+{
+  "model": "gestion_usuarios.membresia",
+  "pk": 3,
+  "fields": {
+    "usuario": 3,
+    "estacion": 2,
+    "estado": "ACTIVO",
+    "fecha_inicio": "2025-09-08",
+    "fecha_fin": null,
+    "created_at": "2025-09-08T19:58:04.691Z",
+    "roles": [
+      1
+    ]
+  }
+}
+]

@@ -1,0 +1,4321 @@
+[
+{
+  "model": "gestion_inventario.tipoestado",
+  "pk": 1,
+  "fields": {
+    "nombre": "OPERATIVO",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.tipoestado",
+  "pk": 2,
+  "fields": {
+    "nombre": "NO OPERATIVO",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.tipoestado",
+  "pk": 3,
+  "fields": {
+    "nombre": "ADMINISTRATIVO",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.estado",
+  "pk": 1,
+  "fields": {
+    "nombre": "DISPONIBLE",
+    "descripcion": null,
+    "tipo_estado": 1
+  }
+},
+{
+  "model": "gestion_inventario.estado",
+  "pk": 2,
+  "fields": {
+    "nombre": "EN PRÉSTAMO EXTERNO",
+    "descripcion": null,
+    "tipo_estado": 1
+  }
+},
+{
+  "model": "gestion_inventario.estado",
+  "pk": 3,
+  "fields": {
+    "nombre": "EN PREPARACIÓN",
+    "descripcion": null,
+    "tipo_estado": 2
+  }
+},
+{
+  "model": "gestion_inventario.estado",
+  "pk": 4,
+  "fields": {
+    "nombre": "EN TRÁNSITO",
+    "descripcion": null,
+    "tipo_estado": 2
+  }
+},
+{
+  "model": "gestion_inventario.estado",
+  "pk": 5,
+  "fields": {
+    "nombre": "PENDIENTE REVISIÓN",
+    "descripcion": null,
+    "tipo_estado": 2
+  }
+},
+{
+  "model": "gestion_inventario.estado",
+  "pk": 6,
+  "fields": {
+    "nombre": "EN REPARACIÓN",
+    "descripcion": null,
+    "tipo_estado": 2
+  }
+},
+{
+  "model": "gestion_inventario.estado",
+  "pk": 7,
+  "fields": {
+    "nombre": "EXTRAVIADO",
+    "descripcion": null,
+    "tipo_estado": 3
+  }
+},
+{
+  "model": "gestion_inventario.estado",
+  "pk": 8,
+  "fields": {
+    "nombre": "DE BAJA",
+    "descripcion": null,
+    "tipo_estado": 3
+  }
+},
+{
+  "model": "gestion_inventario.estado",
+  "pk": 9,
+  "fields": {
+    "nombre": "ANULADO POR ERROR",
+    "descripcion": null,
+    "tipo_estado": 3
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 1,
+  "fields": {
+    "nombre": "ARICA Y PARINACOTA"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 2,
+  "fields": {
+    "nombre": "TARAPACÁ"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 3,
+  "fields": {
+    "nombre": "ANTOFAGASTA"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 4,
+  "fields": {
+    "nombre": "ATACAMA"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 5,
+  "fields": {
+    "nombre": "COQUIMBO"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 6,
+  "fields": {
+    "nombre": "VALPARAÍSO"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 7,
+  "fields": {
+    "nombre": "DEL LIBERTADOR GRAL. BERNARDO O'HIGGINS"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 8,
+  "fields": {
+    "nombre": "DEL MAULE"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 9,
+  "fields": {
+    "nombre": "DEL BIOBÍO"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 10,
+  "fields": {
+    "nombre": "DE LA ARAUCANÍA"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 11,
+  "fields": {
+    "nombre": "DE LOS RÍOS"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 12,
+  "fields": {
+    "nombre": "DE LOS LAGOS"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 13,
+  "fields": {
+    "nombre": "AYSÉN DEL GRAL. CARLOS IBAÑEZ DEL CAMPO"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 14,
+  "fields": {
+    "nombre": "MAGALLANES Y DE LA ANTÁRTICA CHILENA"
+  }
+},
+{
+  "model": "gestion_inventario.region",
+  "pk": 15,
+  "fields": {
+    "nombre": "METROPOLITANA DE SANTIAGO"
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 1,
+  "fields": {
+    "nombre": "ARICA",
+    "region": 1
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 2,
+  "fields": {
+    "nombre": "CAMARONES",
+    "region": 1
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 3,
+  "fields": {
+    "nombre": "PUTRE",
+    "region": 1
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 4,
+  "fields": {
+    "nombre": "GENERAL LAGOS",
+    "region": 1
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 5,
+  "fields": {
+    "nombre": "IQUIQUE",
+    "region": 2
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 6,
+  "fields": {
+    "nombre": "ALTO HOSPICIO",
+    "region": 2
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 7,
+  "fields": {
+    "nombre": "POZO ALMONTE",
+    "region": 2
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 8,
+  "fields": {
+    "nombre": "CAMIÑA",
+    "region": 2
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 9,
+  "fields": {
+    "nombre": "COLCHANE",
+    "region": 2
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 10,
+  "fields": {
+    "nombre": "HUARA",
+    "region": 2
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 11,
+  "fields": {
+    "nombre": "PICA",
+    "region": 2
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 12,
+  "fields": {
+    "nombre": "ANTOFAGASTA",
+    "region": 3
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 13,
+  "fields": {
+    "nombre": "MEJILLONES",
+    "region": 3
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 14,
+  "fields": {
+    "nombre": "SIERRA GORDA",
+    "region": 3
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 15,
+  "fields": {
+    "nombre": "TALTAL",
+    "region": 3
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 16,
+  "fields": {
+    "nombre": "CALAMA",
+    "region": 3
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 17,
+  "fields": {
+    "nombre": "OLLAGÜE",
+    "region": 3
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 18,
+  "fields": {
+    "nombre": "SAN PEDRO DE ATACAMA",
+    "region": 3
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 19,
+  "fields": {
+    "nombre": "TOCOPILLA",
+    "region": 3
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 20,
+  "fields": {
+    "nombre": "MARÍA ELENA",
+    "region": 3
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 21,
+  "fields": {
+    "nombre": "COPIAPÓ",
+    "region": 4
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 22,
+  "fields": {
+    "nombre": "CALDERA",
+    "region": 4
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 23,
+  "fields": {
+    "nombre": "TIERRA AMARILLA",
+    "region": 4
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 24,
+  "fields": {
+    "nombre": "CHAÑARAL",
+    "region": 4
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 25,
+  "fields": {
+    "nombre": "DIEGO DE ALMAGRO",
+    "region": 4
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 26,
+  "fields": {
+    "nombre": "VALLENAR",
+    "region": 4
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 27,
+  "fields": {
+    "nombre": "ALTO DEL CARMEN",
+    "region": 4
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 28,
+  "fields": {
+    "nombre": "FREIRINA",
+    "region": 4
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 29,
+  "fields": {
+    "nombre": "HUASCO",
+    "region": 4
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 30,
+  "fields": {
+    "nombre": "LA SERENA",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 31,
+  "fields": {
+    "nombre": "COQUIMBO",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 32,
+  "fields": {
+    "nombre": "ANDACOLLO",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 33,
+  "fields": {
+    "nombre": "LA HIGUERA",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 34,
+  "fields": {
+    "nombre": "PAIGUANO",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 35,
+  "fields": {
+    "nombre": "VICUÑA",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 36,
+  "fields": {
+    "nombre": "ILLAPEL",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 37,
+  "fields": {
+    "nombre": "CANELA",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 38,
+  "fields": {
+    "nombre": "LOS VILOS",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 39,
+  "fields": {
+    "nombre": "SALAMANCA",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 40,
+  "fields": {
+    "nombre": "OVALLE",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 41,
+  "fields": {
+    "nombre": "COMBARBALÁ",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 42,
+  "fields": {
+    "nombre": "MONTE PATRIA",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 43,
+  "fields": {
+    "nombre": "PUNITAQUI",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 44,
+  "fields": {
+    "nombre": "RÍO HURTADO",
+    "region": 5
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 45,
+  "fields": {
+    "nombre": "VALPARAÍSO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 46,
+  "fields": {
+    "nombre": "CASABLANCA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 47,
+  "fields": {
+    "nombre": "CONCÓN",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 48,
+  "fields": {
+    "nombre": "JUAN FERNÁNDEZ",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 49,
+  "fields": {
+    "nombre": "PUCHUNCAVÍ",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 50,
+  "fields": {
+    "nombre": "QUINTERO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 51,
+  "fields": {
+    "nombre": "VIÑA DEL MAR",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 52,
+  "fields": {
+    "nombre": "ISLA DE PASCUA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 53,
+  "fields": {
+    "nombre": "LOS ANDES",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 54,
+  "fields": {
+    "nombre": "CALLE LARGA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 55,
+  "fields": {
+    "nombre": "RINCONADA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 56,
+  "fields": {
+    "nombre": "SAN ESTEBAN",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 57,
+  "fields": {
+    "nombre": "LA LIGUA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 58,
+  "fields": {
+    "nombre": "CABILDO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 59,
+  "fields": {
+    "nombre": "PAPUDO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 60,
+  "fields": {
+    "nombre": "PETORCA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 61,
+  "fields": {
+    "nombre": "ZAPALLAR",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 62,
+  "fields": {
+    "nombre": "QUILLOTA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 63,
+  "fields": {
+    "nombre": "CALERA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 64,
+  "fields": {
+    "nombre": "HIJUELAS",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 65,
+  "fields": {
+    "nombre": "LA CRUZ",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 66,
+  "fields": {
+    "nombre": "NOGALES",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 67,
+  "fields": {
+    "nombre": "SAN ANTONIO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 68,
+  "fields": {
+    "nombre": "ALGARROBO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 69,
+  "fields": {
+    "nombre": "CARTAGENA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 70,
+  "fields": {
+    "nombre": "EL QUISCO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 71,
+  "fields": {
+    "nombre": "EL TABO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 72,
+  "fields": {
+    "nombre": "SANTO DOMINGO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 73,
+  "fields": {
+    "nombre": "SAN FELIPE",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 74,
+  "fields": {
+    "nombre": "CATEMU",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 75,
+  "fields": {
+    "nombre": "LLAILLAY",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 76,
+  "fields": {
+    "nombre": "PANQUEHUE",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 77,
+  "fields": {
+    "nombre": "PUTAENDO",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 78,
+  "fields": {
+    "nombre": "SANTA MARÍA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 79,
+  "fields": {
+    "nombre": "LIMACHE",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 80,
+  "fields": {
+    "nombre": "QUILPUÉ",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 81,
+  "fields": {
+    "nombre": "VILLA ALEMANA",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 82,
+  "fields": {
+    "nombre": "OLMUÉ",
+    "region": 6
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 83,
+  "fields": {
+    "nombre": "RANCAGUA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 84,
+  "fields": {
+    "nombre": "CODEGUA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 85,
+  "fields": {
+    "nombre": "COINCO",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 86,
+  "fields": {
+    "nombre": "COLTAUCO",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 87,
+  "fields": {
+    "nombre": "DOÑIHUE",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 88,
+  "fields": {
+    "nombre": "GRANEROS",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 89,
+  "fields": {
+    "nombre": "LAS CABRAS",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 90,
+  "fields": {
+    "nombre": "MACHALÍ",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 91,
+  "fields": {
+    "nombre": "MALLOA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 92,
+  "fields": {
+    "nombre": "MOSTAZAL",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 93,
+  "fields": {
+    "nombre": "OLIVAR",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 94,
+  "fields": {
+    "nombre": "PEUMO",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 95,
+  "fields": {
+    "nombre": "PICHIDEGUA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 96,
+  "fields": {
+    "nombre": "QUINTA DE TILCOCO",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 97,
+  "fields": {
+    "nombre": "RENGO",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 98,
+  "fields": {
+    "nombre": "REQUÍNOA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 99,
+  "fields": {
+    "nombre": "SAN VICENTE",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 100,
+  "fields": {
+    "nombre": "PICHILEMU",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 101,
+  "fields": {
+    "nombre": "LA ESTRELLA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 102,
+  "fields": {
+    "nombre": "LITUECHE",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 103,
+  "fields": {
+    "nombre": "MARCHIHUE",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 104,
+  "fields": {
+    "nombre": "NAVIDAD",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 105,
+  "fields": {
+    "nombre": "PAREDONES",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 106,
+  "fields": {
+    "nombre": "SAN FERNANDO",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 107,
+  "fields": {
+    "nombre": "CHÉPICA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 108,
+  "fields": {
+    "nombre": "CHIMBARONGO",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 109,
+  "fields": {
+    "nombre": "LOLOL",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 110,
+  "fields": {
+    "nombre": "NANCAGUA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 111,
+  "fields": {
+    "nombre": "PALMILLA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 112,
+  "fields": {
+    "nombre": "PERALILLO",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 113,
+  "fields": {
+    "nombre": "PLACILLA",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 114,
+  "fields": {
+    "nombre": "PUMANQUE",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 115,
+  "fields": {
+    "nombre": "SANTA CRUZ",
+    "region": 7
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 116,
+  "fields": {
+    "nombre": "TALCA",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 117,
+  "fields": {
+    "nombre": "CONSTITUCIÓN",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 118,
+  "fields": {
+    "nombre": "CUREPTO",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 119,
+  "fields": {
+    "nombre": "EMPEDRADO",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 120,
+  "fields": {
+    "nombre": "MAULE",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 121,
+  "fields": {
+    "nombre": "PELARCO",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 122,
+  "fields": {
+    "nombre": "PENCAHUE",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 123,
+  "fields": {
+    "nombre": "RÍO CLARO",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 124,
+  "fields": {
+    "nombre": "SAN CLEMENTE",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 125,
+  "fields": {
+    "nombre": "SAN RAFAEL",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 126,
+  "fields": {
+    "nombre": "CAUQUENES",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 127,
+  "fields": {
+    "nombre": "CHANCO",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 128,
+  "fields": {
+    "nombre": "PELLUHUE",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 129,
+  "fields": {
+    "nombre": "CURICÓ",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 130,
+  "fields": {
+    "nombre": "HUALAÑÉ",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 131,
+  "fields": {
+    "nombre": "LICANTÉN",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 132,
+  "fields": {
+    "nombre": "MOLINA",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 133,
+  "fields": {
+    "nombre": "RAUCO",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 134,
+  "fields": {
+    "nombre": "ROMERAL",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 135,
+  "fields": {
+    "nombre": "SAGRADA FAMILIA",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 136,
+  "fields": {
+    "nombre": "TENO",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 137,
+  "fields": {
+    "nombre": "VICHUQUÉN",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 138,
+  "fields": {
+    "nombre": "LINARES",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 139,
+  "fields": {
+    "nombre": "COLBÚN",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 140,
+  "fields": {
+    "nombre": "LONGAVÍ",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 141,
+  "fields": {
+    "nombre": "PARRAL",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 142,
+  "fields": {
+    "nombre": "RETIRO",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 143,
+  "fields": {
+    "nombre": "SAN JAVIER",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 144,
+  "fields": {
+    "nombre": "VILLA ALEGRE",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 145,
+  "fields": {
+    "nombre": "YERBAS BUENAS",
+    "region": 8
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 146,
+  "fields": {
+    "nombre": "CONCEPCIÓN",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 147,
+  "fields": {
+    "nombre": "CORONEL",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 148,
+  "fields": {
+    "nombre": "CHIGUAYANTE",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 149,
+  "fields": {
+    "nombre": "FLORIDA",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 150,
+  "fields": {
+    "nombre": "HUALQUI",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 151,
+  "fields": {
+    "nombre": "LOTA",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 152,
+  "fields": {
+    "nombre": "PENCO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 153,
+  "fields": {
+    "nombre": "SAN PEDRO DE LA PAZ",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 154,
+  "fields": {
+    "nombre": "SANTA JUANA",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 155,
+  "fields": {
+    "nombre": "TALCAHUANO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 156,
+  "fields": {
+    "nombre": "TOMÉ",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 157,
+  "fields": {
+    "nombre": "HUALPÉN",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 158,
+  "fields": {
+    "nombre": "LEBU",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 159,
+  "fields": {
+    "nombre": "ARAUCO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 160,
+  "fields": {
+    "nombre": "CAÑETE",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 161,
+  "fields": {
+    "nombre": "CONTULMO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 162,
+  "fields": {
+    "nombre": "CURANILAHUE",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 163,
+  "fields": {
+    "nombre": "LOS ALAMOS",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 164,
+  "fields": {
+    "nombre": "TIRÚA",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 165,
+  "fields": {
+    "nombre": "LOS ANGELES",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 166,
+  "fields": {
+    "nombre": "ANTUCO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 167,
+  "fields": {
+    "nombre": "CABRERO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 168,
+  "fields": {
+    "nombre": "LAJA",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 169,
+  "fields": {
+    "nombre": "MULCHÉN",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 170,
+  "fields": {
+    "nombre": "NACIMIENTO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 171,
+  "fields": {
+    "nombre": "NEGRETE",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 172,
+  "fields": {
+    "nombre": "QUILACO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 173,
+  "fields": {
+    "nombre": "QUILLECO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 174,
+  "fields": {
+    "nombre": "SAN ROSENDO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 175,
+  "fields": {
+    "nombre": "SANTA BÁRBARA",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 176,
+  "fields": {
+    "nombre": "TUCAPEL",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 177,
+  "fields": {
+    "nombre": "YUMBEL",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 178,
+  "fields": {
+    "nombre": "ALTO BIOBÍO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 179,
+  "fields": {
+    "nombre": "CHILLÁN",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 180,
+  "fields": {
+    "nombre": "BULNES",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 181,
+  "fields": {
+    "nombre": "COBQUECURA",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 182,
+  "fields": {
+    "nombre": "COELEMU",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 183,
+  "fields": {
+    "nombre": "COIHUECO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 184,
+  "fields": {
+    "nombre": "CHILLÁN VIEJO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 185,
+  "fields": {
+    "nombre": "EL CARMEN",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 186,
+  "fields": {
+    "nombre": "NINHUE",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 187,
+  "fields": {
+    "nombre": "ÑIQUÉN",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 188,
+  "fields": {
+    "nombre": "PEMUCO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 189,
+  "fields": {
+    "nombre": "PINTO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 190,
+  "fields": {
+    "nombre": "PORTEZUELO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 191,
+  "fields": {
+    "nombre": "QUILLÓN",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 192,
+  "fields": {
+    "nombre": "QUIRIHUE",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 193,
+  "fields": {
+    "nombre": "RÁNQUIL",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 194,
+  "fields": {
+    "nombre": "SAN CARLOS",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 195,
+  "fields": {
+    "nombre": "SAN FABIÁN",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 196,
+  "fields": {
+    "nombre": "SAN IGNACIO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 197,
+  "fields": {
+    "nombre": "SAN NICOLÁS",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 198,
+  "fields": {
+    "nombre": "TREGUACO",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 199,
+  "fields": {
+    "nombre": "YUNGAY",
+    "region": 9
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 200,
+  "fields": {
+    "nombre": "TEMUCO",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 201,
+  "fields": {
+    "nombre": "CARAHUE",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 202,
+  "fields": {
+    "nombre": "CUNCO",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 203,
+  "fields": {
+    "nombre": "CURARREHUE",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 204,
+  "fields": {
+    "nombre": "FREIRE",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 205,
+  "fields": {
+    "nombre": "GALVARINO",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 206,
+  "fields": {
+    "nombre": "GORBEA",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 207,
+  "fields": {
+    "nombre": "LAUTARO",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 208,
+  "fields": {
+    "nombre": "LONCOCHE",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 209,
+  "fields": {
+    "nombre": "MELIPEUCO",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 210,
+  "fields": {
+    "nombre": "NUEVA IMPERIAL",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 211,
+  "fields": {
+    "nombre": "PADRE LAS CASAS",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 212,
+  "fields": {
+    "nombre": "PERQUENCO",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 213,
+  "fields": {
+    "nombre": "PITRUFQUÉN",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 214,
+  "fields": {
+    "nombre": "PUCÓN",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 215,
+  "fields": {
+    "nombre": "SAAVEDRA",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 216,
+  "fields": {
+    "nombre": "TEODORO SCHMIDT",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 217,
+  "fields": {
+    "nombre": "TOLTÉN",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 218,
+  "fields": {
+    "nombre": "VILCÚN",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 219,
+  "fields": {
+    "nombre": "VILLARRICA",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 220,
+  "fields": {
+    "nombre": "CHOLCHOL",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 221,
+  "fields": {
+    "nombre": "ANGOL",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 222,
+  "fields": {
+    "nombre": "COLLIPULLI",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 223,
+  "fields": {
+    "nombre": "CURACAUTÍN",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 224,
+  "fields": {
+    "nombre": "ERCILLA",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 225,
+  "fields": {
+    "nombre": "LONQUIMAY",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 226,
+  "fields": {
+    "nombre": "LOS SAUCES",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 227,
+  "fields": {
+    "nombre": "LUMACO",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 228,
+  "fields": {
+    "nombre": "PURÉN",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 229,
+  "fields": {
+    "nombre": "RENAICO",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 230,
+  "fields": {
+    "nombre": "TRAIGUÉN",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 231,
+  "fields": {
+    "nombre": "VICTORIA",
+    "region": 10
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 232,
+  "fields": {
+    "nombre": "VALDIVIA",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 233,
+  "fields": {
+    "nombre": "CORRAL",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 234,
+  "fields": {
+    "nombre": "LANCO",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 235,
+  "fields": {
+    "nombre": "LOS LAGOS",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 236,
+  "fields": {
+    "nombre": "MÁFIL",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 237,
+  "fields": {
+    "nombre": "MARIQUINA",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 238,
+  "fields": {
+    "nombre": "PAILLACO",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 239,
+  "fields": {
+    "nombre": "PANGUIPULLI",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 240,
+  "fields": {
+    "nombre": "LA UNIÓN",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 241,
+  "fields": {
+    "nombre": "FUTRONO",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 242,
+  "fields": {
+    "nombre": "LAGO RANCO",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 243,
+  "fields": {
+    "nombre": "RÍO BUENO",
+    "region": 11
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 244,
+  "fields": {
+    "nombre": "PUERTO MONTT",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 245,
+  "fields": {
+    "nombre": "CALBUCO",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 246,
+  "fields": {
+    "nombre": "COCHAMÓ",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 247,
+  "fields": {
+    "nombre": "FRESIA",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 248,
+  "fields": {
+    "nombre": "FRUTILLAR",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 249,
+  "fields": {
+    "nombre": "LOS MUERMOS",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 250,
+  "fields": {
+    "nombre": "LLANQUIHUE",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 251,
+  "fields": {
+    "nombre": "MAULLÍN",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 252,
+  "fields": {
+    "nombre": "PUERTO VARAS",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 253,
+  "fields": {
+    "nombre": "CASTRO",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 254,
+  "fields": {
+    "nombre": "ANCUD",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 255,
+  "fields": {
+    "nombre": "CHONCHI",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 256,
+  "fields": {
+    "nombre": "CURACO DE VÉLEZ",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 257,
+  "fields": {
+    "nombre": "DALCAHUE",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 258,
+  "fields": {
+    "nombre": "PUQUELDÓN",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 259,
+  "fields": {
+    "nombre": "QUEILÉN",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 260,
+  "fields": {
+    "nombre": "QUELLÓN",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 261,
+  "fields": {
+    "nombre": "QUEMCHI",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 262,
+  "fields": {
+    "nombre": "QUINCHAO",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 263,
+  "fields": {
+    "nombre": "OSORNO",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 264,
+  "fields": {
+    "nombre": "PUERTO OCTAY",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 265,
+  "fields": {
+    "nombre": "PURRANQUE",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 266,
+  "fields": {
+    "nombre": "PUYEHUE",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 267,
+  "fields": {
+    "nombre": "RÍO NEGRO",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 268,
+  "fields": {
+    "nombre": "SAN JUAN DE LA COSTA",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 269,
+  "fields": {
+    "nombre": "SAN PABLO",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 270,
+  "fields": {
+    "nombre": "CHAITÉN",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 271,
+  "fields": {
+    "nombre": "FUTALEUFÚ",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 272,
+  "fields": {
+    "nombre": "HUALAIHUÉ",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 273,
+  "fields": {
+    "nombre": "PALENA",
+    "region": 12
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 274,
+  "fields": {
+    "nombre": "COIHAIQUE",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 275,
+  "fields": {
+    "nombre": "LAGO VERDE",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 276,
+  "fields": {
+    "nombre": "AISÉN",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 277,
+  "fields": {
+    "nombre": "CISNES",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 278,
+  "fields": {
+    "nombre": "GUAITECAS",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 279,
+  "fields": {
+    "nombre": "COCHRANE",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 280,
+  "fields": {
+    "nombre": "O'HIGGINS",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 281,
+  "fields": {
+    "nombre": "TORTEL",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 282,
+  "fields": {
+    "nombre": "CHILE CHICO",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 283,
+  "fields": {
+    "nombre": "RÍO IBÁÑEZ",
+    "region": 13
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 284,
+  "fields": {
+    "nombre": "PUNTA ARENAS",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 285,
+  "fields": {
+    "nombre": "LAGUNA BLANCA",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 286,
+  "fields": {
+    "nombre": "RÍO VERDE",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 287,
+  "fields": {
+    "nombre": "SAN GREGORIO",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 288,
+  "fields": {
+    "nombre": "CABO DE HORNOS",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 289,
+  "fields": {
+    "nombre": "ANTÁRTICA",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 290,
+  "fields": {
+    "nombre": "PORVENIR",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 291,
+  "fields": {
+    "nombre": "PRIMAVERA",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 292,
+  "fields": {
+    "nombre": "TIMAUKEL",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 293,
+  "fields": {
+    "nombre": "NATALES",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 294,
+  "fields": {
+    "nombre": "TORRES DEL PAINE",
+    "region": 14
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 295,
+  "fields": {
+    "nombre": "SANTIAGO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 296,
+  "fields": {
+    "nombre": "CERRILLOS",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 297,
+  "fields": {
+    "nombre": "CERRO NAVIA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 298,
+  "fields": {
+    "nombre": "CONCHALÍ",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 299,
+  "fields": {
+    "nombre": "EL BOSQUE",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 300,
+  "fields": {
+    "nombre": "ESTACIÓN CENTRAL",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 301,
+  "fields": {
+    "nombre": "HUECHURABA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 302,
+  "fields": {
+    "nombre": "INDEPENDENCIA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 303,
+  "fields": {
+    "nombre": "LA CISTERNA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 304,
+  "fields": {
+    "nombre": "LA FLORIDA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 305,
+  "fields": {
+    "nombre": "LA GRANJA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 306,
+  "fields": {
+    "nombre": "LA PINTANA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 307,
+  "fields": {
+    "nombre": "LA REINA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 308,
+  "fields": {
+    "nombre": "LAS CONDES",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 309,
+  "fields": {
+    "nombre": "LO BARNECHEA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 310,
+  "fields": {
+    "nombre": "LO ESPEJO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 311,
+  "fields": {
+    "nombre": "LO PRADO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 312,
+  "fields": {
+    "nombre": "MACUL",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 313,
+  "fields": {
+    "nombre": "MAIPÚ",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 314,
+  "fields": {
+    "nombre": "ÑUÑOA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 315,
+  "fields": {
+    "nombre": "PEDRO AGUIRRE CERDA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 316,
+  "fields": {
+    "nombre": "PEÑALOLÉN",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 317,
+  "fields": {
+    "nombre": "PROVIDENCIA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 318,
+  "fields": {
+    "nombre": "PUDAHUEL",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 319,
+  "fields": {
+    "nombre": "QUILICURA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 320,
+  "fields": {
+    "nombre": "QUINTA NORMAL",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 321,
+  "fields": {
+    "nombre": "RECOLETA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 322,
+  "fields": {
+    "nombre": "RENCA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 323,
+  "fields": {
+    "nombre": "SAN JOAQUÍN",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 324,
+  "fields": {
+    "nombre": "SAN MIGUEL",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 325,
+  "fields": {
+    "nombre": "SAN RAMÓN",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 326,
+  "fields": {
+    "nombre": "VITACURA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 327,
+  "fields": {
+    "nombre": "PUENTE ALTO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 328,
+  "fields": {
+    "nombre": "PIRQUE",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 329,
+  "fields": {
+    "nombre": "SAN JOSÉ DE MAIPO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 330,
+  "fields": {
+    "nombre": "COLINA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 331,
+  "fields": {
+    "nombre": "LAMPA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 332,
+  "fields": {
+    "nombre": "TILTIL",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 333,
+  "fields": {
+    "nombre": "SAN BERNARDO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 334,
+  "fields": {
+    "nombre": "BUIN",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 335,
+  "fields": {
+    "nombre": "CALERA DE TANGO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 336,
+  "fields": {
+    "nombre": "PAINE",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 337,
+  "fields": {
+    "nombre": "MELIPILLA",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 338,
+  "fields": {
+    "nombre": "ALHUÉ",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 339,
+  "fields": {
+    "nombre": "CURACAVÍ",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 340,
+  "fields": {
+    "nombre": "MARÍA PINTO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 341,
+  "fields": {
+    "nombre": "SAN PEDRO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 342,
+  "fields": {
+    "nombre": "TALAGANTE",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 343,
+  "fields": {
+    "nombre": "EL MONTE",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 344,
+  "fields": {
+    "nombre": "ISLA DE MAIPO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 345,
+  "fields": {
+    "nombre": "PADRE HURTADO",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.comuna",
+  "pk": 346,
+  "fields": {
+    "nombre": "PEÑAFLOR",
+    "region": 15
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 1,
+  "fields": {
+    "nombre": "COMPAÑÍA DE BOMBEROS ESPAÑOLA N°1",
+    "descripcion": null,
+    "direccion": "LAS ROSAS #2398",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 2,
+  "fields": {
+    "nombre": "COMPAÑIA DE BOMBEROS GERMANIA N°2",
+    "descripcion": null,
+    "direccion": "AV. TADEO HAENKE #1870",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 3,
+  "fields": {
+    "nombre": "COMPAÑÍA DE BOMBEROS AUSONIA N°4",
+    "descripcion": null,
+    "direccion": "SAN MARTIN #525",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 4,
+  "fields": {
+    "nombre": "COMPAÑÍA DE BOMBEROS DALMACIA N°5",
+    "descripcion": null,
+    "direccion": "AV. TADEO HAENKE #1850",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 5,
+  "fields": {
+    "nombre": "COMPAÑÍA DE BOMBEROS SARGENTO ALDEA N°6",
+    "descripcion": null,
+    "direccion": "BARROS ARANA #1050",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 6,
+  "fields": {
+    "nombre": "COMPAÑÍA DE BOMBEROS TARAPACÁ N°7",
+    "descripcion": null,
+    "direccion": "O'HIGGINS #407",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 7,
+  "fields": {
+    "nombre": "COMPAÑÍA DE BOMBEROS VICTORIA N°11",
+    "descripcion": null,
+    "direccion": "JUAN MARTINEZ #550",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 8,
+  "fields": {
+    "nombre": "COMPAÑÍA DE BOMBEROS IQUIQUE N°12",
+    "descripcion": null,
+    "direccion": "ORELLA #787",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 9,
+  "fields": {
+    "nombre": "GUARDIA MARINA E. RIQUELME VENEGAS N°14",
+    "descripcion": null,
+    "direccion": "PLAYA EL AGUILA #2396",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 10,
+  "fields": {
+    "nombre": "COMPAÑÍA DE BOMBEROS GILBERTO MOLINA GAHONA N°16",
+    "descripcion": null,
+    "direccion": "CALLE SAN ANTONIO SITIO 11 MANZANA A",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 11,
+  "fields": {
+    "nombre": "CUERPO DE BOMBEROS DE IQUIQUE",
+    "descripcion": null,
+    "direccion": "SIMÓN BOLÍVAR #414",
+    "es_departamento": true,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.estacion",
+  "pk": 12,
+  "fields": {
+    "nombre": "SEGUNDA COMPAÑÍA DE BOMBEROS DE ANTOFAGASTA",
+    "descripcion": null,
+    "direccion": "21 DE MAYO #400",
+    "es_departamento": false,
+    "imagen": "",
+    "logo": "",
+    "comuna": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.tipoubicacion",
+  "pk": 1,
+  "fields": {
+    "nombre": "ÁREA",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.tipoubicacion",
+  "pk": 2,
+  "fields": {
+    "nombre": "VEHÍCULO",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.tipoubicacion",
+  "pk": 3,
+  "fields": {
+    "nombre": "ADMINISTRATIVA",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.ubicacion",
+  "pk": 1,
+  "fields": {
+    "nombre": "Patio Principal",
+    "descripcion": null,
+    "direccion": null,
+    "tipo_ubicacion": 1,
+    "estacion": 2,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.ubicacion",
+  "pk": 2,
+  "fields": {
+    "nombre": "Pañol",
+    "descripcion": null,
+    "direccion": null,
+    "tipo_ubicacion": 1,
+    "estacion": 2,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.ubicacion",
+  "pk": 3,
+  "fields": {
+    "nombre": "Bodega",
+    "descripcion": null,
+    "direccion": null,
+    "tipo_ubicacion": 1,
+    "estacion": 2,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.ubicacion",
+  "pk": 4,
+  "fields": {
+    "nombre": "Sala",
+    "descripcion": null,
+    "direccion": null,
+    "tipo_ubicacion": 1,
+    "estacion": 2,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.ubicacion",
+  "pk": 5,
+  "fields": {
+    "nombre": "Unidad B2",
+    "descripcion": null,
+    "direccion": null,
+    "tipo_ubicacion": 2,
+    "estacion": 2,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.ubicacion",
+  "pk": 6,
+  "fields": {
+    "nombre": "Unidad R2",
+    "descripcion": null,
+    "direccion": null,
+    "tipo_ubicacion": 2,
+    "estacion": 2,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 1,
+  "fields": {
+    "nombre": "Rosenbauer",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 2,
+  "fields": {
+    "nombre": "LION",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 3,
+  "fields": {
+    "nombre": "SEIZ",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 4,
+  "fields": {
+    "nombre": "Angus Fire",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 5,
+  "fields": {
+    "nombre": "Ferno",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 6,
+  "fields": {
+    "nombre": "Super Vac",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 7,
+  "fields": {
+    "nombre": "Adaro Tecnología",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 8,
+  "fields": {
+    "nombre": "MSA",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 9,
+  "fields": {
+    "nombre": "Holmatro",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 10,
+  "fields": {
+    "nombre": "Streamlight",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.marca",
+  "pk": 11,
+  "fields": {
+    "nombre": "MEDSOURCE",
+    "descripcion": null
+  }
+},
+{
+  "model": "gestion_inventario.tipovehiculo",
+  "pk": 1,
+  "fields": {
+    "nombre": "Camión Bomba",
+    "descripcion": "Vehículos flexibles y polivalentes que no están diseñados para una función específica, sino para enfrentarse a todo tipo de misiones. Por ejemplo, incendios a baja y mediana altura, accidentes de tráfico, rescate y salvamento, emergencias médicas, etc.\r\n\r\n\tPara ello, estos camiones están configurados para llevar una cantidad considerable de personal y equipados con una amplia gama de herramientas y dispositivos como, bombas, mangueras, escaleras telescópicas, extintores de incendios, equipos de ventilación y respiración, iluminación, rampas, camillas, equipos de primeros auxilios, hachas y herramientas en general, en algunos casos también pueden contar con escaleras giratorias para incendios de mediana altura."
+  }
+},
+{
+  "model": "gestion_inventario.tipovehiculo",
+  "pk": 2,
+  "fields": {
+    "nombre": "Camión de Escala",
+    "descripcion": "Están diseñados específicamente para acceder a los incendios que ocurren a grandes alturas donde escaleras convencionales o telescópicas no pueden llegar. El nombre se deriva del hecho de que la escalera se encuentra montada en una plataforma giratoria en la parte trasera del camión, lo que le permite girar en torno a una base estable (boogie). Existen de diferentes tamaños como por ejemplo 25 metros / 30-32 metros/ 50-55 metros/ 75 metros.\r\n\t\r\n\tLas principales funciones de una escala giratoria son:\r\n\r\n\t-Permitir el acceso y la salida de los bomberos y las víctimas desde grandes alturas.\r\n\t-Proporcionar un alto nivel de agua para la extinción de incendios\r\n\t-Proporcionar una plataforma de trabajo en altura sin arriesgar al personal"
+  }
+},
+{
+  "model": "gestion_inventario.tipovehiculo",
+  "pk": 3,
+  "fields": {
+    "nombre": "Camión Cisterna",
+    "descripcion": "Están diseñados específicamente para el transporte de grandes cantidades de agua en torno a 8.000 o 15.000 litros, estas unidades son ideales para el amago de incendios en zonas donde no existe una fuente de agua cercana como zonas rurales o silvestres.\r\n\t\r\n\tLa mayoría de los camiones cisterna no están diseñados para luchar contra los incendios puesto que sus bombas carecen de la potencia para hacerlo, por ello estos vehículos solo son utilizados para la extracción del agua para luego ser conectados a un camión bomba."
+  }
+},
+{
+  "model": "gestion_inventario.tipovehiculo",
+  "pk": 4,
+  "fields": {
+    "nombre": "Unidad de Rescate",
+    "descripcion": "Las unidades de rescate están diseñadas específicamente para rescate, salvamento y emergencias médicas tales como accidentes de tráfico, derrumbes en edificios, inmersiones, rescates en altura, etc.\r\n\t\r\n\tEstos vehículos están equipados con una amplia gama de dispositivos e instrumentos médicos y de rescate como: cuerdas, camillas, collares cervicales, tablillas, tanques de oxígeno, trajes de inmersión, equipos de respiración, motobombas, extintores, tenazas hidráulicas, cortadores, gatos telescópicos hidráulicos, etc."
+  }
+},
+{
+  "model": "gestion_inventario.tipovehiculo",
+  "pk": 5,
+  "fields": {
+    "nombre": "Unidad de Materiales Peligrosos",
+    "descripcion": "Vehículos diseñados específicamente para hacer frente a materiales tóxicos, peligros, incendios, derrames de productos químicos o volátiles y agentes biológicos en donde el agua común podría solo empeorar la situación, para ellos estas unidades trabajan con equipos los cuales son especiales para generar soluciones espumosa y también cuenta con Equipos encapsulados por presión positiva de aire, también están equipados para realizar tarea de descontaminación y limpieza de víctimas y rescatadores luego de un incidente.\r\n\t\r\n\tLos vehículos Hazmat suelen estar pintados de color amarillo y operan dentro de zonas donde haya una alta concentración de productos volátiles, tóxicos y químicos como en zonas metropolitanas o zonas industriales."
+  }
+},
+{
+  "model": "gestion_inventario.tipovehiculo",
+  "pk": 6,
+  "fields": {
+    "nombre": "Camión Forestal",
+    "descripcion": "Estos vehículos han sido diseñados para el combate de incendios forestales, pudiendo desplazarse en terrenos abruptos al contar con tracción integral, y una estructura reforzada con barras antivuelco con posibilidad de bloqueo de diferencial. Suelen tener dos tipos de velocidades normal y tortuga, que te permite tirar agua con manguera mientras el camión está en movimiento. Las denominadas “bombas forestales” incluyen un sistema de diluvio de agua para proteger la cabina y las ruedas en caso de emergencia para poder atravesar un incendio. Suelen tener un sistema para mezclar el agua con espumógeno, en torno al 0,1% para poder lanzar espumante."
+  }
+},
+{
+  "model": "gestion_inventario.tipovehiculo",
+  "pk": 7,
+  "fields": {
+    "nombre": "Vehículo de Aeropuerto",
+    "descripcion": "Son camiones ágiles y rápidos con unas prestaciones espectaculares. En estos camiones se necesita un sistema de tracción total para poder hacer frente a cualquier incidencia dentro o fuera de las pistas. Diseñados para extinción de incendios en aeropuertos."
+  }
+},
+{
+  "model": "gestion_inventario.tipovehiculo",
+  "pk": 8,
+  "fields": {
+    "nombre": "Unidad de Apoyo / Logística",
+    "descripcion": "Vehículos destinados a tareas no combativas, como el transporte de personal, equipos de logística, o para funciones administrativas. Incluye camionetas, furgones y otros vehículos de servicio general que no están equipados para la extinción de incendios o rescates especializados."
+  }
+},
+{
+  "model": "gestion_inventario.vehiculo",
+  "pk": 1,
+  "fields": {
+    "patente": null,
+    "marca": null,
+    "modelo": null,
+    "chasis": null,
+    "anho": null,
+    "tipo_vehiculo": 1,
+    "ubicacion": 5
+  }
+},
+{
+  "model": "gestion_inventario.vehiculo",
+  "pk": 2,
+  "fields": {
+    "patente": null,
+    "marca": null,
+    "modelo": null,
+    "chasis": null,
+    "anho": null,
+    "tipo_vehiculo": 4,
+    "ubicacion": 6
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 1,
+  "fields": {
+    "nombre": "Repisa Blanca",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 1,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 2,
+  "fields": {
+    "nombre": "Casillero 1",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 1,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 3,
+  "fields": {
+    "nombre": "Caja N°5",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 1,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 4,
+  "fields": {
+    "nombre": "Cabina",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 5,
+  "fields": {
+    "nombre": "Gaveta 1",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 6,
+  "fields": {
+    "nombre": "Gaveta 2",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 7,
+  "fields": {
+    "nombre": "Gaveta 3",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 8,
+  "fields": {
+    "nombre": "Gaveta 4",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 9,
+  "fields": {
+    "nombre": "Gaveta 5",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 10,
+  "fields": {
+    "nombre": "Gaveta 6",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 5,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 11,
+  "fields": {
+    "nombre": "Techo",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 1,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 12,
+  "fields": {
+    "nombre": "Cabina",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 6,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 13,
+  "fields": {
+    "nombre": "Gaveta 1",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 6,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 14,
+  "fields": {
+    "nombre": "Gaveta 2",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 6,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 15,
+  "fields": {
+    "nombre": "Gaveta 3",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 6,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 16,
+  "fields": {
+    "nombre": "Gaveta 4",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 6,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 17,
+  "fields": {
+    "nombre": "Gaveta 5",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 6,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 18,
+  "fields": {
+    "nombre": "Gaveta 6",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 6,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.compartimento",
+  "pk": 19,
+  "fields": {
+    "nombre": "Techo",
+    "descripcion": null,
+    "imagen": "",
+    "ubicacion": 6,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.proveedor",
+  "pk": 1,
+  "fields": {
+    "nombre": "CARLOS ALBERTO RAMIREZ GARRIDO",
+    "rut": "14567178-1",
+    "giro_comercial": null,
+    "contacto_principal": 1,
+    "estacion_creadora": 2
+  }
+},
+{
+  "model": "gestion_inventario.proveedor",
+  "pk": 2,
+  "fields": {
+    "nombre": "RONALD CRISTIAN MORRIS COFRÉ",
+    "rut": "14987297-K",
+    "giro_comercial": null,
+    "contacto_principal": 2,
+    "estacion_creadora": 2
+  }
+},
+{
+  "model": "gestion_inventario.proveedor",
+  "pk": 3,
+  "fields": {
+    "nombre": "ENZIO ESTEBAN CERDA VIZCARRA",
+    "rut": "20668925-2",
+    "giro_comercial": null,
+    "contacto_principal": 3,
+    "estacion_creadora": 2
+  }
+},
+{
+  "model": "gestion_inventario.proveedor",
+  "pk": 4,
+  "fields": {
+    "nombre": "CUERPO DE BOMBEROS DE IQUIQUE",
+    "rut": "81816400-9",
+    "giro_comercial": null,
+    "contacto_principal": 4,
+    "estacion_creadora": 2
+  }
+},
+{
+  "model": "gestion_inventario.contactoproveedor",
+  "pk": 1,
+  "fields": {
+    "proveedor": 1,
+    "nombre_contacto": "Contacto Principal",
+    "direccion": "AV ASI DE ESTA MANERA 1234",
+    "comuna": 5,
+    "telefono": "945886737",
+    "email": null,
+    "notas": null,
+    "estacion_especifica": null
+  }
+},
+{
+  "model": "gestion_inventario.contactoproveedor",
+  "pk": 2,
+  "fields": {
+    "proveedor": 2,
+    "nombre_contacto": "Contacto Principal",
+    "direccion": "PASAJE LIMONARES 830",
+    "comuna": 6,
+    "telefono": "976559501",
+    "email": null,
+    "notas": null,
+    "estacion_especifica": null
+  }
+},
+{
+  "model": "gestion_inventario.contactoproveedor",
+  "pk": 3,
+  "fields": {
+    "proveedor": 3,
+    "nombre_contacto": "Contacto Principal",
+    "direccion": "AV MANZANA 345",
+    "comuna": 7,
+    "telefono": "957233758",
+    "email": null,
+    "notas": null,
+    "estacion_especifica": null
+  }
+},
+{
+  "model": "gestion_inventario.contactoproveedor",
+  "pk": 4,
+  "fields": {
+    "proveedor": 4,
+    "nombre_contacto": "Oficina Central",
+    "direccion": "BOLÍVAR 414",
+    "comuna": 8,
+    "telefono": "57413166",
+    "email": null,
+    "notas": null,
+    "estacion_especifica": null
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 1,
+  "fields": {
+    "nombre": "Protección Personal (EPP)",
+    "descripcion": "Incluye todo el equipo de protección personal, como cascos, trajes resistentes al fuego, botas y guantes.",
+    "codigo": "EPP"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 2,
+  "fields": {
+    "nombre": "Herramientas y Equipos Manuales",
+    "descripcion": "Engloba las herramientas manuales utilizadas para forzar accesos, realizar rescates y cortar materiales, así como herramientas como hachas, sierras y palancas.",
+    "codigo": "HER"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 3,
+  "fields": {
+    "nombre": "Combate y Supresión de Incendios",
+    "descripcion": "Esto incluye mangueras, boquillas, bombas de agua, extintores y equipos para dirigir chorros de agua y controlar incendios.",
+    "codigo": "INC"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 4,
+  "fields": {
+    "nombre": "Rescate y Extracción",
+    "descripcion": "Comprende herramientas y equipos utilizados para liberar a personas atrapadas, como herramientas hidráulicas, cuerdas, poleas y sistemas de poleas, y equipos de rescate en espacios confinados.",
+    "codigo": "RES"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 5,
+  "fields": {
+    "nombre": "Atención Prehospitalaria y Primeros Auxilios",
+    "descripcion": "Equipos e insumos para la atención de pacientes, como botiquines, tanques de oxígeno, férulas, collares cervicales y material de curación.",
+    "codigo": "APH"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 6,
+  "fields": {
+    "nombre": "Equipos de Respiración",
+    "descripcion": "Incluye los equipos de respiración autónoma (ERA) utilizados para proporcionar aire limpio en entornos peligrosos, así como las máscaras y los reguladores.",
+    "codigo": "ERA"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 7,
+  "fields": {
+    "nombre": "Detección y Medición",
+    "descripcion": "Esto abarca los dispositivos utilizados para medir la concentración de gases peligrosos y para detectar sustancias peligrosas en el ambiente.",
+    "codigo": "DET"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 8,
+  "fields": {
+    "nombre": "Iluminación y Comunicación",
+    "descripcion": "Comprende equipos de iluminación resistentes al fuego, radios de comunicación y sistemas de intercomunicación utilizados para mantener la seguridad y la coordinación en la escena del incendio.",
+    "codigo": "COM"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 9,
+  "fields": {
+    "nombre": "Enfriamiento y Ventilación",
+    "descripcion": "Esto incluye ventiladores para reducir la temperatura en la escena del incendio, así como equipos de desplazamiento de aire para eliminar el humo y los gases tóxicos.",
+    "codigo": "VEN"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 10,
+  "fields": {
+    "nombre": "Seguridad y Señalización",
+    "descripcion": "Incluye elementos y equipos que se utilizan para establecer zonas de seguridad, señalización de peligro y control de tráfico en la escena de un incidente, como conos, cintas de barrera, señales de advertencia, etc.",
+    "codigo": "SEG"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 11,
+  "fields": {
+    "nombre": "Documentación Técnica",
+    "descripcion": "Manuales, guías de operación, mapas y otros documentos físicos.",
+    "codigo": "DOC"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 12,
+  "fields": {
+    "nombre": "Material de Cuartel y Logística",
+    "descripcion": "Insumos para el funcionamiento diario de la estación que no son de emergencia, como elementos de limpieza, oficina y cocina.",
+    "codigo": "LOG"
+  }
+},
+{
+  "model": "gestion_inventario.categoria",
+  "pk": 13,
+  "fields": {
+    "nombre": "Contenedores y Bolsos",
+    "descripcion": "Elementos que almacenen insumos en su interior",
+    "codigo": "CONT"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 1,
+  "fields": {
+    "nombre_oficial": "Casco Estructural Heros-titan",
+    "descripcion_general": null,
+    "marca": 1,
+    "modelo": "Heros-titan",
+    "gtin": null,
+    "categoria": 1,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 2,
+  "fields": {
+    "nombre_oficial": "Uniforme Estructural V-Force",
+    "descripcion_general": null,
+    "marca": 2,
+    "modelo": "V-Force",
+    "gtin": null,
+    "categoria": 1,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 3,
+  "fields": {
+    "nombre_oficial": "Guantes Estructurales Fire-Dex",
+    "descripcion_general": null,
+    "marca": 3,
+    "modelo": "Fire-Dex",
+    "gtin": null,
+    "categoria": 1,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 4,
+  "fields": {
+    "nombre_oficial": "Manguera de Incendio Hi-Combat II 45mm",
+    "descripcion_general": null,
+    "marca": 4,
+    "modelo": "Hi-Combat II",
+    "gtin": null,
+    "categoria": 3,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 5,
+  "fields": {
+    "nombre_oficial": "Chaleco de Extricación K.E.D.",
+    "descripcion_general": null,
+    "marca": 5,
+    "modelo": "125 K.E.D.",
+    "gtin": null,
+    "categoria": 4,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 6,
+  "fields": {
+    "nombre_oficial": "Ventilador Táctico a Batería",
+    "descripcion_general": null,
+    "marca": 6,
+    "modelo": "V18-BD",
+    "gtin": null,
+    "categoria": 8,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 7,
+  "fields": {
+    "nombre_oficial": "Linterna de Ángulo Recto",
+    "descripcion_general": null,
+    "marca": 7,
+    "modelo": "L-3000",
+    "gtin": null,
+    "categoria": 7,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 8,
+  "fields": {
+    "nombre_oficial": "Botiquín de Primeros Auxilios",
+    "descripcion_general": null,
+    "marca": 11,
+    "modelo": "Tipo A",
+    "gtin": null,
+    "categoria": 4,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 9,
+  "fields": {
+    "nombre_oficial": "Bolso de Rescate Táctico",
+    "descripcion_general": null,
+    "marca": null,
+    "modelo": "Táctico Grande",
+    "gtin": null,
+    "categoria": 13,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 10,
+  "fields": {
+    "nombre_oficial": "Equipo de Respiración Autónoma (ERA)",
+    "descripcion_general": null,
+    "marca": 8,
+    "modelo": "G1",
+    "gtin": null,
+    "categoria": 5,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 11,
+  "fields": {
+    "nombre_oficial": "Herramienta de Corte Hidráulica (Quijada)",
+    "descripcion_general": null,
+    "marca": 9,
+    "modelo": "Serie Pentheon",
+    "gtin": null,
+    "categoria": 4,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 12,
+  "fields": {
+    "nombre_oficial": "Casco de Rescate Técnico F2 X-TREM",
+    "descripcion_general": null,
+    "marca": 8,
+    "modelo": "F2 X-TREM",
+    "gtin": null,
+    "categoria": 1,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.productoglobal",
+  "pk": 13,
+  "fields": {
+    "nombre_oficial": "Linterna de Escena Vulcan 180",
+    "descripcion_general": null,
+    "marca": 10,
+    "modelo": "Vulcan 180",
+    "gtin": null,
+    "categoria": 7,
+    "vida_util_recomendada_anos": null,
+    "imagen": "",
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.producto",
+  "pk": 1,
+  "fields": {
+    "producto_global": 1,
+    "sku": null,
+    "es_serializado": true,
+    "proveedor_preferido": null,
+    "costo_compra": null,
+    "estacion": 2,
+    "es_expirable": false,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.producto",
+  "pk": 2,
+  "fields": {
+    "producto_global": 2,
+    "sku": null,
+    "es_serializado": true,
+    "proveedor_preferido": null,
+    "costo_compra": null,
+    "estacion": 2,
+    "es_expirable": false,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.producto",
+  "pk": 3,
+  "fields": {
+    "producto_global": 3,
+    "sku": null,
+    "es_serializado": false,
+    "proveedor_preferido": null,
+    "costo_compra": null,
+    "estacion": 2,
+    "es_expirable": false,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.producto",
+  "pk": 4,
+  "fields": {
+    "producto_global": 4,
+    "sku": null,
+    "es_serializado": true,
+    "proveedor_preferido": null,
+    "costo_compra": null,
+    "estacion": 2,
+    "es_expirable": false,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.producto",
+  "pk": 5,
+  "fields": {
+    "producto_global": 5,
+    "sku": null,
+    "es_serializado": true,
+    "proveedor_preferido": null,
+    "costo_compra": null,
+    "estacion": 2,
+    "es_expirable": false,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.producto",
+  "pk": 6,
+  "fields": {
+    "producto_global": 9,
+    "sku": null,
+    "es_serializado": false,
+    "proveedor_preferido": null,
+    "costo_compra": null,
+    "estacion": 2,
+    "es_expirable": true,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.activo",
+  "pk": 1,
+  "fields": {
+    "producto": 1,
+    "codigo_activo": "CASCO-EST-001",
+    "estacion": 2,
+    "numero_serie_fabricante": "HS-847291-A",
+    "horas_de_uso": null,
+    "horas_de_uso_totales": null,
+    "notas_adicionales": null,
+    "estado": 1,
+    "compartimento": 2,
+    "proveedor": 1,
+    "asignado_a": null,
+    "fecha_fabricacion": "2022-01-15",
+    "fecha_recepcion": "2022-03-01",
+    "fecha_expiracion": null,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.activo",
+  "pk": 2,
+  "fields": {
+    "producto": 2,
+    "codigo_activo": "UNIF-EST-001",
+    "estacion": 2,
+    "numero_serie_fabricante": "LION-X-99120",
+    "horas_de_uso": null,
+    "horas_de_uso_totales": null,
+    "notas_adicionales": null,
+    "estado": 1,
+    "compartimento": 2,
+    "proveedor": 2,
+    "asignado_a": null,
+    "fecha_fabricacion": "2023-05-20",
+    "fecha_recepcion": "2023-06-01",
+    "fecha_expiracion": null,
+    "created_at": "2025-11-07T20:36:09Z",
+    "updated_at": "2025-11-07T20:36:09Z"
+  }
+},
+{
+  "model": "gestion_inventario.activo",
+  "pk": 3,
+  "fields": {
+    "producto": 4,
+    "codigo_activo": "MANG-45-001",
+    "estacion": 2,
+    "numero_serie_fabricante": "GH-45-2021-098",
+    "horas_de_uso": null,
+    "horas_de_uso_totales": null,
+    "notas_adicionales": null,
+    "estado": 1,
+    "compartimento": 5,
+    "proveedor": 3,
+    "asignado_a": null,
+    "fecha_fabricacion": "2021-11-01",
+    "fecha_recepcion": "2022-01-10",
+    "fecha_expiracion": null,
+    "created_at": "2025-11-07T20:36:10Z",
+    "updated_at": "2025-11-07T20:36:10Z"
+  }
+},
+{
+  "model": "gestion_inventario.activo",
+  "pk": 4,
+  "fields": {
+    "producto": 4,
+    "codigo_activo": "MANG-45-002",
+    "estacion": 2,
+    "numero_serie_fabricante": "GH-45-2021-099",
+    "horas_de_uso": null,
+    "horas_de_uso_totales": null,
+    "notas_adicionales": null,
+    "estado": 1,
+    "compartimento": 5,
+    "proveedor": 3,
+    "asignado_a": null,
+    "fecha_fabricacion": "2021-11-01",
+    "fecha_recepcion": "2022-01-10",
+    "fecha_expiracion": null,
+    "created_at": "2025-11-07T20:36:10Z",
+    "updated_at": "2025-11-07T20:36:10Z"
+  }
+},
+{
+  "model": "gestion_inventario.activo",
+  "pk": 5,
+  "fields": {
+    "producto": 5,
+    "codigo_activo": "MANG-75-001",
+    "estacion": 2,
+    "numero_serie_fabricante": "GH-75-2022-150",
+    "horas_de_uso": null,
+    "horas_de_uso_totales": null,
+    "notas_adicionales": null,
+    "estado": 1,
+    "compartimento": 6,
+    "proveedor": 3,
+    "asignado_a": null,
+    "fecha_fabricacion": "2022-08-10",
+    "fecha_recepcion": "2022-09-01",
+    "fecha_expiracion": null,
+    "created_at": "2025-11-07T20:36:10Z",
+    "updated_at": "2025-11-07T20:36:10Z"
+  }
+},
+{
+  "model": "gestion_inventario.activo",
+  "pk": 6,
+  "fields": {
+    "producto": 6,
+    "codigo_activo": "CHALECO-EXT-001",
+    "estacion": 2,
+    "numero_serie_fabricante": "KED-00129-US",
+    "horas_de_uso": null,
+    "horas_de_uso_totales": null,
+    "notas_adicionales": null,
+    "estado": 1,
+    "compartimento": 7,
+    "proveedor": 2,
+    "asignado_a": null,
+    "fecha_fabricacion": "2020-02-25",
+    "fecha_recepcion": "2020-04-01",
+    "fecha_expiracion": null,
+    "created_at": "2025-11-07T20:36:10Z",
+    "updated_at": "2025-11-07T20:36:10Z"
+  }
+}
+]
