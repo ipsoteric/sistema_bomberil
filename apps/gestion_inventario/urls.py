@@ -41,7 +41,8 @@ from .views import (
     ImprimirEtiquetasView,
     CrearPrestamoView,
     BuscarItemPrestamoJson,
-    HistorialPrestamosView
+    HistorialPrestamosView,
+    GestionarDevolucionView
     )
 
 app_name = 'gestion_inventario'
@@ -132,7 +133,7 @@ urlpatterns = [
     # Endpoint para buscar existencias para préstamo
     path('api/prestamo/buscar-item/<str:codigo>/', BuscarItemPrestamoJson.as_view(), name='api_buscar_item_prestamo'),
     path('prestamos/', HistorialPrestamosView.as_view(), name='ruta_historial_prestamos'),
-    # path('prestamos/<int:prestamo_id>/gestionar/', GestionarDevolucionView.as_view(), name='ruta_gestionar_devolucion'),
+    path('prestamos/<int:prestamo_id>/gestionar/', GestionarDevolucionView.as_view(), name='ruta_gestionar_devolucion'),
 
     # Historial de movimientos
     path('movimientos/', MovimientoInventarioListView.as_view(), name='ruta_historial_movimientos'),

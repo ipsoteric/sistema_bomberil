@@ -7,6 +7,13 @@ ESTILOS DE MODO OSCURO
 .dark-mode .card {
     background-color: #1a1d21;
     border-color: #2d3238;
+    color: #e6edf3; /* <-- CORRECCIÓN: Añadido color de texto base */
+}
+
+/* 1.1. Corrige bordes de header/footer de card */
+.dark-mode .card-header,
+.dark-mode .card-footer {
+    border-color: #2d3238;
 }
 
 /* 2. Corrige fondos claros forzados (como el panel de filtro) */
@@ -35,87 +42,46 @@ ESTILOS DE MODO OSCURO
     color: #8b949e;
 }
 
-/* 4. Corrige Texto y Etiquetas */
-.dark-mode .form-label,
-.dark-mode .card-title,
-.dark-mode .card-header,
-.dark-mode .page-link {
-    color: #e6edf3;
+/* 3.1 Corrige Checkbox */
+.dark-mode .form-check-input {
+    background-color: #111318;
+    border-color: #2b3136;
 }
-
-/* 5. Corrige la Tabla */
-.dark-mode .table {
-    color: #e6edf3;
-}
-
-/* Sobreescribe el 'table-dark' de Bootstrap */
-.dark-mode .table.table-dark {
-    background-color: #1a1d21; /* Fondo de la tabla */
-    color: #e6edf3;
-}
-
-/* Corrige la cabecera 'table-light' */
-.dark-mode thead.table-light > tr > th {
-    background-color: #1a1d21;
-    border-color: #2d3238;
-    color: #e6edf3;
-}
-
-/* Corrige 'table-striped' */
-.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > * {
-    background-color: #1a1d21;
-    color: #e6edf3;
-}
-.dark-mode .table-striped > tbody > tr:nth-of-type(even) > * {
-    background-color: #111318; /* Un poco más oscuro para la franja */
-    color: #e6edf3;
-}
-
-.dark-mode .table-hover tbody tr:hover > * {
-    background-color: rgba(255, 255, 255, 0.04); /* Un hover sutil */
-    color: #e6edf3;
-}
-
-.dark-mode .table-bordered,
-.dark-mode .table-bordered > :not(caption) > * > * {
-    border-color: #2d3238;
-}
-
-/* 6. Corrige la Paginación */
-.dark-mode .page-link {
-    background-color: #1a1d21;
-    border-color: #2d3238;
-}
-
-.dark-mode .page-item.active .page-link {
+.dark-mode .form-check-input:checked {
     background-color: #0d6efd;
     border-color: #0d6efd;
 }
 
-.dark-mode .page-item.disabled .page-link {
+/* 4. (NUEVO) Corrige Tablas (.table) --- SECCIÓN CORREGIDA */
+.dark-mode .table {
+    color: #e6edf3;
+    border-color: #2d3238;
+    background-color: transparent; /* <-- CORRECCIÓN: Quita fondo blanco */
+}
+/* Selector de BS para celdas (th, td) */
+.dark-mode .table > :not(caption) > * > * {
+    background-color: transparent;
+    border-color: #2d3238;
+    color: inherit; /* Hereda el color de la tabla */
+}
+.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.03); 
+}
+.dark-mode .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* 5. (NUEVO) Corrige Grupos de Listas (.list-group) */
+.dark-mode .list-group-item {
+    background-color: #1a1d21; /* Igual al fondo del card */
+    border-color: #2d3238; /* Igual al borde del card */
+    color: inherit;
+}
+
+/* 6. Corrige Modales (.modal) */
+.dark-mode .modal-content {
     background-color: #1a1d21;
     border-color: #2d3238;
-    color: #6c757d;
-}
-
-/* 7. Otros */
-.dark-mode .text-muted {
-    color: #8b949e !important;
-}
-
-
-
-
-/* =================================================================
-AÑADIR ESTILOS PARA MODAL, ALERTAS Y SPINNERS (Modo Oscuro)
-=================================================================
-*/
-
-/* 6. Corrige los Modals (.modal-content) */
-.dark-mode .modal-content {
-    background-color: var(--color-fondo-secundario);
-    border-color: var(--color-borde);
-    color: var(--color-texto-primario);
 }
 .dark-mode .modal-header {
     border-bottom-color: var(--color-borde);
@@ -143,7 +109,76 @@ AÑADIR ESTILOS PARA MODAL, ALERTAS Y SPINNERS (Modo Oscuro)
     font-weight: bold;
 }
 
-/* 8. Corrige Spinners (.spinner-border) */
+/* 8. (NUEVO) Corrige Badges de colores (.badge) */
+.dark-mode .badge.bg-warning {
+    color: #ffd970;
+    background-color: #332701;
+    border: 1px solid #856404;
+}
+.dark-mode .badge.bg-info {
+    color: #7beaff;
+    background-color: #0c2e3b;
+    border: 1px solid #1a5870;
+}
+.dark-mode .badge.bg-success {
+    color: #8aff8a;
+    background-color: #0a3d0a;
+    border: 1px solid #1a741a;
+}
+.dark-mode .badge.bg-secondary {
+    color: #c0c0c0;
+    background-color: #303030;
+    border: 1px solid #505050;
+}
+/* bg-danger usa la misma lógica que alert-danger */
+.dark-mode .badge.bg-danger {
+    color: #ea868f;
+    background-color: #2c0b0e;
+    border: 1px solid #842029;
+}
+
+
+/* 9. (NUEVO) Corrige Paginación (.pagination) */
+.dark-mode .page-link {
+    background-color: #1a1d21;
+    border-color: #2d3238;
+    color: #0d6efd; /* Color de enlace primario */
+}
+.dark-mode .page-item.disabled .page-link {
+    color: #6c757d;
+    background-color: #1c1f24;
+    border-color: #2d3238;
+}
+.dark-mode .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #FFFFFF;
+}
+.dark-mode .page-link:hover {
+    background-color: #1c1f24;
+    color: #3d8bfd;
+}
+
+/* 10. (NUEVO) Corrige Botones Secundarios y Outline */
+.dark-mode .btn-outline-primary {
+    color: #0d6efd;
+    border-color: #0d6efd;
+}
+.dark-mode .btn-outline-primary:hover {
+    background-color: #0d6efd;
+    color: #FFFFFF;
+}
+.dark-mode .btn-secondary {
+    background-color: #4a5056;
+    border-color: #4a5056;
+    color: #FFFFFF;
+}
+.dark-mode .btn-secondary:hover {
+    background-color: #5a6066;
+    border-color: #5a6066;
+}
+
+/* 11. Corrige Spinners (.spinner-border) */
 .dark-mode .spinner-border {
     /* El color se hereda (color: var(--color-texto-primario)) */
     /* Solo necesitamos cambiar el 'track' transparente */
@@ -153,21 +188,20 @@ AÑADIR ESTILOS PARA MODAL, ALERTAS Y SPINNERS (Modo Oscuro)
     border-right-color: transparent;
 }
 
-/* 9. Corrige Placeholders y fondos .bg-light */
-.dark-mode .bg-light,
-.dark-mode .card-img-top-placeholder,
-.dark-mode .img-thumbnail-placeholder {
-    background-color: var(--color-fondo-secundario) !important;
-    color: var(--color-primario) !important;
+/* 12. Corrige Placeholders y fondos .bg-light */
+.dark-mode .bg-light {
+    background-color: #1a1d21 !important; /* Mismo que el card */
 }
 
-.ts-control {
-        font-size: var(--fs-normal) !important; 
-        padding-top: 0.35rem !important;
-        padding-bottom: 0.35rem !important;
-        background-color: var(--color-secundario);
-    }
-    
-.ts-control, .ts-wrapper.single.input-active .ts-control {
-    background-color: var(--color-secundario);
+.dark-mode ::-webkit-input-placeholder { /* Chrome/Opera/Safari */
+  color: #555 !important;
+}
+.dark-mode ::-moz-placeholder { /* Firefox 19+ */
+  color: #555 !important;
+}
+.dark-mode :-ms-input-placeholder { /* IE 10+ */
+  color: #555 !important;
+}
+.dark-mode :-moz-placeholder { /* Firefox 18- */
+  color: #555 !important;
 }

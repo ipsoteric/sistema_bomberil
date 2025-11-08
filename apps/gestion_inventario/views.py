@@ -3145,6 +3145,196 @@ class HistorialPrestamosView(LoginRequiredMixin, View):
 
 
 
+class GestionarDevolucionView(LoginRequiredMixin, View):
+    """
+    Vista (basada en View) para gestionar la devolución de un préstamo.
+    Muestra los detalles del préstamo y procesa el registro de devoluciones.
+    """
+    template_name = 'gestion_inventario/pages/gestionar_devolucion.html'
+
+    def get_estacion_activa(self):
+        """Helper para obtener la estación activa del usuario."""
+        try:
+            membresia_activa = Membresia.objects.select_related('estacion').get(
+                usuario=self.request.user, 
+                estado=Membresia.Estado.ACTIVO
+            )
+            return membresia_activa.estacion
+        except Membresia.DoesNotExist:
+            return None
+
+    def get(self, request, *args, **kwargs):
+        """Muestra los detalles del préstamo y sus ítems."""
+        estacion = self.get_estacion_activa()
+        if not estacion:
+            messages.error(request, "No tienes una membresía activa asignada.")
+            return redirect('portal:home')
+
+        prestamo_id = kwargs.get('prestamo_id')
+        prestamo = get_object_or_404(
+            Prestamo.objects.select_related('destinatario', 'usuario_responsable'), 
+            id=prestamo_id, 
+            estacion=estacion
+        )
+
+        items_prestados = prestamo.items_prestados.select_related(
+            'activo__producto__producto_global', 
+            'lote__producto__producto_global'
+        ).order_by('id')
+
+        for item in items_prestados:
+            item.cantidad_pendiente = item.cantidad_prestada - item.cantidad_devuelta
+
+        context = {
+            'prestamo': prestamo,
+            'items_prestados': items_prestados
+        }
+        return render(request, self.template_name, context)
+
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        """Procesa el formulario de registro de devoluciones."""
+        estacion = self.get_estacion_activa()
+        if not estacion:
+            messages.error(request, "Acción no permitida.")
+            return redirect('portal:home')
+
+        prestamo_id = kwargs.get('prestamo_id')
+        prestamo = get_object_or_404(Prestamo, id=prestamo_id, estacion=estacion)
+        
+        # No procesar si ya está completado
+        if prestamo.estado == Prestamo.EstadoPrestamo.COMPLETADO:
+            messages.warning(request, "Este préstamo ya ha sido completado.")
+            return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
+
+        items_prestados = prestamo.items_prestados.select_related('activo', 'lote').all()
+        
+        try:
+            # Obtenemos los estados que necesitaremos para la lógica
+            estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
+            estado_prestamo = Estado.objects.get(nombre='EN PRÉSTAMO EXTERNO')
+        except Estado.DoesNotExist as e:
+            messages.error(request, f"Error de configuración: No se encontró el estado '{e}'. Contacte al administrador.")
+            return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
+
+        items_procesados_con_exito = 0
+        errores_validacion = False
+
+        detalles_a_actualizar = []
+        movimientos_a_crear = []
+        stock_a_actualizar = [] # Guardamos (item, tipo_item)
+
+        # 1. Fase de Validación
+        for detalle in items_prestados:
+            cantidad_pendiente = detalle.cantidad_prestada - detalle.cantidad_devuelta
+            if cantidad_pendiente <= 0:
+                continue
+
+            try:
+                if detalle.activo:
+                    # Para Activos, es un checkbox (valor '1' si se marca)
+                    input_name = f'cantidad-devolver-{detalle.id}'
+                    cantidad_a_devolver = int(request.POST.get(input_name, 0))
+                else:
+                    # Para Lotes, es un campo numérico
+                    input_name = f'cantidad-devolver-{detalle.id}'
+                    cantidad_a_devolver = int(request.POST.get(input_name, 0))
+            
+            except (ValueError, TypeError):
+                messages.error(request, f"Se recibió un valor inválido para el ítem {detalle.codigo_item}.")
+                errores_validacion = True
+                continue # Saltar al siguiente ítem
+
+            if cantidad_a_devolver < 0:
+                messages.error(request, f"La cantidad a devolver no puede ser negativa ({detalle.codigo_item}).")
+                errores_validacion = True
+            elif cantidad_a_devolver > cantidad_pendiente:
+                messages.error(request, f"No puede devolver {cantidad_a_devolver} para el ítem {detalle.codigo_item}. Máximo pendiente: {cantidad_pendiente}.")
+                errores_validacion = True
+            
+            if cantidad_a_devolver > 0 and not errores_validacion:
+                detalles_a_actualizar.append((detalle, cantidad_a_devolver))
+
+        if errores_validacion:
+            # Si hubo algún error, no procesamos nada
+            return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
+        
+        if not detalles_a_actualizar:
+            messages.warning(request, "No se ingresaron cantidades para devolver.")
+            return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
+
+        # 2. Fase de Procesamiento (dentro del @transaction.atomic)
+        total_items_completados = 0
+        for detalle in items_prestados:
+            if (detalle.cantidad_prestada - detalle.cantidad_devuelta) == 0:
+                total_items_completados += 1
+
+        for detalle, cantidad_devuelta in detalles_a_actualizar:
+            # 1. Actualizar el detalle del préstamo
+            detalle.cantidad_devuelta += cantidad_devuelta
+            
+            # 2. Actualizar Stock
+            if detalle.activo:
+                activo = detalle.activo
+                activo.estado = estado_disponible
+                stock_a_actualizar.append(activo)
+                
+                movimiento = MovimientoInventario(
+                    tipo_movimiento=TipoMovimiento.DEVOLUCION,
+                    fecha_hora=timezone.now(),
+                    usuario=request.user,
+                    estacion=estacion,
+                    activo=activo,
+                    cantidad_movida=1, # Siempre 1 para activos
+                    compartimento_destino=activo.compartimento, # Vuelve a su "hogar"
+                    notas=f"Devolución Préstamo Folio #{prestamo.id}"
+                )
+                movimientos_a_crear.append(movimiento)
+
+            elif detalle.lote:
+                lote = detalle.lote
+                lote.cantidad += cantidad_devuelta # Añadimos el stock de vuelta al lote original
+                stock_a_actualizar.append(lote)
+
+                movimiento = MovimientoInventario(
+                    tipo_movimiento=TipoMovimiento.DEVOLUCION,
+                    fecha_hora=timezone.now(),
+                    usuario=request.user,
+                    estacion=estacion,
+                    lote_insumo=lote,
+                    cantidad_movida=cantidad_devuelta, # Positivo
+                    compartimento_destino=lote.compartimento, # Vuelve a su lote "hogar"
+                    notas=f"Devolución Préstamo Folio #{prestamo.id}"
+                )
+                movimientos_a_crear.append(movimiento)
+            
+            if detalle.cantidad_devuelta == detalle.cantidad_prestada:
+                total_items_completados += 1
+            
+            detalle.save()
+            items_procesados_con_exito += 1
+
+        # 3. Actualizar Estado del Préstamo
+        if total_items_completados == items_prestados.count():
+            prestamo.estado = Prestamo.EstadoPrestamo.COMPLETADO
+        elif items_procesados_con_exito > 0:
+            prestamo.estado = Prestamo.EstadoPrestamo.DEVUELTO_PARCIAL
+        
+        prestamo.save()
+
+        # 4. Guardar cambios de stock y movimientos (Bulk)
+        # (Nota: bulk_update es más eficiente si ya existían, pero save() es más simple y activa signals)
+        for item in stock_a_actualizar:
+            item.save()
+        
+        MovimientoInventario.objects.bulk_create(movimientos_a_crear)
+
+        messages.success(request, f"Se registraron {items_procesados_con_exito} devoluciones correctamente.")
+        return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
+
+
+
+
 class MovimientoInventarioListView(LoginRequiredMixin, View):
     """
     Muestra una lista paginada y filtrable de todos los 
