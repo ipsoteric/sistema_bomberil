@@ -981,3 +981,40 @@ PrestamoDetalleFormSet = forms.formset_factory(
     extra=1, # Empieza con una línea vacía
     can_delete=True
 )
+
+
+
+
+class PrestamoFilterForm(forms.Form):
+    """
+    Formulario para filtrar el historial de préstamos.
+    """
+    destinatario = forms.ModelChoiceField(
+        label='Destinatario',
+        queryset=Destinatario.objects.none(), # Se setea en la vista
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm'})
+    )
+    estado = forms.ChoiceField(
+        label='Estado del Préstamo',
+        choices=[('', 'Todos')] + Prestamo.EstadoPrestamo.choices,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select form-select-sm'})
+    )
+    start_date = forms.DateField(
+        label='Fecha Desde',
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control form-control-sm', 'type': 'date'})
+    )
+    end_date = forms.DateField(
+        label='Fecha Hasta',
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control form-control-sm', 'type': 'date'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        estacion = kwargs.pop('estacion', None)
+        super().__init__(*args, **kwargs)
+        if estacion:
+            # Filtra los destinatarios para mostrar solo los de la estación
+            self.fields['destinatario'].queryset = Destinatario.objects.filter(estacion=estacion).order_by('nombre_entidad')

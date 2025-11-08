@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect
 from django.views import View
 from django.http import JsonResponse, HttpResponse
 from django.db import models
-from django.db.models import Count, Sum, Value, Q, Subquery, OuterRef, Q, ProtectedError
+from django.db.models import Count, Sum, Q, Subquery, OuterRef, Q, ProtectedError
 from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.contrib import messages
@@ -65,10 +65,13 @@ from .forms import (
     TransferenciaForm,
     PrestamoCabeceraForm,
     PrestamoDetalleFormSet,
+    PrestamoFilterForm,
     EtiquetaFilterForm
     )
 from .utils import generar_sku_sugerido
 from core.settings import INVENTARIO_AREA_NOMBRE as AREA_NOMBRE
+
+from apps.gestion_usuarios.models import Membresia
 
 
 class InventarioInicioView(View):
@@ -2984,7 +2987,7 @@ class CrearPrestamoView(LoginRequiredMixin, View):
 
                 messages.success(request, f"Préstamo #{prestamo.id} creado exitosamente.")
                 # TODO: Redirigir a la futura página de historial de préstamos
-                return redirect('gestion_inventario:ruta_historial_movimientos') 
+                return redirect('gestion_inventario:ruta_historial_prestamos') 
 
             except (Estado.DoesNotExist, TipoMovimiento.DoesNotExist):
                 messages.error(request, "Error crítico de configuración: Faltan Estados o Tipos de Movimiento.")
@@ -3060,6 +3063,84 @@ class BuscarItemPrestamoJson(LoginRequiredMixin, View):
             pass # No se encontró
 
         return JsonResponse({"error": f"Código '{codigo}' no encontrado o no disponible en esta estación."}, status=404)
+
+
+
+
+class HistorialPrestamosView(LoginRequiredMixin, View):
+    """
+    Vista (basada en View) para mostrar el historial de préstamos externos
+    de la estación activa del usuario.
+    """
+    template_name = 'gestion_inventario/pages/historial_prestamos.html'
+    paginate_by = 25
+
+    def get(self, request, *args, **kwargs):
+        # 1. Obtener la estación activa del usuario (vía Membresia)
+        try:
+            membresia_activa = Membresia.objects.select_related('estacion').get(
+                usuario=request.user, 
+                estado=Membresia.Estado.ACTIVO
+            )
+            estacion_usuario = membresia_activa.estacion
+        except Membresia.DoesNotExist:
+            messages.error(request, "No tienes una membresía activa asignada.")
+            return redirect('portal:home') # Redirige al portal
+
+        # 2. Queryset base (optimizada)
+        base_queryset = Prestamo.objects.filter(
+            estacion=estacion_usuario
+        ).select_related(
+            'destinatario', 'usuario_responsable'
+        ).order_by('-fecha_prestamo')
+
+        # 3. Instanciar y procesar el formulario de filtro
+        filter_form = PrestamoFilterForm(request.GET, estacion=estacion_usuario)
+
+        if filter_form.is_valid():
+            cleaned_data = filter_form.cleaned_data
+            
+            if cleaned_data.get('destinatario'):
+                base_queryset = base_queryset.filter(
+                    destinatario=cleaned_data['destinatario']
+                )
+            
+            if cleaned_data.get('estado'):
+                base_queryset = base_queryset.filter(
+                    estado=cleaned_data['estado']
+                )
+            
+            if cleaned_data.get('start_date'):
+                base_queryset = base_queryset.filter(
+                    fecha_prestamo__gte=cleaned_data['start_date']
+                )
+
+            if cleaned_data.get('end_date'):
+                # Ajustamos la fecha de fin para incluir el día completo
+                end_date = cleaned_data['end_date'] + datetime.timedelta(days=1)
+                base_queryset = base_queryset.filter(
+                    fecha_prestamo__lt=end_date
+                )
+        
+        # 4. Paginación manual
+        paginator = Paginator(base_queryset, self.paginate_by)
+        page_number = request.GET.get('page')
+        try:
+            page_obj = paginator.get_page(page_number)
+        except PageNotAnInteger:
+            page_obj = paginator.get_page(1)
+        except EmptyPage:
+            page_obj = paginator.get_page(paginator.num_pages)
+
+        # 5. Construir el contexto
+        context = {
+            'page_obj': page_obj,
+            'is_paginated': paginator.num_pages > 1,
+            'filter_form': filter_form,
+            'params': request.GET.urlencode() # Para mantener filtros en paginación
+        }
+        
+        return render(request, self.template_name, context)
 
 
 
