@@ -119,7 +119,7 @@
                         {% endfor %}
                     </div>
                     {% else %}
-                    <div class="alert alert-info mb-0" role="alert">
+                    <div class="alert alert-info mb-0 fs_normal color_blanco" role="alert">
                         {# Mensaje de alerta dinámico (CORREGIDO) #}
                         No hay compartimentos creados para est{% if ubicacion.tipo_ubicacion.nombre|lower|slice:"-1" == "a" %}a{% else %}e{% endif %} {{ ubicacion.tipo_ubicacion.nombre|lower }}.
                     </div>
@@ -138,8 +138,8 @@
                     </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover table-sm align-middle {% if request.session.dark_mode %}table-dark{% endif %}" id="tablaStockEnArea">
-                            <thead class="table-light fs_pequena">
+                        <table class="table table-hover table-sm align-middle" id="tablaStockEnArea">
+                            <thead class="fs_pequena">
                                 <tr>
                                     <th>Compartimento</th>
                                     <th>Producto</th>

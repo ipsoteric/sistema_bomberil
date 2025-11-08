@@ -101,7 +101,7 @@
 <!-- Tabla de Stock Actual -->
 <div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span class="fw-bold fs_mediana">
+        <span class="fw-bold fs_normal">
             <i class="fas fa-table me-1"></i>
             Stock Actual del Inventario
         </span>
@@ -112,8 +112,8 @@
     <div class="card-body">
         <div class="table-responsive">
             <!-- Aplicando el patrón de tu lista_proveedores.html -->
-            <table class="table table-hover table-sm align-middle {% if request.session.dark_mode %}table-dark{% endif %}" id="tablaStockActual">
-                <thead class="table-light fs_pequena">
+            <table class="table table-striped table-hover table-sm align-middle" id="tablaStockActual">
+                <thead class="fs_pequena">
                     <tr>
                         <th>Producto</th>
                         <th>Identificador / Lote</th>
