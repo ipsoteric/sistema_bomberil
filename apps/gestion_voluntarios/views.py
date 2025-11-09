@@ -52,7 +52,7 @@ class VoluntariosEliminarView(View):
 
 
 
-# GESTIÓN DE CARGOS / RANGOS BOMBERILES
+# GESTIÓN DE CARGOS Y profesiones
 # Lista de cargos
 class CargosListaView(View):
     def get(self, request):

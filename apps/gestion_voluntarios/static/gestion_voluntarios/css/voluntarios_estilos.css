@@ -2,6 +2,7 @@
 - Usa esta hoja para definir los estilos que se usarán en esta aplicación.
 - Defíne los estilos aquí o segméntalos en archivos separados e impórtalos aquí. Como prefieras.
 */
+@import url("estilo_home.css");
 @import url("estilo_lista.css");
 @import url("estilo_crear.css");
 @import url("estilo_ver.css");

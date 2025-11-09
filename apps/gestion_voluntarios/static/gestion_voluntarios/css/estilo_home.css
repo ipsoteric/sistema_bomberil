@@ -1,0 +1,35 @@
+/* Archivo: dashboard.css */
+
+/* Colores para los bordes izquierdos de las tarjetas de contadores.
+   Usa las variables de color de Bootstrap (--bs-primary, etc.)
+*/
+.border-left-primary {
+  border-left: 0.25rem solid var(--bs-primary) !important;
+}
+
+.border-left-success {
+  border-left: 0.25rem solid var(--bs-success) !important;
+}
+
+.border-left-info {
+  border-left: 0.25rem solid var(--bs-info) !important;
+}
+
+.border-left-warning {
+  border-left: 0.25rem solid var(--bs-warning) !important;
+}
+
+.border-left-danger {
+  border-left: 0.25rem solid var(--bs-danger) !important;
+}
+
+/* Clases de utilidad para los colores de texto
+   (Usadas para los iconos y el texto del contador)
+*/
+.text-gray-300 {
+  color: #dddfeb !important;
+}
+
+.text-gray-800 {
+  color: #5a5c69 !important;
+}

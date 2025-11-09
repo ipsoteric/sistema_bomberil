@@ -57,7 +57,7 @@ urlpatterns = [
 
 
 
-    # Lista de cargos/rangos bomberiles
+    # Lista de cargos y profeciones
     path('lista/', CargosListaView.as_view(), name="ruta_cargos_lista"),
 
     # Ingresar cargo al sistema
