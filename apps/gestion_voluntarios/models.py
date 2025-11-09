@@ -13,7 +13,7 @@ class Nacionalidad(models.Model):
     '''(Global) Modelo para registrar nacionalidades para voluntarios'''
 
     pais = models.CharField(verbose_name="País/Nación", unique=True, max_length=100)
-    gentilicio = models.CharField(verbose_name="Gentilicio", unique=True, max_length=100, help_text="Ingrese el gentilicio")
+    gentilicio = models.CharField(verbose_name="Gentilicio", max_length=100, help_text="Ingrese el gentilicio")
     iso_nac = models.CharField(max_length=10)
 
     class Meta:
