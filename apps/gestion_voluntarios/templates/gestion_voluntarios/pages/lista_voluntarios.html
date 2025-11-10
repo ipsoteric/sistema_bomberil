@@ -1,7 +1,7 @@
 {# Plantilla base #}{% extends 'gestion_voluntarios/layouts/base.html' %}
 {# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Lista de Volunatios{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Lista de Volunatios{% endblock %}
+{# Título de la ventana #} {% block titulo_ventana %}Lista de Voluntarios{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Lista de Voluntarios{% endblock %}
 
 {% block contenido %}
 
@@ -12,62 +12,79 @@
             <div class="search-box">
                 <input type="text" placeholder="Buscar por nombre, RUT, etc.">
                 <i class="fas fa-search"></i>
-            </div>
-            <div class="filter-group">
-                <label for="estacion-filter">Estación:</label>
-                <select id="estacion-filter">
-                    <option value="global">Todas las estaciones</option>
-                    <option value="estacion1">Estación 1</option>
-                    <option value="estacion2">Estación 2</option>
-                    <option value="estacion3">Estación 3</option>
-                </select>
-            </div>
-            <div class="filter-group">
+                </div>
+
+           <div class="filter-group">
                 <label for="rango-filter">Rango:</label>
                 <select id="rango-filter">
                     <option value="global">Todos los rangos</option>
-                    <option value="rango1">Rango 1</option>
-                    <option value="rango2">Rango 2</option>
-                    <option value="rango3">Rango 3</option>
+                    {% for cargo in cargos %}
+                    <option value="{{ cargo.id }}">{{ cargo.nombre }}</option>
+                    {% endfor %}
                 </select>
             </div>
         </div>
 
         <div class="volunteer-grid">
 
-            <div class="volunteer-card">
-                <div class="profile-header">
-                    <img src="https://via.placeholder.com/100" alt="Foto de perfil">
-                    <span class="status-indicator active"></span>
-                </div>
-                <div class="profile-info">
-                    <h3>Juan Pérez</h3>
-                    <p class="rank">Rango: Bombero</p>
-                    <p class="station">Estación: Quinta Compañía</p>
-                </div>
-                <div class="card-actions">
-                    <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=1 %}" class="action-btn view-btn"><i class="fas fa-eye"></i></a>
-                    <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=1 %}" class="action-btn edit-btn"><i class="fas fa-edit"></i></a>
-                    <button class="action-btn delete-btn"><i class="fas fa-trash-alt"></i></button>
-                </div>
-            </div>
+            {% for voluntario in voluntarios %}
 
-            <div class="volunteer-card">
-                <div class="profile-header">
-                    <img src="https://via.placeholder.com/100" alt="Foto de perfil">
-                    <span class="status-indicator inactive"></span>
+                {% with membresia=voluntario.membresia_activa_list.0 cargo_actual=voluntario.cargo_actual_list.0 %}
+                
+                <div class="volunteer-card">
+                    <div class="profile-header">
+                        
+                        {# Avatar del voluntario (desde el modelo Usuario) #}
+                        {% if voluntario.usuario.avatar_thumb_small %}
+                            <img src="{{ voluntario.usuario.avatar_thumb_small.url }}" alt="Foto de perfil">
+                        {% else %}
+                            {# Un avatar genérico si no hay foto #}
+                            <img src="https://via.placeholder.com/100" alt="Foto de perfil">
+                        {% endif %}
+
+                        {# Estado (desde el modelo Membresia) #}
+                        {% if membresia.estado == 'ACTIVO' %}
+                            <span class="status-indicator active" title="Activo"></span>
+                        {% else %}
+                            <span class="status-indicator inactive" title="Inactivo"></span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="profile-info">
+                        {# Nombre (desde el modelo Usuario) #}
+                        <h3>{{ voluntario.usuario.get_full_name }}</h3>
+                        
+                        {# Rango (desde el modelo HistorialCargo) #}
+                        <p class="rank">Rango: 
+                            {% if cargo_actual %}
+                                {{ cargo_actual.cargo.nombre }}
+                            {% else %}
+                                <span style="color: #999;">Sin cargo actual</span>
+                            {% endif %}
+                        </p>
+                        
+                        {# Estación (desde el modelo Membresia) #}
+                        <p class="station">Estación: 
+                            {% if membresia %}
+                                {{ membresia.estacion.nombre }}
+                            {% else %}
+                                <span style="color: #999;">Sin estación activa</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="card-actions">
+                        {# URLs dinámicas usando el ID del voluntario #}
+                        <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.id %}" class="action-btn view-btn" title="Ver Hoja de Vida"><i class="fas fa-eye"></i></a>
+                        <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.id %}" class="action-btn edit-btn" title="Editar Voluntario"><i class="fas fa-edit"></i></a>
+                        <a href="" class="action-btn delete-btn" title="Eliminar Voluntario"><i class="fas fa-trash-alt"></i></a>
+                    </div>
                 </div>
-                <div class="profile-info">
-                    <h3>María López</h3>
-                    <p class="rank">Rango: Teniente</p>
-                    <p class="station">Estación: Primera Compañía</p>
-                </div>
-                <div class="card-actions">
-                    <button class="action-btn view-btn"><i class="fas fa-eye"></i></button>
-                    <button class="action-btn edit-btn"><i class="fas fa-edit"></i></button>
-                    <button class="action-btn delete-btn"><i class="fas fa-trash-alt"></i></button>
-                </div>
-            </div>
+                
+                {% endwith %}
+            {% empty %}
+                <p>No se encontraron voluntarios registrados en el sistema.</p>
+            {% endfor %}
             
         </div>
     </div>    

@@ -1,6 +1,13 @@
 from django.shortcuts import render
 from django.views import View
+from django.db.models import Prefetch
 
+# Importamos los modelos de voluntarios
+from .models import Voluntario, HistorialCargo, Cargo, TipoCargo, Profesion
+
+# Importamos Membresia desde la app gestion_usuarios [cite: 6]
+# (Ajusta la ruta si 'apps.gestion_usuarios' no es el path correcto)
+from apps.gestion_usuarios.models import Membresia
 
 # Página Inicial
 class VoluntariosInicioView(View):
@@ -11,9 +18,38 @@ class VoluntariosInicioView(View):
 # Lista de voluntarios
 class VoluntariosListaView(View):
     def get(self, request):
-        #código
-        return render(request, "gestion_voluntarios/pages/lista_voluntarios.html")
+        
+        # 1. Prefetch para la membresía activa (para obtener Estación y Estado)
+        # Buscamos la membresía activa del usuario [cite: 13]
+        active_membresia_prefetch = Prefetch(
+            'usuario__membresias',
+            queryset=Membresia.objects.filter(estado='ACTIVO').select_related('estacion'),
+            to_attr='membresia_activa_list' # Guardamos en un atributo temporal
+        )
 
+        # 2. Prefetch para el cargo actual (para obtener el Rango)
+        # Buscamos en el historial el cargo que no tiene fecha de fin 
+        current_cargo_prefetch = Prefetch(
+            'historial_cargos',
+            queryset=HistorialCargo.objects.filter(fecha_fin__isnull=True).select_related('cargo'),
+            to_attr='cargo_actual_list' # Guardamos en un atributo temporal
+        )
+
+        # 3. Query principal
+        # Obtenemos todos los Voluntarios 
+        # Usamos select_related para el usuario y prefetch_related para los datos complejos
+        voluntarios = Voluntario.objects.select_related('usuario').prefetch_related(
+            active_membresia_prefetch,
+            current_cargo_prefetch
+        ).all()
+
+        cargos = Cargo.objects.all().order_by('nombre')
+
+        context = {
+            'voluntarios': voluntarios,
+            'cargos': cargos,          # <- Nueva data para el filtro
+        }
+        return render(request, "gestion_voluntarios/pages/lista_voluntarios.html", context)
 
 # Crear voluntario
 class VoluntariosCrearView(View):
