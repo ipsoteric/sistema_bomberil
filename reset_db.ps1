@@ -47,4 +47,7 @@ if ($LASTEXITCODE -ne 0) { throw "Error: 'loaddata datos_inventario.json' falló
 python manage.py loaddata apps/gestion_usuarios/fixtures/datos_usuarios.json
 if ($LASTEXITCODE -ne 0) { throw "Error: 'loaddata datos_usuarios.json' falló." }
 
+python manage.py loaddata apps/gestion_voluntarios/fixtures/datos_voluntarios.json
+if ($LASTEXITCODE -ne 0) { throw "Error: 'loaddata datos_voluntarios.json' falló." }
+
 Write-Host "¡Proceso completado! Base de datos reseteada y cargada."

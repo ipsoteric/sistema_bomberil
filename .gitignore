@@ -2,6 +2,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=django
 
 temp.txt
+context.txt
 
 **/migrations/*.py
 !**/migrations/__init__.py
