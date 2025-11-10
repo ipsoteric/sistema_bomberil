@@ -2,6 +2,18 @@
     {# Botón para cerrar el menú en diseño móvil (una X) #}
     {% include 'layouts/boton_cerrar_sidebar.html' %}
 
+    {# Sección: Dashboard #}
+    <section class="barra_lateral__seccion">
+
+        <div class="barra_lateral__modulo">
+            <a href="{% url 'gestion_inventario:ruta_inicio' %}" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario hover_scale">
+                <i class="fa-solid fa-house"></i>
+                <span>Inicio</span>
+            </a>
+        </div>
+
+    </section>
+
 
     {# Sección: Artículos (Catálogo y Stock) #}
     <section class="barra_lateral__seccion">
