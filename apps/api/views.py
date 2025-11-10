@@ -2,17 +2,18 @@ import uuid
 from django.shortcuts import redirect
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from PIL import Image
+from django.db.models import Count, F, Sum
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
+from PIL import Image
 
 from apps.gestion_usuarios.models import Usuario, Membresia
 from apps.common.permissions import CanUpdateUserProfile
 from apps.common.utils import procesar_imagen_en_memoria, generar_thumbnail_en_memoria
-from apps.gestion_inventario.models import Comuna
+from apps.gestion_inventario.models import Comuna, Activo, LoteInsumo
 from .serializers import ComunaSerializer
 
 
@@ -199,3 +200,117 @@ class ComunasPorRegionAPIView(APIView):
         serializer = ComunaSerializer(comunas, many=True)
         
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
+class GraficoExistenciasCategoriaView(APIView):
+    """
+    API Endpoint para obtener datos del gráfico de existencias por categoría.
+    Suma Activos y Lotes de Insumo de la estación activa.
+    """
+    # Si usas autenticación por sesión de Django estándar, esto es suficiente.
+    # Si tu API usa tokens, necesitarás permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, format=None):
+        # 1. Obtener Estación Activa de la sesión
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+            return Response(
+                {"error": "No hay estación activa en la sesión"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 2. Agrupar Activos por Categoría
+        # Ruta: Activo -> Producto -> ProductoGlobal -> Categoria -> nombre
+        activos_por_categoria = (
+            Activo.objects
+            .filter(estacion_id=estacion_id)
+            .values(nombre_categoria=F('producto__producto_global__categoria__nombre'))
+            .annotate(total=Count('id'))
+        )
+
+        # 3. Agrupar Lotes por Categoría
+        # Ruta: LoteInsumo -> Producto -> ProductoGlobal -> Categoria -> nombre
+        # NOTA: Para lotes, ¿queremos contar lotes O sumar cantidades?
+        # Generalmente para inventario masivo se suman cantidades.
+        # Si prefieres sumar cantidades, usa Sum('cantidad') en lugar de Count('id').
+        # Por ahora usaremos Count('id') para ser consistentes con Activos (1 activo = 1 unidad).
+        from django.db.models import Sum
+        lotes_por_categoria = (
+            LoteInsumo.objects
+            .filter(compartimento__ubicacion__estacion_id=estacion_id)
+            .values(nombre_categoria=F('producto__producto_global__categoria__nombre'))
+            .annotate(total=Sum('cantidad')) # Sumamos la cantidad real de insumos
+        )
+
+        # 4. Combinar resultados en un diccionario para sumarlos
+        conteo_final = {}
+
+        # Procesar Activos
+        for item in activos_por_categoria:
+            cat = item['nombre_categoria']
+            total = item['total']
+            conteo_final[cat] = conteo_final.get(cat, 0) + total
+
+        # Procesar Lotes (sumándolos a lo que ya exista)
+        for item in lotes_por_categoria:
+            cat = item['nombre_categoria']
+            total = item['total'] or 0 # Asegurar que no sea None si Sum devuelve null
+            conteo_final[cat] = conteo_final.get(cat, 0) + total
+
+        # 5. Formatear para Chart.js (labels y data separados)
+        labels = list(conteo_final.keys())
+        values = list(conteo_final.values())
+
+        data = {
+            "labels": labels,
+            "values": values
+        }
+
+        return Response(data)
+
+
+
+
+class GraficoEstadosInventarioView(APIView):
+    """
+    API Endpoint para obtener datos del gráfico de estado general del inventario.
+    Agrupa por TipoEstado (OPERATIVO, NO OPERATIVO, ADMINISTRATIVO, etc.)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        estacion_id = request.session.get('active_estacion_id')
+        if not estacion_id:
+             return Response({"error": "Sin estación activa"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Agrupamos por Tipo de Estado
+        # Ruta: Activo -> Estado -> TipoEstado -> nombre
+        activos_por_estado = (
+            Activo.objects.filter(estacion_id=estacion_id)
+            .values(nombre_estado=F('estado__tipo_estado__nombre'))
+            .annotate(total=Count('id'))
+        )
+
+        # Ruta: LoteInsumo -> Estado -> TipoEstado -> nombre
+        lotes_por_estado = (
+            LoteInsumo.objects.filter(compartimento__ubicacion__estacion_id=estacion_id)
+            .values(nombre_estado=F('estado__tipo_estado__nombre'))
+            .annotate(total=Sum('cantidad'))
+        )
+
+        conteo_final = {}
+        for item in activos_por_estado:
+             cat = item['nombre_estado'] or "Sin Estado" # Manejo de posibles nulos
+             conteo_final[cat] = conteo_final.get(cat, 0) + item['total']
+
+        for item in lotes_por_estado:
+             cat = item['nombre_estado'] or "Sin Estado"
+             conteo_final[cat] = conteo_final.get(cat, 0) + (item['total'] or 0)
+
+        return Response({
+            "labels": list(conteo_final.keys()),
+            "values": list(conteo_final.values())
+        })

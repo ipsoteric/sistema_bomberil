@@ -1,70 +1,94 @@
-// LÓGICA PARA LA INTERACTIVIDAD DEL DASHBOARD
+document.addEventListener('DOMContentLoaded', function () {
+    // Inicializar Tooltips de Bootstrap 5
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
 
-// Obtener datos del gráfico de categorías
-const obtenerOptionChart = async () => {
-    try
-    {
-        const response = await fetch("http://localhost:8000/inventario/existencias_por_categoria/")
-        return await response.json();
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const labelColor = isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+    // LEER LAS URLS DESDE EL OBJETO GLOBAL QUE DEFINIREMOS EN EL HTML
+    // Usamos optional chaining (?.) por seguridad si el objeto no existe
+    const urlGraficoCategoria = window.dashboardConfig?.urlGraficoCategoria;
+    const urlGraficoEstado = window.dashboardConfig?.urlGraficoEstado;
+
+    if (!urlGraficoCategoria || !urlGraficoEstado) {
+        console.error("Dashboard URLs not configured. Make sure window.dashboardConfig is set.");
+        return;
     }
-    catch(ex)
-    {
-        alert(ex);
+
+    // GRÁFICO 1: CATEGORÍAS
+    const ctxCat = document.getElementById('graficoCategorias')?.getContext('2d');
+    if (ctxCat) {
+        fetch(urlGraficoCategoria)
+            .then(r => r.json())
+            .then(data => {
+                new Chart(ctxCat, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Cantidad',
+                            data: data.values,
+                            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 11 } } },
+                            y: { grid: { display: false }, ticks: { color: labelColor, autoSkip: false, font: { size: 11 } } }
+                        }
+                    }
+                });
+            })
+            .catch(e => console.error("Error loading category chart:", e));
     }
-}
 
-// Iniciar gráfico de categorías
-const iniciarGraficoCategorias = async () => {
-    // Detectar si el modo oscuro está activo por clase "dark-mode"
-    const esModoOscuro = document.body.classList.contains('dark-mode');
-
-    const graficoCategorias = echarts.init(document.getElementById('GraficoCategorias'), esModoOscuro ? 'dark' : 'light');
-    let data = await obtenerOptionChart();
-
-    const option = {
-        dataset: [
-            {
-                dimensions: ['name', 'score'],
-                source: data.dataset
-            },
-            {
-                transform: {
-                    type: 'sort',
-                    config: { dimension: 'score', order: 'desc' }
-                }
-            }
-        ],
-        yAxis: {
-            type: 'category',
-            axisLabel: {
-                interval: 0,
-                rotate: 0  // inclinación para nombres largos
-            }
-        },
-        xAxis: {},
-        series: {
-            type: 'bar',
-            encode: {
-                x: 'score',
-                y: 'name'
-            },
-            datasetIndex: 1,
-            itemStyle: {
-                color: '#4da6ff'
-            },
-            label: {
-                show: true,
-                position: 'right',  // 'top' si el gráfico es vertical
-                formatter: '{@score}'
-            }
-        }
-    };
-
-    graficoCategorias.setOption(option);
-    graficoCategorias.resize();
-}
-
-
-window.addEventListener("load", async () => {
-    await iniciarGraficoCategorias();
-})
+    // GRÁFICO 2: ESTADOS
+    const ctxEst = document.getElementById('graficoEstados')?.getContext('2d');
+    if (ctxEst) {
+        fetch(urlGraficoEstado)
+            .then(r => r.json())
+            .then(data => {
+                new Chart(ctxEst, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.values,
+                            backgroundColor: [
+                                '#e74c3c', 
+                                '#2ecc71', 
+                                '#f1c40f', 
+                                '#95a5a6', 
+                                '#3498db', 
+                                '#9b59b6'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: labelColor, padding: 15, usePointStyle: true, font: { size: 11 } }
+                            }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            })
+            .catch(e => console.error("Error loading status chart:", e));
+    }
+});

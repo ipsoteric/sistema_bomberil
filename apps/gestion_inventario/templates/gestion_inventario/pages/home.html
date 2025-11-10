@@ -1,296 +1,338 @@
-{# Plantilla base #}{% extends 'gestion_inventario/layouts/base.html' %}
-{# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Inventario{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}{% endblock %}
+{% extends "gestion_inventario/layouts/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block titulo_ventana %}Dashboard de Inventario{% endblock %}
+{% block titulo_pagina %}Dashboard de Inventario{% endblock %}
 
 {% block contenido %}
-<div class="inventario_dashboard__cuadricula">
+<div class="container-fluid">
 
-
-
-    {# Sección: Botones de colores en la parte superior que muestran algunos totales #}
-    <section class="inventario_dashboard__seccion_resultados panel_base fondo_secundario_variante">
-        <div class="seccion_resultados__resultado_colorido fondo_azul">
-            <div class="resultado_colorido__icono fondo_azul">
-                <i class="fa-solid fa-boxes-stacked color_blanco fs_xx_grande"></i>
-            </div>
-            <div class="resultado_colorido__informacion">
-                <span class="resultado_colorido__titulo fs_normal color_blanco">
-                    Existencias
-                </span>
-                <span class="resultado_colorido__cifra fs_grande color_blanco">
-                    341
-                </span>
-            </div>
-            
+    {# Verificamos si hubo un error al cargar la estación desde la vista #}
+    {% if error_estacion %}
+        <div class="alert alert-danger fs_normal" role="alert">
+            <h4 class="alert-heading fs_mediana">Error de Sesión</h4>
+            <p>No se pudo determinar una estación activa. Por favor, vuelva a iniciar sesión o contacte al administrador.</p>
         </div>
+    {% else %}
 
-        <div class="seccion_resultados__resultado_colorido fondo_morado">
-            <div class="resultado_colorido__icono fondo_morado">
-                <i class="fa-solid fa-book color_blanco fs_xx_grande"></i>
-            </div>
-            <div class="resultado_colorido__informacion">
-                <span class="resultado_colorido__titulo fs_normal color_blanco">
-                    Catálogo
-                </span>
-                <span class="resultado_colorido__cifra fs_grande color_blanco">
-                    50
-                </span>
-            </div>
-            
-        </div>
-
-        <div class="seccion_resultados__resultado_colorido fondo_naranjo">
-            <div class="resultado_colorido__icono fondo_naranjo">
-                <i class="fa-solid fa-address-book color_blanco fs_xx_grande"></i>
-            </div>
-            <div class="resultado_colorido__informacion">
-                <span class="resultado_colorido__titulo fs_normal color_blanco">
-                    Proveedores
-                </span>
-                <span class="resultado_colorido__cifra fs_grande color_blanco">
-                    25
-                </span>
-            </div>
-            
-        </div>
-
-        <div class="seccion_resultados__resultado_colorido fondo_rojo">
-            <div class="resultado_colorido__icono fondo_rojo">
-                <i class="fa-solid fa-sack-dollar color_blanco fs_xx_grande"></i>
-            </div>
-            <div class="resultado_colorido__informacion">
-                <span class="resultado_colorido__titulo fs_normal color_blanco">
-                    Valoración estimada
-                </span>
-                <span class="resultado_colorido__cifra fs_grande color_blanco">
-                    $999.999.999
-                </span>
-            </div>
-            
-        </div>
-    </section>
-    
-
-
-
-
-
-    {# Sección: Últimas existencias registradas en el sistema #}
-    <section class="inventario_dashboard__seccion_ultimos_insumos">
-        {# Panel de información simple #}
-        <div class="panel_grid_simple panel_base fondo_secundario_variante">
-            
-            {# Panel de información simple: Título #}
-            <div class="panel_grid_simple__titulo">
-                <h2 class="fs_mediana color_primario">Existencias recientes</h2>
-            </div>
-
-            {# Panel de información simple: Contenido #}
-            <div class="panel_grid_simple__contenido">
-                <table class="panel_grid_simple__tabla color_primario">
-                    <thead class="fs_pequena fondo_secundario_variante">
-                        <tr>
-                            <th>ID</th>
-                            <th>Nombre</th>
-                            <th>Categoría</th>
-                            <th>Ubicación</th>
-                            <th>Proveedor</th>
-                            <th>Fecha de Ingreso</th>
-                        </tr>
-                    </thead>
-                    <tbody class="fs_pequena">
-                        {% for i in existencias %}
-                        <tr>
-                            <td>{{ i }}</td>
-                            <td>Cortadora Hidráulica</td>
-                            <td>Herramientas de combate</td>
-                            <td>Bodega Principal, Sección 1</td>
-                            <td>Primera Compañía de Bomberos de Iquique</td>
-                            <td>31 de julio de 2025</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </section>
-
-
-
-
-
-
-    {# Sección: Gráfico de barras para las categorías #}
-    <section class="inventario_dashboard__seccion_categorias">
-        {# Panel de información simple #}
-        <div class="panel_grid_simple panel_base fondo_secundario_variante">
-
-            {# Panel de información simple: Título #}
-            <div class="panel_grid_simple__titulo">
-                <h2 class="fs_mediana color_primario">Categorías</h2>
-            </div>
-            
-            {# Panel de información simple: Contenido #}
-            <div class="panel_grid_simple__contenido">
-                <div id="GraficoCategorias" class="seccion_categorias__grafico"></div>
-            </div>
-        </div>
-    </section>
-
-
-
-
-
-
-    {# Sección: Proveedores #}
-    <section class="inventario_dashboard__seccion_proveedores">
-        {# Panel de información simple #}
-        <div class="panel_grid_simple panel_base fondo_secundario_variante">
-
-            {# Panel de información simple: Título #}
-            <div class="panel_grid_simple__titulo">
-                <h2 class="fs_mediana color_primario">Proveedores</h2>
-            </div>
-
-            {# Panel de información simple: Contenido #}
-            <div class="panel_grid_simple__contenido">
-                {# Cuadros informativos #}
-                <div class="seccion_proveedores__cuadros_informativos">
-                    <div class="seccion_proveedores__cuadro_informativo">
-                        <span class="color_primario_variante fs_pequena">Donaciones</span>
-                        <span class="color_primario fs_mediana">24</span>
-                    </div>
-                    <div class="seccion_proveedores__cuadro_informativo">
-                        <span class="color_primario_variante fs_pequena">Compras</span>
-                        <span class="color_primario fs_mediana">15</span>
-                    </div>
-                    <div class="seccion_proveedores__cuadro_informativo">
-                        <span class="color_primario_variante fs_pequena">Préstamos</span>
-                        <span class="color_primario fs_mediana">10</span>
+        <!--
+        =====================================
+        FILA 1: KPIs (Indicadores Clave)
+        =====================================
+        -->
+        <div class="row g-3 mb-4">
+            <!-- KPI: Existencias Operativas -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card bg-success text-white shadow-sm h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="fs-1 me-3"><i class="bi bi-box-seam"></i></div>
+                        <div>
+                            <h4 class="card-title mb-0 fs_grande fw-bold">{{ kpi_total_operativas|intcomma }}</h4>
+                            <p class="card-text mb-0 fs_normal">Existencias Operativas</p>
+                        </div>
                     </div>
                 </div>
-                {# Tabla de proveedores recientes #}
-                <table class="panel_grid_simple__tabla color_primario">
-                    <thead class="fs_pequena fondo_secundario_variante">
-                        <tr>
-                            <th>ID</th>
-                            <th>Nombre</th>
-                            <th>RUT</th>
-                            <th>Dirección</th>
-                            <th>Teléfono</th>
-                            <th>Fecha</th>
-                        </tr>
-                    </thead>
-                    <tbody class="fs_pequena">
-                        {% for i in proveedores %}
-                        <tr>
-                            <td>{{ i }}</td>
-                            <td>RONALD CRISTIAN MORRIS COFRÉ</td>
-                            <td>14.845.567-K</td>
-                            <td>Limonares 830, Alto Hospicio</td>
-                            <td>9 78456629</td>
-                            <td>31 de julio de 2025</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
             </div>
-        </div>
-    </section>
-
-
-
-
-
-
-    {# Sección: Préstamos activos #}
-    <section class="inventario_dashboard__seccion_prestamos">
-        <div class="panel_grid_simple panel_base fondo_secundario_variante">
-            <div class="panel_grid_simple__titulo">
-                <h2 class="fs_mediana color_primario">Préstamos activos</h2>
+            <!-- KPI: Existencias No Operativas -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card bg-warning text-dark shadow-sm h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="fs-1 me-3"><i class="bi bi-tools"></i></div>
+                        <div>
+                            <h4 class="card-title mb-0 fs_grande fw-bold">{{ kpi_total_no_operativas|intcomma }}</h4>
+                            <p class="card-text mb-0 fs_normal">No Operativas</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="panel_grid_simple__contenido flex_row_space_between">
-
-                {# Tabla de préstamos recientes #}
-                <table class="panel_grid_simple__tabla_pequena color_primario">
-                    <thead class="fs_pequena fondo_secundario_variante">
-                        <tr>
-                            <th>Prestatario</th>
-                            <th>Cantidad</th>
-                            <th>Fecha Devolución</th>
-                        </tr>
-                    </thead>
-                    <tbody class="fs_pequena">
-                        {% for i in proveedores %}
-                        <tr id="{{ i }}">
-                            <td>JOSE MIGUEL NEGRETE ZÚÑIGA</td>
-                            <td>3</td>
-                            <td>31 de julio de 2025</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-
-                {# Total préstamos #}
-                <div class="panel_grid_simple__circulo_total panel_borde_naranja">
-                    <span class="fs_mediana color_primario_variante">Total</span>
-                    <span class="fs_xx_grande color_primario">12</span>
+            <!-- KPI: Items en Préstamo -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card bg-info text-white shadow-sm h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="fs-1 me-3"><i class="bi bi-truck"></i></div>
+                        <div>
+                            <h4 class="card-title mb-0 fs_grande fw-bold">{{ kpi_total_prestamo|intcomma }}</h4>
+                            <p class="card-text mb-0 fs_normal">Items en Préstamo</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- KPI: Próximos a Vencer -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card bg-danger text-white shadow-sm h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="fs-1 me-3"><i class="bi bi-calendar-x"></i></div>
+                        <div>
+                            <h4 class="card-title mb-0 fs_grande fw-bold">{{ kpi_proximos_a_vencer|intcomma }}</h4>
+                            <p class="card-text mb-0 fs_normal">Próximos a Vencer (60 días)</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
 
-
-
-
-
-
-    {# Sección: Bajas recientes #}
-    <section class="inventario_dashboard__seccion_bajas">
-        <div class="panel_grid_simple panel_base fondo_secundario_variante">
-            <div class="panel_grid_simple__titulo">
-                <h2 class="fs_mediana color_primario">Bajas recientes</h2>
-            </div>
-            <div class="panel_grid_simple__contenido flex_row_space_between">
-
-                {# Tabla de productos de baja recientes #}
-                <table class="panel_grid_simple__tabla_pequena color_primario">
-                    <thead class="fs_pequena fondo_secundario_variante">
-                        <tr>
-                            <th>Nombre</th>
-                            <th>Fecha</th>
-                        </tr>
-                    </thead>
-                    <tbody class="fs_pequena">
-                        {% for i in proveedores %}
-                        <tr id="{{ i }}">
-                            <td>Manguera 75mm TITAN</td>
-                            <td>31 de julio de 2025</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-
-                {# Total bajas #}
-                <div class="panel_grid_simple__circulo_total panel_borde_rojo">
-                    <span class="fs_mediana color_primario_variante">Total</span>
-                    <span class="fs_xx_grande color_primario">5</span>
+        <!--
+        =====================================
+        FILA 2: Acciones Rápidas (NUEVO)
+        =====================================
+        -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body p-3 d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
+                        <a href="{% url 'gestion_inventario:ruta_recepcion_stock' %}" class="btn btn-primary btn-lg fs_normal d-flex align-items-center">
+                            <i class="bi bi-plus-circle-fill me-2"></i> Recepcionar Stock
+                        </a>
+                        <a href="{% url 'gestion_inventario:ruta_crear_prestamo' %}" class="btn btn-outline-primary btn-lg fs_normal d-flex align-items-center">
+                            <i class="bi bi-box-arrow-up-right me-2"></i> Crear Préstamo
+                        </a>
+                         <!-- Usamos un modal o una vista de búsqueda para mover existencia, por ahora un enlace directo si existe una vista general -->
+                        <a href="#" class="btn btn-outline-secondary btn-lg fs_normal d-flex align-items-center" data-bs-toggle="tooltip" title="Funcionalidad en desarrollo">
+                            <i class="bi bi-arrow-left-right me-2"></i> Mover Existencia
+                        </a>
+                        <a href="{% url 'gestion_inventario:ruta_stock_actual' %}" class="btn btn-outline-success btn-lg fs_normal d-flex align-items-center ms-auto">
+                            <i class="bi bi-search me-2"></i> Consultar Stock
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
 
+        <!--
+        =====================================
+        FILA 3: Contenido Principal
+        =====================================
+        -->
+        <div class="row g-4">
 
+            <!-- COLUMNA IZQUIERDA: Alertas y Accesos Directos -->
+            <div class="col-lg-5 d-flex flex-column gap-4">
+                
+                <!-- WIDGET: Centro de Alertas -->
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center py-3">
+                        <h5 class="mb-0 fs_mediana"><i class="bi bi-bell-fill me-2"></i>Centro de Alertas</h5>
+                    </div>
+                    <!-- ... (Contenido de alertas existente) ... -->
+                    {% with total_revision=alerta_activos_revision.count|add:alerta_lotes_revision.count total_vencen=alerta_activos_vencen.count|add:alerta_lotes_vencen.count total_atrasos=alerta_prestamos_atrasados.count %}
+                    <ul class="nav nav-tabs nav-fill" id="alertasTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fs_normal" id="vencen-tab" data-bs-toggle="tab" data-bs-target="#vencen-pane" type="button" role="tab">
+                                Vencen {% if total_vencen > 0 %}<span class="badge bg-danger rounded-pill">{{ total_vencen }}</span>{% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fs_normal" id="revision-tab" data-bs-toggle="tab" data-bs-target="#revision-pane" type="button" role="tab">
+                                Revisión {% if total_revision > 0 %}<span class="badge bg-warning text-dark rounded-pill">{{ total_revision }}</span>{% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fs_normal" id="atrasos-tab" data-bs-toggle="tab" data-bs-target="#atrasos-pane" type="button" role="tab">
+                                Atrasos {% if total_atrasos > 0 %}<span class="badge bg-danger rounded-pill">{{ total_atrasos }}</span>{% endif %}
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content card-body p-0" id="alertasTabsContent" style="max-height: 300px; overflow-y: auto;">
+                        <!-- Vencimientos -->
+                        <div class="tab-pane fade show active" id="vencen-pane" role="tabpanel">
+                            <ul class="list-group list-group-flush">
+                                {% for item in alerta_activos_vencen %}
+                                    <li class="list-group-item">
+                                        <div class="fw-bold fs_normal">{{ item.producto.producto_global.nombre_oficial }}</div>
+                                        <small class="text-body-secondary fs_pequena">{{ item.codigo_activo }} | Vence: {{ item.fin_vida_util|date:"d/m/Y" }}</small>
+                                    </li>
+                                {% endfor %}
+                                {% for item in alerta_lotes_vencen %}
+                                    <li class="list-group-item">
+                                        <div class="fw-bold fs_normal">{{ item.producto.producto_global.nombre_oficial }}</div>
+                                        <small class="text-body-secondary fs_pequena">{{ item.codigo_lote }} | Vence: {{ item.fecha_expiracion|date:"d/m/Y" }}</small>
+                                    </li>
+                                {% endfor %}
+                                {% if total_vencen == 0 %}
+                                    <li class="list-group-item text-center text-muted p-4 fs_normal">No hay items próximos a vencer.</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        <!-- Revisión -->
+                        <div class="tab-pane fade" id="revision-pane" role="tabpanel">
+                            <ul class="list-group list-group-flush">
+                                {% for item in alerta_activos_revision %}
+                                    <li class="list-group-item">
+                                        <div class="fw-bold fs_normal">{{ item.producto.producto_global.nombre_oficial }}</div>
+                                        <small class="text-body-secondary fs_pequena">{{ item.codigo_activo }} | En: {{ item.compartimento.nombre }}</small>
+                                    </li>
+                                {% endfor %}
+                                {% for item in alerta_lotes_revision %}
+                                    <li class="list-group-item">
+                                        <div class="fw-bold fs_normal">{{ item.producto.producto_global.nombre_oficial }}</div>
+                                        <small class="text-body-secondary fs_pequena">{{ item.codigo_lote }} | En: {{ item.compartimento.nombre }}</small>
+                                    </li>
+                                {% endfor %}
+                                {% if total_revision == 0 %}
+                                    <li class="list-group-item text-center text-muted p-4 fs_normal">No hay items pendientes de revisión.</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        <!-- Atrasos -->
+                        <div class="tab-pane fade" id="atrasos-pane" role="tabpanel">
+                            <ul class="list-group list-group-flush">
+                                {% for prestamo in alerta_prestamos_atrasados %}
+                                    <a href="{% url 'gestion_inventario:ruta_gestionar_devolucion' prestamo.id %}" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1 text-danger fw-bold fs_normal">Atrasado: {{ prestamo.destinatario.nombre_entidad }}</h6>
+                                            <small class="text-danger fs_pequena">Dev: {{ prestamo.fecha_devolucion_esperada|date:"d/m/Y" }}</small>
+                                        </div>
+                                        <p class="mb-0 fs_pequena text-muted">Clic para gestionar devolución...</p>
+                                    </a>
+                                {% empty %}
+                                    <li class="list-group-item text-center text-muted p-4 fs_normal">No hay préstamos atrasados.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endwith %}
+                </div>
 
+                <!-- WIDGET: Accesos Directos (NUEVO) -->
+                <div class="card shadow-sm">
+                    <div class="card-header py-3">
+                        <h5 class="mb-0 fs_mediana"><i class="bi bi-grid-fill me-2"></i>Gestión Rápida</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            <a href="{% url 'gestion_inventario:ruta_catalogo_local' %}" class="list-group-item list-group-item-action d-flex align-items-center py-3">
+                                <div class="fs-4 text-primary me-3"><i class="bi bi-journal-bookmark-fill"></i></div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold fs_normal">Catálogo Local</h6>
+                                    <small class="text-body-secondary fs_pequena">Gestionar productos de la estación</small>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                            </a>
 
+                            <a href="{% url 'gestion_inventario:ruta_lista_areas' %}" class="list-group-item list-group-item-action d-flex align-items-center py-3">
+                                <div class="fs-4 text-success me-3"><i class="bi bi-building-fill"></i></div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold fs_normal">Áreas</h6>
+                                    <small class="text-body-secondary fs_pequena">Gestiona bodegas, salas, habitaciones, etc. de la compañía</small>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                            </a>
+                            <a href="{% url 'gestion_inventario:ruta_lista_vehiculos' %}" class="list-group-item list-group-item-action d-flex align-items-center py-3">
+                                <div class="fs-4 text-success me-3"><i class="bi bi-building-fill"></i></div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold fs_normal">Unidades</h6>
+                                    <small class="text-body-secondary fs_pequena">Gestiona los vehículos de la compañía</small>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                            </a>
 
+                            <a href="{% url 'gestion_inventario:ruta_historial_movimientos' %}" class="list-group-item list-group-item-action d-flex align-items-center py-3">
+                                <div class="fs-4 text-info me-3"><i class="bi bi-clock-history"></i></div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold fs_normal">Historial</h6>
+                                    <small class="text-body-secondary fs_pequena">Auditoría completa de movimientos</small>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- COLUMNA DERECHA: Gráficos y Actividad -->
+            <div class="col-lg-7 d-flex flex-column">
+                
+                <!-- Fila de Gráficos -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header py-2">
+                                <h6 class="mb-0 fw-bold fs_normal">Por Categoría</h6>
+                            </div>
+                            <div class="card-body p-2">
+                                <div style="height: 250px; position: relative;">
+                                    <canvas id="graficoCategorias"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header py-2">
+                                <h6 class="mb-0 fw-bold fs_normal">Estado General</h6>
+                            </div>
+                            <div class="card-body p-2">
+                                <div style="height: 250px; position: relative d-flex justify-content-center align-items-center">
+                                     <canvas id="graficoEstados"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actividad Reciente -->
+                <div class="card shadow-sm flex-fill">
+                    <div class="card-header py-3">
+                        <h5 class="mb-0 fs_mediana">Actividad Reciente</h5>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for mov in actividad_reciente %}
+                        <li class="list-group-item d-flex align-items-center py-3">
+                            <!-- Iconos más grandes para mejor visibilidad -->
+                            {% if mov.tipo_movimiento == 'ENT' %}
+                                <div class="fs-3 text-success me-3"><i class="bi bi-arrow-down-circle-fill"></i></div>
+                            {% elif mov.tipo_movimiento == 'SAL' or mov.tipo_movimiento == 'PRE' %}
+                                <div class="fs-3 text-danger me-3"><i class="bi bi-arrow-up-circle-fill"></i></div>
+                            {% elif mov.tipo_movimiento == 'TRA' %}
+                                <div class="fs-3 text-primary me-3"><i class="bi bi-arrow-left-right"></i></div>
+                            {% else %}
+                                <div class="fs-3 text-secondary me-3"><i class="bi bi-pencil-square"></i></div>
+                            {% endif %}
+                            
+                            <div>
+                                <p class="mb-0 fs_normal">
+                                    {% if mov.activo %}
+                                        <strong>{{ mov.activo.producto.producto_global.nombre_oficial }}</strong> <span class="text-muted fs_pequena">({{ mov.activo.codigo_activo }})</span>
+                                    {% elif mov.lote_insumo %}
+                                        <strong>{{ mov.cantidad_abs|intcomma }} x {{ mov.lote_insumo.producto.producto_global.nombre_oficial }}</strong> <span class="text-muted fs_pequena">({{ mov.lote_insumo.codigo_lote }})</span>
+                                    {% endif %}
+                                </p>
+                                <small class="text-body-secondary fs_pequena">
+                                    {{ mov.get_tipo_movimiento_display }} por 
+                                    <strong>{{ mov.usuario.get_full_name|default:mov.usuario.rut }}</strong>
+                                    &bull; {{ mov.fecha_hora|timesince }} atrás
+                                </small>
+                            </div>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-center text-muted p-4 fs_normal">No hay movimientos recientes.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+        </div> <!-- .row g-4 -->
+
+    {% endif %} <!-- Fin if error_estacion -->
 
 </div>
+{% endblock %}
 
-{# Scripts del Dashboard #}
+
+{% block scripts %}
+<!-- 1. Cargar librería externa -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- 2. Definir configuración global antes de cargar tu script -->
+<script>
+    window.dashboardConfig = {
+        urlGraficoCategoria: "{% url 'api:ruta_obtener_grafico_categoria' %}",
+        urlGraficoEstado: "{% url 'api:ruta_grafico_estado' %}"
+    };
+</script>
+
+<!-- 3. Cargar tu script externo -->
 <script src="{% static 'gestion_inventario/js/dashboard.js' %}"></script>
-
-
-    
-{% endblock  %}
+{% endblock %}

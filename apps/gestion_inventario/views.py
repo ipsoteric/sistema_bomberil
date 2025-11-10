@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.db import IntegrityError, transaction
 from django.shortcuts import render, redirect
 from django.views import View
+from django.views.generic import TemplateView
 from django.http import JsonResponse, HttpResponse
 from django.db import models
 from django.db.models import Count, Sum, Q, Subquery, OuterRef, ProtectedError, Value, Case, When, CharField, F
@@ -17,6 +18,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 import qrcode
 import io
 from django.db.models.functions import Coalesce
+from dateutil.relativedelta import relativedelta
 
 
 
@@ -78,13 +80,133 @@ from core.settings import INVENTARIO_AREA_NOMBRE as AREA_NOMBRE
 from apps.gestion_usuarios.models import Membresia
 
 
-class InventarioInicioView(View):
-    def get(self, request):
-        context = {
-            'existencias':range(10),
-            'proveedores':range(5),
-        }
-        return render(request, "gestion_inventario/pages/home.html", context)
+class InventarioInicioView(LoginRequiredMixin, TemplateView):
+    """
+    Vista de inicio (Dashboard) del módulo de Gestión de Inventario.
+    Muestra KPIs, alertas y accesos directos.
+    """
+    template_name = "gestion_inventario/pages/home.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # 1. Obtener la Estación Activa (fundamental)
+        # Asumimos que el ID está en la sesión como 'active_estacion_id'
+        try:
+            estacion_activa_id = self.request.session.get('active_estacion_id')
+            if not estacion_activa_id:
+                # Manejar caso donde no hay estación activa (o usar un Mixin)
+                context['error_estacion'] = True
+                return context
+            
+            # NOTA: No necesitamos el objeto Estacion completo para la mayoría
+            # de los filtros, solo el ID, lo cual es más eficiente.
+            
+        except Exception as e:
+            # Manejo de errores
+            context['error_estacion'] = str(e)
+            return context
+
+        # 2. Definir filtros base por estación
+        # Filtro para Activos (tienen FK directo a estacion)
+        activos_estacion_qs = Activo.objects.filter(estacion_id=estacion_activa_id)
+        
+        # Filtro para Lotes (vía compartimento -> ubicacion -> estacion)
+        lotes_estacion_qs = LoteInsumo.objects.filter(
+            compartimento__ubicacion__estacion_id=estacion_activa_id
+        )
+
+        # ======== KPIs DE LA FILA SUPERIOR ========
+
+        # KPI 1: Existencias Operativas
+        # Usamos el TipoEstado 'OPERATIVO'
+        count_activos_op = activos_estacion_qs.filter(estado__tipo_estado__nombre='OPERATIVO').count()
+        count_lotes_op = lotes_estacion_qs.filter(estado__tipo_estado__nombre='OPERATIVO').count()
+        context['kpi_total_operativas'] = count_activos_op + count_lotes_op
+
+        # KPI 2: Existencias No Operativas
+        # Usamos el TipoEstado 'NO OPERATIVO' (Ej: En Reparación, Extraviado)
+        count_activos_noop = activos_estacion_qs.filter(estado__tipo_estado__nombre='NO OPERATIVO').count()
+        count_lotes_noop = lotes_estacion_qs.filter(estado__tipo_estado__nombre='NO OPERATIVO').count()
+        context['kpi_total_no_operativas'] = count_activos_noop + count_lotes_noop
+
+        # KPI 3: Items en Préstamo Externo
+        # Basado en el Estado específico 'EN PRÉSTAMO EXTERNO'
+        count_activos_prestamo = activos_estacion_qs.filter(estado__nombre='EN PRÉSTAMO EXTERNO').count()
+        count_lotes_prestamo = lotes_estacion_qs.filter(estado__nombre='EN PRÉSTAMO EXTERNO').count()
+        context['kpi_total_prestamo'] = count_activos_prestamo + count_lotes_prestamo
+
+        # KPI 4: Próximos a Vencer (ej: en 60 días)
+        hoy = timezone.now().date()
+        fecha_limite_vencimiento = hoy + relativedelta(days=60)
+        
+        # Activos: Revisa fecha_expiracion O fin_vida_util_calculada
+        activos_vencen = activos_estacion_qs.filter(
+            Q(fecha_expiracion__range=[hoy, fecha_limite_vencimiento]) |
+            Q(fin_vida_util_calculada__range=[hoy, fecha_limite_vencimiento])
+        ).distinct()
+        
+        # Lotes: Revisa solo fecha_expiracion
+        lotes_vencen = lotes_estacion_qs.filter(
+            fecha_expiracion__range=[hoy, fecha_limite_vencimiento]
+        )
+        
+        context['kpi_proximos_a_vencer'] = activos_vencen.count() + lotes_vencen.count()
+
+        # KPI 5: Stock Bajo
+        # **NOTA:** El modelo Producto no tiene un campo 'stock_minimo'.
+        # Si se añadiera, la consulta sería:
+        # context['kpi_stock_bajo'] = Producto.objects.filter(estacion_id=estacion_activa_id, stock_actual__lt=F('stock_minimo')).count()
+        # Por ahora, lo omitimos.
+        
+        # ======== WIDGET DE ALERTAS Y TAREAS ========
+
+        # Alerta 1: Vencimientos Próximos (Lista)
+        # Reutilizamos las consultas anteriores, limitando a 5
+        context['alerta_activos_vencen'] = activos_vencen.select_related('producto__producto_global', 'compartimento')[:5]
+        context['alerta_lotes_vencen'] = lotes_vencen.select_related('producto__producto_global', 'compartimento')[:5]
+
+        # Alerta 2: Pendientes de Revisión
+        # Basado en el Estado 'PENDIENTE REVISIÓN'
+        context['alerta_activos_revision'] = activos_estacion_qs.filter(
+            estado__nombre='PENDIENTE REVISIÓN'
+        ).select_related('producto__producto_global', 'compartimento')[:5]
+        
+        context['alerta_lotes_revision'] = lotes_estacion_qs.filter(
+            estado__nombre='PENDIENTE REVISIÓN'
+        ).select_related('producto__producto_global', 'compartimento')[:5]
+
+        # Alerta 3: Préstamos Atrasados
+        # Préstamos de la estación, vencidos (fecha < hoy) y aún 'Pendientes'
+        context['alerta_prestamos_atrasados'] = Prestamo.objects.filter(
+            estacion_id=estacion_activa_id,
+            fecha_devolucion_esperada__lt=hoy,
+            estado=Prestamo.EstadoPrestamo.PENDIENTE
+        ).select_related('destinatario')[:5]
+
+        # ======== WIDGET DE ACTIVIDAD RECIENTE ========
+
+        # Obtenemos los últimos 10 movimientos
+        movimientos = MovimientoInventario.objects.filter(
+            estacion_id=estacion_activa_id
+        ).select_related(
+            'usuario', 
+            'compartimento_origen', 
+            'compartimento_destino',
+            'activo__producto__producto_global',
+            'lote_insumo__producto__producto_global'
+        ).order_by('-fecha_hora')[:10]
+
+        # Iteramos para añadir el valor absoluto (es la forma limpia)
+        for mov in movimientos:
+            # Añadimos un nuevo atributo 'cantidad_abs' al objeto
+            # 'cantidad_movida' puede ser positiva o negativa
+            mov.cantidad_abs = abs(mov.cantidad_movida) 
+
+        # Pasamos la lista modificada al contexto
+        context['actividad_reciente'] = movimientos
+
+        return context
 
 
 
@@ -92,24 +214,6 @@ class InventarioInicioView(View):
 class InventarioPruebasView(View):
     def get(self, request):
         return render(request, "gestion_inventario/pages/pruebas.html")
-
-
-
-
-# Obtener total de existencias por categoría (VISTA TEMPORAL, DEBE MOVERSE A LA APP API)
-def grafico_existencias_por_categoria(request):
-    datos = (
-        Activo.objects
-        .values('catalogo__categoria__nombre')
-        .annotate(score=Count('id'))
-        .order_by('-score')
-    )
-
-    dataset = [['name', 'score']]
-    for fila in datos:
-        dataset.append([fila['catalogo__categoria__nombre'], fila['score']])
-
-    return JsonResponse({'dataset': dataset})
 
 
 

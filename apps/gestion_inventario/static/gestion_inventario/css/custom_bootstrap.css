@@ -207,3 +207,11 @@ ESTILOS DE MODO OSCURO
 .dark-mode .text-muted {
     color: #8b949e !important; /* Un gris claro legible */
 }
+
+.dark-mode .text-body-secondary {
+    color: #8b949e !important; /* Un gris claro legible */
+}
+
+.dark-mode .ts-control, .ts-wrapper.single.input-active .ts-control {
+    background-color: var(--secondary-color);
+}
