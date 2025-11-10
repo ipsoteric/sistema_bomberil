@@ -1,4 +1,4 @@
-import traceback
+import uuid
 from django.shortcuts import redirect
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -11,7 +11,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 
 from apps.gestion_usuarios.models import Usuario, Membresia
 from apps.common.permissions import CanUpdateUserProfile
-from apps.gestion_usuarios.funciones import generar_avatar_thumbnail, recortar_y_redimensionar_avatar
+from apps.common.utils import procesar_imagen_en_memoria, generar_thumbnail_en_memoria
 from apps.gestion_inventario.models import Comuna
 from .serializers import ComunaSerializer
 
@@ -111,18 +111,50 @@ class ActualizarAvatarUsuarioView(APIView):
             )
 
         try:
-            # Guardar referencias a los archivos antiguos para su posterior eliminación
+            # --- 1. Guardar referencias a los archivos antiguos ---
             old_avatar = usuario.avatar
             old_thumb_small = usuario.avatar_thumb_small
             old_thumb_medium = usuario.avatar_thumb_medium
 
-            # Procesar la nueva imagen y sus thumbnails en memoria
-            with Image.open(nuevo_avatar_file) as img:
-                processed_avatar_content = recortar_y_redimensionar_avatar(nuevo_avatar_file)
-                thumb_40_content = generar_avatar_thumbnail(img.copy(), (40, 40), "_thumb_40")
-                thumb_100_content = generar_avatar_thumbnail(img.copy(), (100, 100), "_thumb_100")
+            # --- 2. Generar nombres de archivo únicos con UUID ---
+            # Forzamos .jpg porque nuestras funciones convierten a JPEG
+            ext = '.jpg' 
+            base_name = str(uuid.uuid4())
+            
+            main_name = f"{base_name}{ext}"
+            medium_name = f"{base_name}_medium.jpg"
+            small_name = f"{base_name}_small.jpg"
 
-            # 1. BORRAR PRIMERO: Eliminar los archivos antiguos del almacenamiento (S3)
+            # --- 3. Procesar la nueva imagen y thumbnails ---
+            
+            # Procesar la imagen principal (recortar a cuadrado 500x500)
+            processed_avatar_content = procesar_imagen_en_memoria(
+                nuevo_avatar_file,
+                max_dimensions=(500, 500),
+                new_filename=main_name,
+                crop_to_square=True  # Avatares sí van recortados
+            )
+            
+            # Rebobinar el archivo para leerlo de nuevo para los thumbs
+            nuevo_avatar_file.seek(0) 
+            
+            with Image.open(nuevo_avatar_file) as img:
+                # Generar thumbnail mediano (100x100)
+                thumb_100_content = generar_thumbnail_en_memoria(
+                    img.copy(), 
+                    (100, 100), 
+                    medium_name
+                )
+                
+                # Generar thumbnail pequeño (40x40)
+                thumb_40_content = generar_thumbnail_en_memoria(
+                    img.copy(), 
+                    (40, 40), 
+                    small_name
+                )
+
+            # --- 4. Borrar los archivos antiguos del almacenamiento (S3) ---
+            # (Tu lógica original estaba correcta)
             if old_avatar and old_avatar.name:
                 old_avatar.delete(save=False)
             if old_thumb_small and old_thumb_small.name:
@@ -130,22 +162,21 @@ class ActualizarAvatarUsuarioView(APIView):
             if old_thumb_medium and old_thumb_medium.name:
                 old_thumb_medium.delete(save=False)
 
-            # 2. GUARDAR DESPUÉS: Asignar y guardar los nuevos archivos
+            # --- 5. Asignar y guardar los nuevos archivos ---
             usuario.avatar = processed_avatar_content
             usuario.avatar_thumb_small = thumb_40_content
             usuario.avatar_thumb_medium = thumb_100_content
             usuario.save()
 
-            # Refrescar la instancia para asegurar que los campos de archivo están actualizados
+            # Refrescar la instancia es una buena práctica
             usuario.refresh_from_db()
 
-            # Devolver la respuesta exitosa con la nueva URL
             return Response(
                 {'success': True, 'new_avatar_url': usuario.avatar.url},
                 status=status.HTTP_200_OK
             )
+        
         except Exception as e:
-            # Capturar cualquier error inesperado durante el proceso
             return Response(
                 {'error': f'Ocurrió un error inesperado: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

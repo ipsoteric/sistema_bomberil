@@ -1,5 +1,3 @@
-import json
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.contrib import messages
@@ -8,7 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.forms import PasswordResetForm
 from django.db import IntegrityError, transaction
 from django.urls import reverse, reverse_lazy
-from django.http import HttpResponseNotAllowed, HttpResponse
+from django.http import HttpResponseNotAllowed
 from django.utils import timezone
 from django.db.models import Q
 from collections import defaultdict
@@ -18,7 +16,7 @@ from .models import Usuario, Membresia, Rol
 from .forms import FormularioCrearUsuario, FormularioEditarUsuario, FormularioRol
 from .mixins import UsuarioDeMiEstacionMixin, RolValidoParaEstacionMixin
 from apps.common.mixins import ModuleAccessMixin, ObjectInStationRequiredMixin
-from .funciones import generar_contraseña_segura
+from .utils import generar_contraseña_segura
 from apps.gestion_inventario.models import Estacion
 
 

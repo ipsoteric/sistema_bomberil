@@ -1,12 +1,9 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group, Permission
-from PIL import Image
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Permission
 from django.utils.translation import gettext_lazy as _
 from django.db.models import Q
 
 from .manager import CustomUserManager
-from .funciones import generar_ruta_subida_avatar, recortar_y_redimensionar_avatar, generar_avatar_thumbnail
 from apps.gestion_inventario.models import Estacion
 
 
@@ -22,9 +19,9 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     birthdate = models.DateField(null=True, blank=True, verbose_name="Fecha Nacimiento")
     phone = models.CharField(max_length=9, null=True, blank=True, verbose_name="Teléfono")
-    avatar = models.ImageField(upload_to=generar_ruta_subida_avatar, null=True, blank=True)
-    avatar_thumb_small = models.ImageField(null=True, blank=True)
-    avatar_thumb_medium = models.ImageField(null=True, blank=True)
+    avatar = models.ImageField(upload_to="usuarios/avatar/main/", null=True, blank=True)
+    avatar_thumb_small = models.ImageField(upload_to="usuarios/avatar/small/", null=True, blank=True)
+    avatar_thumb_medium = models.ImageField(upload_to="usuarios/avatar/medium/", null=True, blank=True)
     
     # Campos automáticos de fecha
     created_at = models.DateTimeField(auto_now_add=True)

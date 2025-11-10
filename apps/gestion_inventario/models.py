@@ -313,6 +313,8 @@ class ProductoGlobal(models.Model):
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, help_text="Seleccione la categoría a la que corresponde el producto")
     vida_util_recomendada_anos = models.PositiveIntegerField(verbose_name="Vida útil recomendada (años)", null=True, blank=True, help_text="Vida útil en años según el fabricante (para equipos).")
     imagen = models.ImageField(verbose_name="Imagen (opcional)", upload_to="temporal/estaciones/productos/", blank=True, null=True)
+    imagen_thumb_medium = models.ImageField(verbose_name="Thumbnail (100x100)", upload_to="productos_globales/medium/", blank=True, null=True,editable=False)
+    imagen_thumb_small = models.ImageField(verbose_name="Thumbnail (40x40)",upload_to="productos_globales/small/", blank=True, null=True,editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

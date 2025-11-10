@@ -1,26 +1,27 @@
 from django.dispatch import receiver
-from django.db.models.signals import post_save, pre_delete
+from django.db.models.signals import post_save, post_delete
 from django.core.files.base import ContentFile
 from PIL import Image
 
 from .models import Usuario
-from .funciones import recortar_y_redimensionar_avatar, generar_avatar_thumbnail
 from apps.gestion_voluntarios.models import Voluntario
 
 
 
-@receiver(pre_delete, sender=Usuario)
-def eliminar_archivos_de_avatar(sender, instance, **kwargs):
+@receiver(post_delete, sender=Usuario)
+def eliminar_avatar_usuario(sender, instance, **kwargs):
     """
-    Elimina todos los archivos del avatar al borrar el usuario.
+    Elimina los archivos de avatar del almacenamiento
+    cuando el Usuario es eliminado.
     """
     if instance.avatar:
         instance.avatar.delete(save=False)
-
-    if instance.avatar_thumb_small:
-        instance.avatar_thumb_small.delete(save=False)
+        
     if instance.avatar_thumb_medium:
         instance.avatar_thumb_medium.delete(save=False)
+        
+    if instance.avatar_thumb_small:
+        instance.avatar_thumb_small.delete(save=False)
 
 
 

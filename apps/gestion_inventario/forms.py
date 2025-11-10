@@ -1,6 +1,10 @@
+import os
+import uuid
+
 from django import forms
 from django.utils import timezone
 from django.db.models import Q
+from PIL import Image
 from .models import (
     Region,
     Comuna,
@@ -23,6 +27,7 @@ from .models import (
     Prestamo
 )
 from apps.gestion_usuarios.models import Usuario
+from apps.common.utils import procesar_imagen_en_memoria, generar_thumbnail_en_memoria
 
 
 class AreaForm(forms.ModelForm):
@@ -185,6 +190,7 @@ class ProductoGlobalForm(forms.ModelForm):
             'modelo': 'Si seleccionaste una marca, este campo es obligatorio.',
         }
 
+
     def __init__(self, *args, **kwargs):
         """
         Poblamos los QuerySets de los campos ForeignKey para que estén ordenados.
@@ -192,6 +198,61 @@ class ProductoGlobalForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['categoria'].queryset = Categoria.objects.order_by('nombre')
         self.fields['marca'].queryset = Marca.objects.order_by('nombre')
+    
+
+    def save(self, commit=True):
+        # 1. Llama al 'save' padre pero con commit=False
+        # Esto nos da el objeto 'producto' sin guardarlo aún en la BD.
+        producto = super().save(commit=False)
+        
+        # 2. Revisa si hay una imagen nueva en el formulario
+        image_file = self.cleaned_data.get('imagen')
+
+        if image_file:
+            # 3. Generar un nombre base ÚNICO
+            ext = os.path.splitext(image_file.name)[1].lower()
+            if not ext:  # Por si no tiene extensión
+                ext = '.jpg' # Forzamos a .jpg porque procesamos a JPEG
+                
+            base_name = str(uuid.uuid4())
+            
+            # --- Definir nombres de archivo ---
+            main_name = f"{base_name}{ext}"
+            medium_name = f"{base_name}_medium.jpg"
+            small_name = f"{base_name}_small.jpg"
+
+            # 4. Procesar la imagen principal
+            # Redimensionamos a un máximo de, por ej., 1024x1024
+            producto.imagen = procesar_imagen_en_memoria(
+                image_file,
+                max_dimensions=(1024, 1024),
+                new_filename=main_name,
+                crop_to_square=False  # Los productos no suelen ser cuadrados
+            )
+            
+            # 5. Generar thumbnails desde el archivo original
+            # (Es mejor reabrir el original para no perder calidad)
+            image_file.seek(0) # Rebobinar el archivo
+            with Image.open(image_file) as img_obj:
+                producto.imagen_thumb_medium = generar_thumbnail_en_memoria(
+                    img_obj.copy(),
+                    (100, 100),
+                    medium_name
+                )
+                producto.imagen_thumb_small = generar_thumbnail_en_memoria(
+                    img_obj.copy(),
+                    (40, 40),
+                    small_name
+                )
+            
+            # (Opcional: Si esto fuera un update, aquí iría la lógica
+            # para borrar los archivos antiguos)
+        
+        # 6. Guardar el objeto 'producto' en la BD (si commit=True)
+        if commit:
+            producto.save()
+            
+        return producto
 
 
 
