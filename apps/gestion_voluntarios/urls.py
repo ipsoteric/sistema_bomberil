@@ -43,17 +43,12 @@ urlpatterns = [
     # Lista de voluntarios de la compañía
     path('lista/', VoluntariosListaView.as_view(), name="ruta_lista_voluntarios"),
 
-    # Ingresar voluntario al sistema
-    path('crear/', VoluntariosCrearView.as_view(), name="ruta_crear_voluntario"),
-
     # Ver información de un voluntario
     path('voluntario/<int:id>/', VoluntariosVerView.as_view(), name="ruta_ver_voluntario"),
 
     # Modificar información de un voluntario
     path('voluntario/<int:id>/editar', VoluntariosModificarView.as_view(), name="ruta_modificar_voluntario"),
 
-    # Eliminar voluntario del sistema (A EVALUAR. PROBABLEMENTE TERMINE QUITANDO ESTE ENDPOINT)
-    path('voluntario/<int:id>/editar', VoluntariosEliminarView.as_view(), name="ruta_eliminar"),
 
 
     # Lista de cargos y profesiones
@@ -65,17 +60,12 @@ urlpatterns = [
     # Modificar profesion
     path('profesion/<int:id>/editar', ProfesionesModificarView.as_view(), name="ruta_profesion_modificar"),
 
-    # Eliminar profesion (PROTEGIDO)
-    path('profesion/<int:id>/eliminar', ProfesionesEliminarView.as_view(), name="ruta_profesion_eliminar"),
-
     # Ingresar cargo al sistema
     path('crear_cargos/', CargosCrearView.as_view(), name="ruta_cargos_crear"),
 
     # Modificar cargo
     path('cargo/<int:id>/editar', CargosModificarView.as_view(), name="ruta_cargos_modificar"),
 
-    # Eliminar cargo (PROTEGIDO)
-    path('cargo/<int:id>/eliminar', CargosEliminarView.as_view(), name="ruta_cargos_eliminar"),
 
 
     # Generar hoja de vida

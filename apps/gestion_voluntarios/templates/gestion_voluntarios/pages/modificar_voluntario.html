@@ -1,79 +1,61 @@
 {# Plantilla base #}{% extends 'gestion_voluntarios/layouts/base.html' %}
 {# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Módulo{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Título de la Página{% endblock %}
+{# Título de la ventana #} {% block titulo_ventana %}Modificar a {{ voluntario.usuario.get_full_name }}{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Modificar Voluntario{% endblock %}
 
 {% block contenido %}
 
     <div class="container">
-        <h1>Modificar Voluntario: Guiliano Punulaf</h1>
+        <h1>Modificar Voluntario: {{ voluntario.usuario.get_full_name }}</h1>
+        <p>Ajuste la información del perfil del voluntario. El historial (cargos, reconocimientos) se gestiona desde la Hoja de Vida.</p>
         
-        <form id="modificar-form">
+        <form id="modificar-form" method="POST">
+            {% csrf_token %}
 
-            <div class="form-section">
-                <h2>Información Personal</h2>
-                <div class="form-group">
-                    <label for="nombre">Nombre Completo:</label>
-                    <input type="text" id="nombre" name="nombre" value="Guiliano Punulaf" required>
+            {% if usuario_form.non_field_errors or voluntario_form.non_field_errors %}
+                <div class="alert alert-danger" style="color: red; margin-bottom: 1rem; border: 1px solid red; padding: 10px;">
+                    <p><strong>Error al guardar:</strong></p>
+                    {{ usuario_form.non_field_errors }}
+                    {{ voluntario_form.non_field_errors }}
                 </div>
-                <div class="form-group">
-                    <label for="rut">RUT/DNI:</label>
-                    <input type="text" id="rut" name="rut" value="12.345.678-9" required>
-                </div>
-                <div class="form-group">
-                    <label for="telefono">Teléfonos:</label>
-                    <input type="text" id="telefono" name="telefono" value="+56 9 1234 5678, +56 2 9876 5432">
-                </div>
-                </div>
+            {% endif %}
 
-            <div class="form-section">
-                <h2>Experiencia Bomberil <button type="button" class="btn-add-item">+</button></h2>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Rango</th>
-                            <th>Fecha</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Teniente 1°</td>
-                            <td>15/05/2020</td>
-                            <td><button type="button" class="btn-delete-item">Eliminar</button></td>
-                        </tr>
-                        <tr>
-                            <td>Teniente 2°</td>
-                            <td>10/05/2015</td>
-                            <td><button type="button" class="btn-delete-item">Eliminar</button></td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class.="form-section">
+                <h2>Datos de Acceso y Contacto</h2>
+                
+                {# Iteramos sobre los campos del formulario de Usuario #}
+                {% for field in usuario_form %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="error-message" style="color: red; font-size: 0.9em; margin-top: 5px;">{{ field.errors|first }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
             </div>
 
-            <div class="form-section">
-                <h2>Reconocimientos <button type="button" class="btn-add-item">+</button></h2>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Tipo</th>
-                            <th>Descripción</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Medalla</td>
-                            <td>Medalla por 10 años de Servicio</td>
-                            <td><button type="button" class="btn-delete-item">Eliminar</button></td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class.="form-section">
+                <h2>Información Bomberil y Personal</h2>
+
+                {# Iteramos sobre los campos del formulario de Voluntario #}
+                {% for field in voluntario_form %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="error-message" style="color: red; font-size: 0.9em; margin-top: 5px;">{{ field.errors|first }}</div>
+                        {% endif %}
+                        {% if field.help_text %}
+                            <small class="help-text" style="font-size: 0.8em; color: #666; display: block; margin-top: 4px;">{{ field.help_text }}</small>
+                        {% endif %}
+                    </div>
+                {% endfor %}
             </div>
 
             <div class="button-group">
                 <button type="submit" class="btn-primary">Guardar Cambios</button>
-                <button type="button" class="btn-secondary">Cancelar</button>
+                <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.id %}" class="btn-secondary">Cancelar</a>
             </div>
             
         </form>

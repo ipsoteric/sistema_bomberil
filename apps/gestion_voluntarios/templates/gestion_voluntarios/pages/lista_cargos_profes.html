@@ -51,7 +51,7 @@
                         <td>{{ profesion.nombre }}</td>
                         <td class="actions">
                             <a href="{% url 'gestion_voluntarios:ruta_profesion_modificar' id=profesion.id %}" class="btn btn-warning btn-sm">Editar</a>
-                            <a href="{% url 'gestion_voluntarios:ruta_profesion_eliminar' id=profesion.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+                            {# (Botón "Eliminar" permanece eliminado) #}
                         </td>
                     </tr>
                     {% empty %}
@@ -103,7 +103,7 @@
                         <td>{{ cargo.tipo_cargo.nombre | default:"Sin Categoría" }}</td>
                         <td class="actions">
                             <a href="{% url 'gestion_voluntarios:ruta_cargos_modificar' id=cargo.id %}" class="btn btn-warning btn-sm">Editar</a>
-                            <a href="{% url 'gestion_voluntarios:ruta_cargos_eliminar' id=cargo.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+                             {# (Botón "Eliminar" permanece eliminado) #}
                         </td>
                     </tr>
                     {% empty %}
@@ -116,7 +116,8 @@
         </div>
     </div>
     
+{% endblock %}
+
 {% block scripts %}
 <script src="{% static 'gestion_voluntarios/js/profesion_rango.js' %}"></script>
 {% endblock  %}
-{% endblock %}

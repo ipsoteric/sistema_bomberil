@@ -12,9 +12,19 @@
             <div class="search-box">
                 <input type="text" placeholder="Buscar por nombre, RUT, etc.">
                 <i class="fas fa-search"></i>
-                </div>
-
-           <div class="filter-group">
+            </div>
+            
+            <div class="filter-group">
+                <label for="estacion-filter">Estación:</label>
+                <select id="estacion-filter">
+                    <option value="global">Todas las estaciones</option>
+                    {% for estacion in estaciones %}
+                    <option value="{{ estacion.id }}">{{ estacion.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
                 <label for="rango-filter">Rango:</label>
                 <select id="rango-filter">
                     <option value="global">Todos los rangos</option>
@@ -28,8 +38,9 @@
         <div class="volunteer-grid">
 
             {% for voluntario in voluntarios %}
-
-                {% with membresia=voluntario.membresia_activa_list.0 cargo_actual=voluntario.cargo_actual_list.0 %}
+                
+                {# Usamos |first para evitar errores si la lista de membresía o cargo está vacía #}
+                {% with membresia=voluntario.membresia_activa_list|first cargo_actual=voluntario.cargo_actual_list|first %}
                 
                 <div class="volunteer-card">
                     <div class="profile-header">
@@ -38,12 +49,11 @@
                         {% if voluntario.usuario.avatar_thumb_small %}
                             <img src="{{ voluntario.usuario.avatar_thumb_small.url }}" alt="Foto de perfil">
                         {% else %}
-                            {# Un avatar genérico si no hay foto #}
                             <img src="https://via.placeholder.com/100" alt="Foto de perfil">
                         {% endif %}
 
                         {# Estado (desde el modelo Membresia) #}
-                        {% if membresia.estado == 'ACTIVO' %}
+                        {% if membresia and membresia.estado == 'ACTIVO' %}
                             <span class="status-indicator active" title="Activo"></span>
                         {% else %}
                             <span class="status-indicator inactive" title="Inactivo"></span>
@@ -77,7 +87,9 @@
                         {# URLs dinámicas usando el ID del voluntario #}
                         <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.id %}" class="action-btn view-btn" title="Ver Hoja de Vida"><i class="fas fa-eye"></i></a>
                         <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.id %}" class="action-btn edit-btn" title="Editar Voluntario"><i class="fas fa-edit"></i></a>
-                        <a href="" class="action-btn delete-btn" title="Eliminar Voluntario"><i class="fas fa-trash-alt"></i></a>
+                        
+                        {# Dejamos el botón de eliminar deshabilitado por ahora, como pediste #}
+                        <a href="#" class="action-btn delete-btn" title="Eliminar Voluntario" style="display: none;"><i class="fas fa-trash-alt"></i></a>
                     </div>
                 </div>
                 

@@ -1,26 +1,52 @@
 {# Plantilla base #}{% extends 'gestion_voluntarios/layouts/base.html' %}
 {# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Módulo{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Título de la Página{% endblock %}
+{# Título de la ventana #} {% block titulo_ventana %}Perfil de {{ voluntario.usuario.get_full_name }}{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Hoja de Vida del Voluntario{% endblock %}
 
 {% block contenido %}
 
     <div class="container profile-container">
-        <a href="listado.html" class="back-link"><i class="fas fa-arrow-left"></i> Volver al listado</a>
+        <a href="{% url 'gestion_voluntarios:ruta_lista_voluntarios' %}" class="back-link"><i class="fas fa-arrow-left"></i> Volver al listado</a>
 
         <div class="profile-header-main">
             <div class="profile-image-container">
-                <img src="https://via.placeholder.com/150" alt="Foto de perfil de Juan Pérez">
-                <span class="status-indicator active large"></span>
+                {# Avatar dinámico #}
+                {% if voluntario.usuario.avatar %}
+                    <img src="{{ voluntario.usuario.avatar.url }}" alt="Foto de perfil de {{ voluntario.usuario.get_full_name }}">
+                {% else %}
+                    <img src="https://via.placeholder.com/150" alt="Foto de perfil (sin imagen)">
+                {% endif %}
+                
+                {# Estado dinámico #}
+                {% if membresia and membresia.estado == 'ACTIVO' %}
+                    <span class="status-indicator active large" title="Activo"></span>
+                {% else %}
+                    <span class="status-indicator inactive large" title="Inactivo"></span>
+                {% endif %}
             </div>
             <div class="profile-main-info">
-                <h1>Juan Pérez</h1>
-                <p class="main-rank">Bombero Voluntario</p>
-                <p class="main-station">Estación: Quinta Compañía</p>
+                {# Info dinámica del header #}
+                <h1>{{ voluntario.usuario.get_full_name }}</h1>
+                <p class="main-rank">
+                    {% if cargo_actual %}
+                        {{ cargo_actual.cargo.nombre }}
+                    {% else %}
+                        Sin Rango Asignado
+                    {% endif %}
+                </p>
+                <p class="main-station">
+                    Estación: 
+                    {% if membresia %}
+                        {{ membresia.estacion.nombre }}
+                    {% else %}
+                        Sin Estación Activa
+                    {% endif %}
+                </p>
             </div>
             <div class="profile-actions">
                 <button class="action-btn pdf-btn"><i class="fas fa-file-pdf"></i> Generar Hoja de Vida</button>
-                <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=1 %}" class="action-btn edit-btn"><i class="fas fa-user-edit"></i> Modificar Perfil</a>
+                {# URL de Modificar dinámica #}
+                <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.id %}" class="action-btn edit-btn"><i class="fas fa-user-edit"></i> Modificar Perfil</a>
             </div>
         </div>
 
@@ -34,33 +60,75 @@
         <div id="info" class="tab-content active">
             <h2>Datos Personales</h2>
             <div class="info-grid">
-                <div class="info-item"><strong>RUT:</strong> 12.345.678-9</div>
-                <div class="info-item"><strong>Fecha de Nacimiento:</strong> 01/01/1990</div>
-                <div class="info-item"><strong>Teléfono:</strong> +56 9 1234 5678</div>
-                <div class="info-item"><strong>Correo:</strong> juan.perez@email.com</div>
-                <div class="info-item full-width"><strong>Dirección:</strong> Calle Falsa 123, Santiago, Chile</div>
+                <div class="info-item"><strong>RUT:</strong> {{ voluntario.usuario.rut | default:"No registrado" }}</div>
+                <div class="info-item"><strong>Fecha de Nacimiento:</strong> {{ voluntario.fecha_nacimiento | date:"d/m/Y" | default:"No registrado" }}</div>
+                <div class="info-item"><strong>Teléfono:</strong> {{ voluntario.usuario.phone | default:"No registrado" }}</div>
+                <div class="info-item"><strong>Correo:</strong> {{ voluntario.usuario.email | default:"No registrado" }}</div>
+                <div class="info-item"><strong>Nacionalidad:</strong> {{ voluntario.nacionalidad.gentilicio | default:"No registrada" }}</div>
+                <div class="info-item"><strong>Profesión Civil:</strong> {{ voluntario.profesion.nombre | default:"No registrada" }}</div>
+                <div class="info-item"><strong>Estado Civil:</strong> {{ voluntario.get_estado_civil_display | default:"No registrado" }}</div>
+                <div class="info-item"><strong>Género:</strong> {{ voluntario.get_genero_display | default:"No registrado" }}</div>
+                <div class="info-item full-width"><strong>Dirección:</strong> 
+                    {{ voluntario.domicilio_calle | default:"" }} 
+                    {{ voluntario.domicilio_numero | default:"" }}, 
+                    {{ voluntario.domicilio_comuna.nombre | default:"Sin dirección registrada" }}
+                </div>
             </div>
         </div>
 
         <div id="experience" class="tab-content">
-            <h2>Historial de Servicio</h2>
+            <h2>Historial de Servicio (Cargos)</h2>
             <ul class="history-list">
-                <li><strong>Bombero</strong> - Primera Compañía (2010 - 2015)</li>
-                <li><strong>Teniente 1°</strong> - Quinta Compañía (2015 - Actualidad)</li>
+                {# Bucle sobre el historial de cargos del voluntario #}
+                {% for cargo in voluntario.historial_cargos.all %}
+                    <li>
+                        <strong>{{ cargo.cargo.nombre }}</strong> - {{ cargo.ambito }}
+                        <span class="date-range">
+                            ({{ cargo.fecha_inicio | date:"Y" }} - {% if cargo.fecha_fin %}{{ cargo.fecha_fin | date:"Y" }}{% else %}Actualidad{% endif %})
+                        </span>
+                        <small>Registrado por: {{ cargo.estacion_registra.nombre }}</small>
+                    </li>
+                {% empty %}
+                    <li>No hay historial de cargos registrados.</li>
+                {% endfor %}
             </ul>
         </div>
 
         <div id="recognitions" class="tab-content">
             <h2>Reconocimientos y Logros</h2>
             <ul class="history-list">
-                <li>Medalla por 10 años de servicio (2020)</li>
-                <li>Mención Honrosa por rescate en altura (2021)</li>
+                 {# Bucle sobre el historial de reconocimientos del voluntario #}
+                {% for reco in voluntario.historial_reconocimientos.all %}
+                    <li>
+                        <strong>{{ reco.tipo_reconocimiento.nombre | default:reco.descripcion_personalizada }}</strong>
+                        <span class="date-range">
+                            ({{ reco.fecha_evento | date:"d/m/Y" }})
+                        </span>
+                        <small>Otorga: {{ reco.ambito }} | Registra: {{ reco.estacion_registra.nombre }}</small>
+                    </li>
+                {% empty %}
+                    <li>No hay reconocimientos registrados.</li>
+                {% endfor %}
             </ul>
         </div>
         
         <div id="sanctions" class="tab-content">
             <h2>Registro de Sanciones</h2>
-            <p>No existen sanciones registradas para este voluntario.</p>
+            <ul class="history-list">
+                 {# Bucle sobre el historial de sanciones del voluntario #}
+                {% for sancion in voluntario.historial_sanciones.all %}
+                     <li>
+                        <strong>{{ sancion.get_tipo_sancion_display }}</strong>
+                        <span class="date-range">
+                            ({{ sancion.fecha_evento | date:"d/m/Y" }})
+                        </span>
+                        <p style="margin: 5px 0 0 0;">{{ sancion.descripcion }}</p>
+                        <small>Emitida por: {{ sancion.estacion_evento.nombre }} | Registra: {{ sancion.estacion_registra.nombre }}</small>
+                    </li>
+                {% empty %}
+                    <li>No existen sanciones registradas para este voluntario.</li>
+                {% endfor %}
+            </ul>
         </div>
 
     </div>
