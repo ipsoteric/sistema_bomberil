@@ -16,6 +16,13 @@ class TipoEstado(models.Model):
         verbose_name = "Tipo de estado"
         verbose_name_plural = "Tipos de estado"
 
+        permissions = [
+            ("sys_view_tipoestado", "System: Puede ver Tipos de Estado"),
+            ("sys_add_tipoestado", "System: Puede agregar Tipos de Estado"),
+            ("sys_change_tipoestado", "System: Puede cambiar Tipos de Estado"),
+            ("sys_delete_tipoestado", "System: Puede eliminar Tipos de Estado"),
+        ]
+
     def __str__(self):
         return self.nombre
 
@@ -33,6 +40,13 @@ class Estado(models.Model):
         verbose_name = "Estado"
         verbose_name_plural = "Estados"
 
+        permissions = [
+            ("sys_view_estado", "System: Puede ver Estados"),
+            ("sys_add_estado", "System: Puede agregar Estados"),
+            ("sys_change_estado", "System: Puede cambiar Estados"),
+            ("sys_delete_estado", "System: Puede eliminar Estados"),
+        ]
+
     def __str__(self):
         return self.nombre
 
@@ -49,6 +63,13 @@ class Region(models.Model):
         verbose_name = "Región de Chile"
         verbose_name_plural = "Regiones de Chile"
 
+        permissions = [
+            ("sys_view_region", "System: Puede ver Regiones"),
+            ("sys_add_region", "System: Puede agregar Regiones"),
+            ("sys_change_region", "System: Puede cambiar Regiones"),
+            ("sys_delete_region", "System: Puede eliminar Regiones"),
+        ]
+
     def __str__(self):
         return self.nombre
 
@@ -64,6 +85,13 @@ class Comuna(models.Model):
     class Meta:
         verbose_name = "Comuna de Chile"
         verbose_name_plural = "Comunas de Chile"
+
+        permissions = [
+            ("sys_view_comuna", "System: Puede ver Comunas"),
+            ("sys_add_comuna", "System: Puede agregar Comunas"),
+            ("sys_change_comuna", "System: Puede cambiar Comunas"),
+            ("sys_delete_comuna", "System: Puede eliminar Comunas"),
+        ]
 
     def __str__(self):
         return self.nombre
@@ -92,6 +120,13 @@ class Estacion(models.Model):
         verbose_name_plural = "Estaciones"
         ordering = ['nombre']
 
+        permissions = [
+            ("sys_view_estacion", "System: Puede ver Estaciones"),
+            ("sys_add_estacion", "System: Puede agregar Estaciones"),
+            ("sys_change_estacion", "System: Puede cambiar Estaciones"),
+            ("sys_delete_estacion", "System: Puede eliminar Estaciones"),
+        ]
+
     def __str__(self):
         return self.nombre
 
@@ -107,6 +142,13 @@ class TipoUbicacion(models.Model):
     class Meta:
         verbose_name = "Tipo de ubicación"
         verbose_name_plural = "Tipos de ubicación"
+
+        permissions = [
+            ("sys_view_tipoubicacion", "System: Puede ver Tipos de Ubicación"),
+            ("sys_add_tipoubicacion", "System: Puede agregar Tipos de Ubicación"),
+            ("sys_change_tipoubicacion", "System: Puede cambiar Tipos de Ubicación"),
+            ("sys_delete_tipoubicacion", "System: Puede eliminar Tipos de Ubicación"),
+        ]
 
     def __str__(self):
         return self.nombre
@@ -134,6 +176,13 @@ class Ubicacion(models.Model):
         verbose_name = "Ubicación"
         verbose_name_plural = "Ubicaciones"
 
+        permissions = [
+            ("sys_view_ubicacion", "System: Puede ver Ubicaciones"),
+            ("sys_add_ubicacion", "System: Puede agregar Ubicaciones"),
+            ("sys_change_ubicacion", "System: Puede cambiar Ubicaciones"),
+            ("sys_delete_ubicacion", "System: Puede eliminar Ubicaciones"),
+        ]
+
 
     def __str__(self):
         return self.nombre
@@ -150,6 +199,13 @@ class Marca(models.Model):
         verbose_name = "Marca"
         verbose_name_plural = "Marcas"
 
+        permissions = [
+            ("sys_view_marca", "System: Puede ver Marcas"),
+            ("sys_add_marca", "System: Puede agregar Marcas"),
+            ("sys_change_marca", "System: Puede cambiar Marcas"),
+            ("sys_delete_marca", "System: Puede eliminar Marcas"),
+        ]
+
     def __str__(self):
         return self.nombre
 
@@ -165,6 +221,13 @@ class TipoVehiculo(models.Model):
     class Meta:
         verbose_name = "Tipo de vehículo"
         verbose_name_plural = "Tipos de vehículos"
+
+        permissions = [
+            ("sys_view_tipovehiculo", "System: Puede ver Tipos de Vehículo"),
+            ("sys_add_tipovehiculo", "System: Puede agregar Tipos de Vehículo"),
+            ("sys_change_tipovehiculo", "System: Puede cambiar Tipos de Vehículo"),
+            ("sys_delete_tipovehiculo", "System: Puede eliminar Tipos de Vehículo"),
+        ]
 
     def __str__(self):
         return self.nombre
@@ -183,6 +246,14 @@ class Vehiculo(models.Model):
     tipo_vehiculo = models.ForeignKey(TipoVehiculo, on_delete=models.PROTECT, verbose_name="Tipo de vehículo", help_text="Ingrese el tipo de vehículo")
     # Ubicación/sección correspondiente (1:1)
     ubicacion = models.OneToOneField(Ubicacion, on_delete=models.CASCADE, related_name="detalles_vehiculo", limit_choices_to={'tipo_ubicacion__nombre': 'Vehículo'})
+
+    class Meta:
+        permissions = [
+            ("sys_view_vehiculo", "System: Puede ver Vehículos"),
+            ("sys_add_vehiculo", "System: Puede agregar Vehículos"),
+            ("sys_change_vehiculo", "System: Puede cambiar Vehículos"),
+            ("sys_delete_vehiculo", "System: Puede eliminar Vehículos"),
+        ]
 
     def __str__(self):
         return self.ubicacion.nombre
@@ -206,6 +277,13 @@ class Compartimento(models.Model):
         verbose_name = "Compartimento"
         verbose_name_plural = "Compartimentos"
         ordering = ['ubicacion__nombre', 'nombre']
+
+        permissions = [
+            ("sys_view_compartimento", "System: Puede ver Compartimentos"),
+            ("sys_add_compartimento", "System: Puede agregar Compartimentos"),
+            ("sys_change_compartimento", "System: Puede cambiar Compartimentos"),
+            ("sys_delete_compartimento", "System: Puede eliminar Compartimentos"),
+        ]
 
     def __str__(self):
         return f"{self.nombre} ({self.ubicacion.nombre})"
@@ -234,6 +312,13 @@ class Proveedor(models.Model):
         verbose_name = "Proveedor"
         verbose_name_plural = "Proveedores"
         ordering = ['nombre']
+
+        permissions = [
+            ("sys_view_proveedor", "System: Puede ver Proveedores"),
+            ("sys_add_proveedor", "System: Puede agregar Proveedores"),
+            ("sys_change_proveedor", "System: Puede cambiar Proveedores"),
+            ("sys_delete_proveedor", "System: Puede eliminar Proveedores"),
+        ]
 
     def __str__(self):
         return self.nombre
@@ -276,6 +361,13 @@ class ContactoProveedor(models.Model):
         verbose_name_plural = "Contactos de Proveedor"
         ordering = ['proveedor', 'nombre_contacto']
 
+        permissions = [
+            ("sys_view_contactoproveedor", "System: Puede ver Contactos de Proveedor"),
+            ("sys_add_contactoproveedor", "System: Puede agregar Contactos de Proveedor"),
+            ("sys_change_contactoproveedor", "System: Puede cambiar Contactos de Proveedor"),
+            ("sys_delete_contactoproveedor", "System: Puede eliminar Contactos de Proveedor"),
+        ]
+
     def __str__(self):
         return f"{self.nombre_contacto} ({self.proveedor.nombre})"
 
@@ -292,6 +384,13 @@ class Categoria(models.Model):
     class Meta:
         verbose_name = "Categoría"
         verbose_name_plural = "Categorías"
+
+        permissions = [
+            ("sys_view_categoria", "System: Puede ver Categorías"),
+            ("sys_add_categoria", "System: Puede agregar Categorías"),
+            ("sys_change_categoria", "System: Puede cambiar Categorías"),
+            ("sys_delete_categoria", "System: Puede eliminar Categorías"),
+        ]
 
     def __str__(self):
         return self.nombre
@@ -321,6 +420,7 @@ class ProductoGlobal(models.Model):
     class Meta:
         verbose_name = "Producto Global"
         verbose_name_plural = "Productos Globales"
+
         constraints = [
             # Restricción 1: La combinación de marca y modelo debe ser única si AMBOS existen.
             models.UniqueConstraint(
@@ -333,6 +433,13 @@ class ProductoGlobal(models.Model):
                 condition=models.Q(marca__isnull=True), 
                 name='unique_nombre_oficial_para_genericos'
             )
+        ]
+
+        permissions = [
+            ("sys_view_productoglobal", "System: Puede ver Productos Globales"),
+            ("sys_add_productoglobal", "System: Puede agregar Productos Globales"),
+            ("sys_change_productoglobal", "System: Puede cambiar Productos Globales"),
+            ("sys_delete_productoglobal", "System: Puede eliminar Productos Globales"),
         ]
 
     def clean(self):
@@ -373,6 +480,13 @@ class Producto(models.Model):
         verbose_name_plural = "Productos de Compañía"
         # Restricciones para mantener la integridad de los datos
         unique_together = [('estacion', 'producto_global'), ('estacion', 'sku')]
+
+        permissions = [
+            ("sys_view_producto", "System: Puede ver Productos Locales"),
+            ("sys_add_producto", "System: Puede agregar Productos Locales"),
+            ("sys_change_producto", "System: Puede cambiar Productos Locales"),
+            ("sys_delete_producto", "System: Puede eliminar Productos Locales"),
+        ]
 
     def __str__(self):
         return f"{self.producto_global.nombre_oficial} ({self.estacion.nombre})"
@@ -454,6 +568,13 @@ class Activo(models.Model):
         verbose_name = "Activo"
         verbose_name_plural = "Activos"
         unique_together = ('estacion', 'codigo_activo')
+
+        permissions = [
+            ("sys_view_activo", "System: Puede ver Activos"),
+            ("sys_add_activo", "System: Puede agregar Activos"),
+            ("sys_change_activo", "System: Puede cambiar Activos"),
+            ("sys_delete_activo", "System: Puede eliminar Activos"),
+        ]
     
 
     def save(self, *args, **kwargs):
@@ -515,6 +636,13 @@ class LoteInsumo(models.Model):
     class Meta:
         verbose_name = "Lote de Insumo"
         verbose_name_plural = "Lotes de Insumos"
+
+        permissions = [
+            ("sys_view_loteinsumo", "System: Puede ver Lotes de Insumos"),
+            ("sys_add_loteinsumo", "System: Puede agregar Lotes de Insumos"),
+            ("sys_change_loteinsumo", "System: Puede cambiar Lotes de Insumos"),
+            ("sys_delete_loteinsumo", "System: Puede eliminar Lotes de Insumos"),
+        ]
 
     
     def __str__(self):
@@ -604,6 +732,13 @@ class Destinatario(models.Model):
         ordering = ['nombre_entidad']
         unique_together = ('estacion', 'nombre_entidad') # Evitar duplicados por estación
 
+        permissions = [
+            ("sys_view_destinatario", "System: Puede ver Destinatarios"),
+            ("sys_add_destinatario", "System: Puede agregar Destinatarios"),
+            ("sys_change_destinatario", "System: Puede cambiar Destinatarios"),
+            ("sys_delete_destinatario", "System: Puede eliminar Destinatarios"),
+        ]
+
     def __str__(self):
         return self.nombre_entidad
 
@@ -637,6 +772,13 @@ class Prestamo(models.Model):
         verbose_name_plural = "Préstamos"
         ordering = ['-fecha_prestamo']
 
+        permissions = [
+            ("sys_view_prestamo", "System: Puede ver Préstamos"),
+            ("sys_add_prestamo", "System: Puede agregar Préstamos"),
+            ("sys_change_prestamo", "System: Puede cambiar Préstamos"),
+            ("sys_delete_prestamo", "System: Puede eliminar Préstamos"),
+        ]
+
     def __str__(self):
         return f"Préstamo a {self.destinatario.nombre_entidad} ({self.get_estado_display()})"
 
@@ -663,6 +805,13 @@ class PrestamoDetalle(models.Model):
     class Meta:
         verbose_name = "Detalle de Préstamo"
         verbose_name_plural = "Detalles de Préstamos"
+
+        permissions = [
+            ("sys_view_prestamodetalle", "System: Puede ver Detalles de Préstamo"),
+            ("sys_add_prestamodetalle", "System: Puede agregar Detalles de Préstamo"),
+            ("sys_change_prestamodetalle", "System: Puede cambiar Detalles de Préstamo"),
+            ("sys_delete_prestamodetalle", "System: Puede eliminar Detalles de Préstamo"),
+        ]
 
     def clean(self):
         if not self.activo and not self.lote:
@@ -721,6 +870,10 @@ class MovimientoInventario(models.Model):
         verbose_name = "Movimiento de Inventario"
         verbose_name_plural = "Movimientos de Inventario"
         ordering = ['-fecha_hora']
+
+        permissions = [
+            ("sys_view_movimientoinventario", "System: Puede ver Movimientos de Inventario"),
+        ]
 
     def __str__(self):
         item_str = f"Activo ID {self.activo.id}" if self.activo else f"Lote ID {self.lote_insumo.id}" if self.lote_insumo else "Item Desconocido"
