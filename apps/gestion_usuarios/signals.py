@@ -5,6 +5,7 @@ from PIL import Image
 
 from .models import Usuario
 from apps.gestion_voluntarios.models import Voluntario
+from apps.gestion_medica.models import FichaMedica
 
 
 
@@ -33,5 +34,7 @@ def crear_perfiles_automaticamente(sender, instance, created, **kwargs):
     cuando un nuevo Usuario es creado.
     """
     if created:
-        Voluntario.objects.create(usuario=instance)
-        # FichaMedica.objects.create(usuario=instance)
+        # 1. Creamos el Perfil de Voluntario
+        voluntario_perfil = Voluntario.objects.create(usuario=instance)
+        # 2. Creamos la Ficha Médica vacía, vinculada al Voluntario
+        FichaMedica.objects.create(voluntario=voluntario_perfil)
