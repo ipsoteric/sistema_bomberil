@@ -169,37 +169,48 @@ class Membresia(models.Model):
             ("sys_delete_membresia", "System: Puede eliminar membresías"),
 
             # === MÓDULO: GESTIÓN DE USUARIOS Y ROLES ===
-            ("accion_usuarios_crear_usuario", "Puede crear y registrar nuevos usuarios"),
-            ("accion_usuarios_modificar_info", "Puede modificar la información personal de un usuario"),
-            ("accion_usuarios_restablecer_pass", "Puede restablecer la contraseña de un usuario"),
-            ("accion_usuarios_ver_roles", "Puede ver los roles y sus permisos"),
-            ("accion_usuarios_gestionar_roles", "Puede crear, editar, eliminar y asignar permisos a los roles"),
-            ("accion_usuarios_ver_compania", "Puede ver a los usuarios de la compañía"),
-            ("accion_usuarios_ver_permisos", "Puede ver los permisos de los usuarios"),
-            ("accion_usuarios_asignar_roles", "Puede asignar y cambiar roles a un usuario"),
-            ("accion_usuarios_desactivar_cuenta", "Puede desactivar o reactivar la cuenta de un usuario"),
-            ("accion_usuarios_finalizar_membresia", "Puede finalizar la membresía de un usuario"),
+            ("acceso_gestion_usuarios", "Puede acceder al módulo de Gestión de Usuarios"),
+            ("accion_gestion_usuarios_crear_usuario", "Puede crear y registrar nuevos usuarios"),
+            ("accion_gestion_usuarios_modificar_info", "Puede modificar la información personal de un usuario"),
+            ("accion_gestion_usuarios_restablecer_pass", "Puede restablecer la contraseña de un usuario"),
+            ("accion_gestion_usuarios_ver_roles", "Puede ver los roles y sus permisos"),
+            ("accion_gestion_usuarios_gestionar_roles", "Puede crear, editar, eliminar y asignar permisos a los roles"),
+            ("accion_gestion_usuarios_ver_compania", "Puede ver a los usuarios de la compañía"),
+            ("accion_gestion_usuarios_ver_permisos", "Puede ver los permisos de los usuarios"),
+            ("accion_gestion_usuarios_asignar_roles", "Puede asignar y cambiar roles a un usuario"),
+            ("accion_gestion_usuarios_desactivar_cuenta", "Puede desactivar o reactivar la cuenta de un usuario"),
+            ("accion_gestion_usuarios_finalizar_membresia", "Puede finalizar la membresía de un usuario"),
 
             # === GESTIÓN DE INVENTARIO: CONFIGURACIÓN ===
-            ("accion_inventario_gestionar_ubicaciones", "Puede crear, editar y eliminar Áreas, Vehículos y Compartimentos"),
-            ("accion_inventario_gestionar_proveedores", "Puede crear, editar y eliminar Proveedores y sus contactos"),
-            ("accion_inventario_gestionar_catalogo_local", "Puede añadir y administrar el Catálogo Local de productos"),
-            ("accion_inventario_crear_producto_global", "Puede crear nuevos productos en el Catálogo Global"),
+            ("acceso_gestion_inventario", "Puede acceder al módulo de Gestión de Inventario"),
+            ("accion_gestion_inventario_gestionar_ubicaciones", "Puede crear, editar y eliminar Áreas, Vehículos y Compartimentos"),
+            ("accion_gestion_inventario_gestionar_proveedores", "Puede crear, editar y eliminar Proveedores y sus contactos"),
+            ("accion_gestion_inventario_gestionar_catalogo_local", "Puede añadir y administrar el Catálogo Local de productos"),
+            ("accion_gestion_inventario_crear_producto_global", "Puede crear nuevos productos en el Catálogo Global"),
 
             # === GESTIÓN DE INVENTARIO: OPERACIONES DE STOCK ===
-            ("accion_inventario_ver_stock", "Puede consultar el stock y ver el detalle de las existencias"),
-            ("accion_inventario_recepcionar_stock", "Puede recepcionar y registrar nuevas existencias (stock)"),
-            ("accion_inventario_gestionar_stock_interno", "Puede consumir, ajustar y transferir existencias internamente"),
-            ("accion_inventario_gestionar_bajas_stock", "Puede dar de baja, anular o reportar extravío de existencias"),
+            ("accion_gestion_inventario_ver_stock", "Puede consultar el stock y ver el detalle de las existencias"),
+            ("accion_gestion_inventario_recepcionar_stock", "Puede recepcionar y registrar nuevas existencias (stock)"),
+            ("accion_gestion_inventario_gestionar_stock_interno", "Puede consumir, ajustar y transferir existencias internamente"),
+            ("accion_gestion_inventario_gestionar_bajas_stock", "Puede dar de baja, anular o reportar extravío de existencias"),
 
             # === GESTIÓN DE INVENTARIO: FLUJOS EXTERNOS ===
-            ("accion_inventario_gestionar_prestamos", "Puede crear préstamos, gestionar devoluciones y administrar destinatarios"),
-            ("accion_inventario_trasladar_stock_externo", "Puede trasladar existencias (stock) a otra estación"),
+            ("accion_gestion_inventario_gestionar_prestamos", "Puede crear préstamos, gestionar devoluciones y administrar destinatarios"),
+            ("accion_gestion_inventario_trasladar_stock_externo", "Puede trasladar existencias (stock) a otra estación"),
 
             # === GESTIÓN DE INVENTARIO: REPORTES Y UTILIDADES ===
-            ("accion_inventario_ver_historial_movimientos", "Puede ver el historial de movimientos del inventario"),
-            ("accion_inventario_imprimir_etiquetas_qr", "Puede generar e imprimir etiquetas QR"),
-            ("accion_inventario_realizar_conteo_fisico", "Puede iniciar y gestionar un Conteo Físico (InventARIO)"),
+            ("accion_gestion_inventario_ver_historial_movimientos", "Puede ver el historial de movimientos del inventario"),
+            ("accion_gestion_inventario_imprimir_etiquetas_qr", "Puede generar e imprimir etiquetas QR"),
+            ("accion_gestion_inventario_realizar_conteo_fisico", "Puede iniciar y gestionar un Conteo Físico (InventARIO)"),
+
+            # === MÓDULO: GESTIÓN DE MANTENIMIENTO DE HERRAMIENTAS ===
+            ("acceso_gestion_mantenimiento", "Puede acceder al módulo de Mantenimiento"),
+
+            # === MÓDULO: GESTIÓN DE VOLUNTARIOS ===
+            ("acceso_gestion_voluntarios", "Puede acceder al módulo de Voluntarios"),
+
+            # === MÓDULO: GESTIÓN DE FICHAS MÉDICAS ===
+            ("acceso_gestion_medica", "Puede acceder al módulo de Fichas médicas"),
         ]
 
     

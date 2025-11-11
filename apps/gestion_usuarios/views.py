@@ -1,3 +1,4 @@
+import pprint
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.contrib import messages
@@ -523,53 +524,70 @@ class RolAsignarPermisosView(LoginRequiredMixin, ModuleAccessMixin, RolValidoPar
 
     def get(self, request, *args, **kwargs):
         """Muestra el formulario con los permisos agrupados y los checkboxes."""
-        
-        # --- CAMBIO 1: Usar las etiquetas cortas en la lista ---
-        apps_del_proyecto = [
-            'common', 'utilidades', 'gestion_inventario', 'gestion_mantenimiento',
-            'gestion_voluntarios', 'gestion_medica', 'gestion_usuarios', 'portal',
-            'acceso', 'api'
-        ]
+
+        # 1. Obtener todos los permisos de negocio
         permissions = Permission.objects.filter(
-            content_type__app_label__in=apps_del_proyecto
-        ).exclude(
-            codename__startswith='sys_'
-        ).select_related('content_type').order_by('content_type__app_label', 'name')
-    
-        permissions_by_app = defaultdict(lambda: {
-            'verbose_name': '', 'main_perm': None, 'children': []
-        })
-    
-        for perm in permissions:
+            Q(codename__startswith='acceso_') | Q(codename__startswith='accion_')
+        )
+
+        # 2. Diccionario final
+        grouped_perms = {} 
+
+        # 3. PRIMERA PASADA: PADRES (acceso_)
+        parent_perms = permissions.filter(codename__startswith='acceso_')
+        
+        for perm in parent_perms:
             app_label = None
-            verbose_name = ''
-    
-            if perm.codename.startswith('acceso_'):
-                # --- CAMBIO 2: Dividir solo por el primer '_' ---
+            try:
+                # 'acceso_gestion_inventario' -> app_label = 'gestion_inventario'
                 app_label = perm.codename.split('_', 1)[1]
-                try:
-                    config = apps.get_app_config(app_label)
-                    verbose_name = config.verbose_name
-                except LookupError: continue
+                config = apps.get_app_config(app_label)
+                
+                grouped_perms[app_label] = {
+                    'verbose_name': config.verbose_name,
+                    'main_perm': perm,
+                    'children': []
+                }
+            except (LookupError, IndexError):
+                continue 
+
+        # 4. SEGUNDA PASADA: HIJOS (accion_)
+        child_perms = permissions.filter(codename__startswith='accion_')
+        # Obtenemos los app_labels que SÍ existen (ej: 'gestion_inventario', 'gestion_usuarios')
+        app_labels_from_parents = grouped_perms.keys() 
+
+        for perm in child_perms:
+            found_parent = False
+            try:
+                # Iterar sobre los app_labels que SÍ encontramos en la PASADA 1
+                for app_label in app_labels_from_parents:
+                    
+                    # Construir el prefijo que este permiso 'hijo' debería tener
+                    # ej. "accion_gestion_inventario_"
+                    expected_prefix = f"accion_{app_label}_"
+                    
+                    if perm.codename.startswith(expected_prefix):
+                        grouped_perms[app_label]['children'].append(perm)
+                        found_parent = True
+                        break # Encontró su padre, pasar al siguiente permiso
+                
+                if not found_parent:
+                    print(f"[DEBUG] -> ADVERTENCIA: No coincide con ningún prefijo de app_label conocido. Omitiendo.")
             
-            elif perm.content_type and perm.content_type.model_class():
-                config = perm.content_type.model_class()._meta.app_config
-                app_label = config.label
-                verbose_name = config.verbose_name
-            
-            if not app_label: continue
-    
-            permissions_by_app[app_label]['verbose_name'] = verbose_name
-            if perm.codename.startswith('acceso_'):
-                permissions_by_app[app_label]['main_perm'] = perm
-            else:
-                permissions_by_app[app_label]['children'].append(perm)
+            except Exception as e:
+                print(f"[DEBUG] -> ERROR Inesperado procesando '{perm.codename}': {e}. Omitiendo.")
+                continue 
+
+        # 5. Ordenar los permisos hijos alfabéticamente
+        for app_label in grouped_perms:
+            grouped_perms[app_label]['children'].sort(key=lambda x: x.name)
     
         context = {
             'rol': self.rol,
-            'permissions_by_app': dict(sorted(permissions_by_app.items(), key=lambda item: item[1]['verbose_name'])),
+            'permissions_by_app': dict(sorted(grouped_perms.items(), key=lambda item: item[1]['verbose_name'])),
             'rol_permissions_ids': set(self.rol.permisos.values_list('id', flat=True))
         }
+        
         return render(request, self.template_name, context)
 
 
