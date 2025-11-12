@@ -1,76 +1,98 @@
-{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
-{# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Agregar Usuario{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Agregar usuario{% endblock %}
+{% extends 'gestion_usuarios/layouts/base.html' %}
+{% load static %}
+{% load i18n %} 
+
+{% block titulo_ventana %}Agregar Usuario{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-user-plus me-2"></i> Agregar Usuario a la Estación
+    </span>
+{% endblock %}
 
 {% block contenido %}
-<div class="caja_para_pagina_contenido_arriba">
 
-    <div class="contenedor_formulario_simple fondo_secundario">
-        <form 
-        id="formularioBuscarUsuario"
-        class=" formulario_simple color_primario fs_normal"
-        >
-        {% csrf_token %}
-
-            {# Correo #}
-            <div class="input_box">
-                <div class="input_box__label color_primario">
-                    <div class="caja_flex_column">
-                        <label class="fs_mediana" for="">Buscar usuario</label>
-                        <br>
-                        <span>Ingresa el RUT del usuario que deseas agregar a la compañía</span>
-                    </div>
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-10">
+            
+            {# 1. Tarjeta de Búsqueda #}
+            <div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header fs_normal">
+                    <i class="fas fa-search me-1"></i>
+                    Buscar Usuario por RUT
                 </div>
-                <input id="BuscarInputRUT" class="input_box__input fs_normal color_primario fondo_secundario" type="text">
+                <div class="card-body">
+                    <form id="formularioBuscarUsuario">
+                        {% csrf_token %}
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-8">
+                                <label for="BuscarInputRUT" class="form-label fw-bold fs_pequena">RUT del Usuario</label>
+                                <input type="text" class="form-control fs_normal" id="BuscarInputRUT" 
+                                       placeholder="Ej: 12.345.678-9" required>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button type="submit" class="btn btn-primary btn-sm fs_normal w-100">
+                                    <i class="fas fa-search me-1"></i> Buscar
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-text fs_pequena mt-2">
+                            Busca un usuario existente en el sistema para agregarlo a tu estación.
+                        </div>
+                    </form>
+                </div>
             </div>
 
-            <div class="formulario_simple__caja_botones">
-                <button 
-                type="submit" 
-                class="boton fs_normal color_blanco fondo_azul hover_color"
-                >
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    Buscar
-                </button>
-                <button class="color_primario fondo_transparente">Cancelar</button>
-            </div>
+            {# 2. Contenedor de Resultados (poblado por JS) #}
+            <div id="contenedorResultado">
+                </div>
 
-        </form>
+        </div>
     </div>
-    
-
-    {# Lista de usuario resultados de la búsqueda #}
-    <div 
-    id="contenedorResultado" class="contenedor_formulario_simple hidden"></div>
-
 </div>
 
+{% endblock  %}
 
+
+{% block scripts %}
+{{ block.super }}
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
     const formularioBuscarUsuario = document.getElementById("formularioBuscarUsuario");
+    const contenedorResultado = document.getElementById("contenedorResultado");
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // URLs (se obtienen del template de Django)
+    const defaultAvatarUrl = "{% static 'imagenes/default_avatar.png' %}";
+    const crearUsuarioUrl = "{% url 'gestion_usuarios:ruta_crear_usuario' %}"; // URL para crear [cite: 3]
+    const buscarApiUrl = "{% url 'api:ruta_buscar_usuario' %}"; // URL de la API de búsqueda [cite: 3]
+    const agregarUsuarioUrl = "{% url 'gestion_usuarios:ruta_agregar_usuario' %}"; // URL del POST de la vista [cite: 3]
 
     formularioBuscarUsuario.addEventListener('submit', async function(event) {
         event.preventDefault();
-
-        const BuscarInputRUT = document.getElementById("BuscarInputRUT");
-        const contenedorResultado = document.getElementById("contenedorResultado");
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        const defaultAvatarUrl = "{% static 'imagenes/default_avatar.png' %}";
-        const crearUsuarioUrl = "{% url 'gestion_usuarios:ruta_crear_usuario' %}";
-
-        contenedorResultado.innerHTML = '<p class="color_primario">Buscando...</p>';
-
+        const buscarInputRUT = document.getElementById("BuscarInputRUT");
+        
+        // 1. Mostrar estado de carga (Spinner de Bootstrap)
+        contenedorResultado.innerHTML = `
+            <div class="d-flex justify-content-center align-items-center my-4">
+                <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
+                    <span class="visually-hidden">Buscando...</span>
+                </div>
+                <span class="ms-2 fs_normal">Buscando...</span>
+            </div>
+        `;
 
         try {
-            const response = await fetch("{% url 'api:ruta_buscar_usuario' %}", {
+            const response = await fetch(buscarApiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
-                body: JSON.stringify({ rut: BuscarInputRUT.value })
+                body: JSON.stringify({ rut: buscarInputRUT.value })
             });
 
             if (!response.ok) {
@@ -78,89 +100,100 @@
             }
             
             const data = await response.json();
-            console.log(data);
-            let content = '';
+            let content = ''; // Variable para almacenar el HTML de resultado
 
-            // Limpiamos el contenedor
-            contenedorResultado.innerHTML = ''; 
-
-
+            // 2. Generar HTML basado en la respuesta de la API
+            
             if (data.status === 'EXISTE_DISPONIBLE') {
-                // Caso 1: Usuario encontrado y puede ser agregado
+                // --- Caso 1: Usuario encontrado y puede ser agregado ---
+                // Genera el formulario que tu vista 'UsuarioAgregarView' espera
                 const usuario = data.usuario;
-
-                content += `
-
-                    <form action="{% url 'gestion_usuarios:ruta_agregar_usuario' %}" method="post">
+                content = `
+                    <form action="${agregarUsuarioUrl}" method="post">
                         <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
                         <input type="hidden" name="usuario_id" value="${usuario.id}">
                         
-                        <div class="tarjeta_usuario color_primario panel_base fondo_secundario">
-                            <div class="tarjeta_usuario__avatar">
-                                <img src="${defaultAvatarUrl}" alt="Avatar">
+                        <div class="card shadow-sm border-success">
+                            <div class="card-header bg-success bg-opacity-10 fs_normal fw-bold text-success">
+                                Usuario Encontrado y Disponible
                             </div>
-                        <div class="tarjeta_usuario__informacion">
-                            <div>
-                                <span class="fs_normal">${usuario.nombre_completo}</span>
-                                <span class="etiqueta color_blanco fondo_verde fs_pequena">Disponible</span>
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center">
+                                    <img src="${usuario.avatar_url || defaultAvatarUrl}" alt="Avatar" class="rounded-circle me-3" style="width: 50px; height: 50px;">
+                                    <div class="flex-grow-1">
+                                        <strong class="fs_normal">${usuario.nombre_completo}</strong>
+                                        <div class="fs_pequena text-muted">${usuario.email}</div>
+                                        <div class="fs_pequena"><span class="badge bg-success">Disponible</span></div>
+                                    </div>
+                                    <div class="ms-auto">
+                                        <button type="submit" class="btn btn-success" title="Agregar Usuario a esta Estación">
+                                            <i class="fas fa-plus me-1"></i> Agregar
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <span class="fs_pequena color_primario_variante">${usuario.email}</span>
-                            <span class="fs_pequena color_primario_variante">Sin compañía asignada</span>
                         </div>
-                        <div class="tarjeta_usuario__acciones fondo_transparente">
-                            <button type="submit" class="fs_xx_grande boton_icono fondo_transparente">
-                                <i class="fa-solid fa-square-plus color_verde"></i>
-                            </button>
-                        </div>
-                    </div>
                     </form>
                 `;
-
             } 
-
+            
             else if (data.status === 'EXISTE_ACTIVO') {
-                console.log("USUARIO YA ACTIVO");
-                // Caso 2: Usuario encontrado pero ya activo en otra compañía
+                // --- Caso 2: Usuario encontrado pero ya activo en otra compañía ---
                 const membresia = data.membresia;
                 content = `
-                    <div class="tarjeta_usuario color_primario panel_base fondo_secundario">
-                        <div class="tarjeta_usuario__avatar">
-                            <img src="${defaultAvatarUrl}" alt="Avatar">
+                    <div class="card shadow-sm border-warning">
+                        <div class="card-header bg-warning bg-opacity-10 fs_normal fw-bold text-dark">
+                            Usuario No Disponible
                         </div>
-                        <div class="tarjeta_usuario__informacion">
-                        <div>
-                            <span class="fs_normal">${membresia.nombre_completo}</span>
-                            <span class="etiqueta color_blanco fondo_gris_oscuro fs_pequena">No disponible</span>
-                        </div>
-                            <span class="fs_pequena color_primario_variante">${membresia.email}</span>
-                            <span class="fs_pequena color_primario_variante">
-                                Miembro de ${membresia.estacion} desde el ${membresia.fecha_inicio}
-                            </span>
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center">
+                                <img src="${membresia.avatar_url || defaultAvatarUrl}" alt="Avatar" class="rounded-circle me-3" style="width: 50px; height: 50px;">
+                                <div class="flex-grow-1">
+                                    <strong class="fs_normal">${membresia.nombre_completo}</strong>
+                                    <div class="fs_pequena text-muted">${membresia.email}</div>
+                                    <div class="fs_pequena">
+                                        <span class="badge bg-secondary">No Disponible</span>
+                                        <span class="ms-2 fst-italic">Miembro de ${membresia.estacion}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
             }
 
             else if (data.status === 'NO_EXISTE') {
-            // Caso 3: Usuario no encontrado
-            content = `
-                <div class="alerta_especial_js color_primario fs_normal">${data.mensaje}</div>
-                <div class="panel_base fondo_secundario" style="text-align: center; padding: 20px;">
-                    <a href="${crearUsuarioUrl}" class="boton_flex fondo_verde color_blanco fs_mediana">
-                        Crear Usuario
-                    </a>
-                </div>
-            `;
+                // --- Caso 3: Usuario no encontrado ---
+                content = `
+                    <div class="alert alert-warning fs_normal" role="alert">
+                        <i class="fas fa-info-circle me-1"></i> ${data.mensaje}
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <p class="fs_normal mb-3">Para agregarlo a la estación, primero debe crear su cuenta de usuario.</p>
+                            <a href="${crearUsuarioUrl}" class="btn btn-success fs_normal">
+                                <i class="fas fa-user-plus me-1"></i> Crear Nuevo Usuario
+                            </a>
+                        </div>
+                    </div>
+                `;
             }
 
+            // 3. Insertar el HTML en el contenedor
             contenedorResultado.innerHTML = content;
-            contenedorResultado.classList.remove("hidden");
 
         } catch (error) {
             console.error('Error en fetch:', error);
-            contenedorResultado.innerHTML = '<p class="error">Ocurrió un error al buscar. Inténtalo de nuevo.</p>';
+            // --- Caso de Error (Fetch, red, etc.) ---
+            contenedorResultado.innerHTML = `
+                <div class="alert alert-danger fs_normal" role="alert">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Ocurrió un error al buscar. Por favor, inténtalo de nuevo.
+                </div>
+            `;
         }
-    })
+    });
+});
 </script>
 
-{% endblock  %}
+{% endblock %}
