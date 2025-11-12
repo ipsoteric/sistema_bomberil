@@ -1,44 +1,81 @@
-{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
-{# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Crear Rol{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Crear Rol{% endblock %}
+{% extends 'gestion_usuarios/layouts/base.html' %}
+{% load static %}
+{% load i18n %} 
+
+{% block titulo_ventana %}Crear Rol{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-user-tag me-2"></i> Crear Nuevo Rol
+    </span>
+{% endblock %}
 
 {% block contenido %}
-<div class="caja_para_pagina_contenido_arriba">
 
-    <div class="contenedor_formulario_simple fondo_secundario">
-        <form 
-        method="post" 
-        action="{% url 'gestion_usuarios:ruta_crear_rol' %}"
-        class=" formulario_simple color_primario fs_normal"
-        >
-        {% csrf_token %}
-
-            {# Nombre #}
-            <div class="input_box">
-                <div class="input_box__label color_primario">
-                    <i class="fa-solid fa-asterisk color_rojo"></i>
-                    <label for="">Nombre</label>
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-9">
+            
+            <div class="card shadow-sm {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header fs_normal">
+                    <i class="fas fa-edit me-1"></i>
+                    Datos del Nuevo Rol
                 </div>
-                {{formulario.nombre}}
+                
+                <form method="post" action="{% url 'gestion_usuarios:ruta_crear_rol' %}">
+                    {% csrf_token %}
+                    
+                    <div class="card-body">
+                        {# Mostramos errores generales del formulario si existen #}
+                        {% if formulario.non_field_errors %}
+                            <div class="alert alert-danger fs_pequena" role="alert">
+                                {% for error in formulario.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        {# Nombre #}
+                        <div class="mb-3">
+                            <label for="{{ formulario.nombre.id_for_label }}" class="form-label fw-bold fs_pequena">Nombre del Rol <span class="text-danger">*</span></Cerrar>
+                            {{ formulario.nombre }}
+                            {% if formulario.nombre.errors %}
+                                <div class="invalid-feedback d-block fs_pequena">
+                                    {% for error in formulario.nombre.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        {# Descripción #}
+                        <div class="mb-3">
+                            <label for="{{ formulario.descripcion.id_for_label }}" class="form-label fw-bold fs_pequena">Descripción</label>
+                            {{ formulario.descripcion }} {# Asumo que esto será un textarea en tu forms.py #}
+                            {% if formulario.descripcion.errors %}
+                                <div class="invalid-feedback d-block fs_pequena">
+                                    {% for error in formulario.descripcion.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text fs_pequena">
+                                Opcional. Describe brevemente el propósito de este rol.
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    <div class="card-footer text-end">
+                        <a href="{% url 'gestion_usuarios:ruta_lista_roles' %}" class="btn btn-outline-secondary btn-sm fs_normal me-2">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success btn-sm fs_normal">
+                            <i class="fas fa-save me-1"></i>
+                            Crear Rol
+                        </button>
+                    </div>
+                </form>
             </div>
             
-            {# Descripción #}
-            <div class="input_box">
-                <div class="input_box__label color_primario">
-                    <label for="">Descripción</label>
-                </div>
-                {{formulario.descripcion}}
-            </div>
-
-            <div class="formulario_simple__caja_botones">
-                <button type="submit" class="boton fs_normal color_blanco fondo_verde hover_color">Crear</button>
-                <button class="color_primario fondo_transparente">Cancelar</button>
-            </div>
-
-        </form>
-    </div>  
-
+        </div>
+    </div>
 </div>
 
 {% endblock  %}

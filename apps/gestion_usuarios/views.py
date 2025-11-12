@@ -9,7 +9,7 @@ from django.db import IntegrityError, transaction
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseNotAllowed
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, Count
 from collections import defaultdict
 from django.apps import apps
 
@@ -390,8 +390,8 @@ class UsuarioActivarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequir
 
 class RolListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
-    Muestra una lista de roles de la estación activa del usuario,
-    separando los roles universales de los específicos.
+    Muestra una lista de roles (globales y de la estación)
+    con filtros de búsqueda y tipo.
     """
 
     template_name = "gestion_usuarios/pages/lista_roles.html"
@@ -402,22 +402,45 @@ class RolListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixi
         # 1. Obtener el ID de la estación activa
         estacion_id = request.session.get('active_estacion_id')
 
-        # 2. Verificar que el ID exista en la sesión.
         if not estacion_id:
             messages.error(request, "No se pudo determinar la estación activa. Por favor, inicie sesión de nuevo.")
-            return redirect(reverse("gestion_usuarios:ruta_lista_roles"))
-    
-        # 3. Obtenemos el objeto de la estación. Si no existe, devuelve un error 404.
+            # Redirige a una ruta segura, por ejemplo el dashboard
+            return redirect('portal:ruta_portal') 
+        
         estacion = get_object_or_404(Estacion, id=estacion_id)
 
-        # 4. La consulta para obtener los roles es la misma.
-        query = Q(estacion__isnull=True) | Q(estacion=estacion)
-        roles_queryset = Rol.objects.filter(query).prefetch_related('permisos').order_by('nombre')
+        # 2. Obtener parámetros de filtro de la URL
+        self.search_q = request.GET.get('q', '')
+        self.filter_tipo = request.GET.get('tipo', '')
 
-        # 5. Preparar datos
+        # 3. Consulta base: roles globales (isnull=True) Y de esta estación
+        query = Q(estacion__isnull=True) | Q(estacion=estacion)
+        roles_queryset = Rol.objects.filter(query)
+
+        # 4. Aplicar filtros de búsqueda
+        if self.search_q:
+            roles_queryset = roles_queryset.filter(nombre__icontains=self.search_q)
+
+        if self.filter_tipo == 'global':
+            roles_queryset = roles_queryset.filter(estacion__isnull=True)
+        elif self.filter_tipo == 'personalizado':
+            roles_queryset = roles_queryset.filter(estacion__isnull=False) # Solo de la estación
+
+        # 5. Anotar el conteo de permisos y ordenar
+        # .annotate() es la forma eficiente de obtener el conteo
+        roles_filtrados = roles_queryset.annotate(
+            permisos_count=Count('permisos')
+        ).order_by('nombre')
+
+
+        # 6. Preparar contexto
         context = {
             'estacion': estacion,
-            'roles': roles_queryset, # Pasamos el queryset al template con la clave 'roles'.
+            'roles': roles_filtrados, # El queryset filtrado y anotado
+            
+            # Devolvemos los filtros para repoblar el formulario
+            'current_q': self.search_q,
+            'current_tipo': self.filter_tipo,
         }
 
         return render(request, self.template_name, context)

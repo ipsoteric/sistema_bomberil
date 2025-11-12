@@ -190,8 +190,8 @@ class FormularioRol(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Personaliza otros campos si es necesario
-        self.fields['nombre'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
-        self.fields['descripcion'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
+        self.fields['nombre'].widget.attrs.update({'class': 'form-control form-control-sm fs_normal', 'autocomplete': 'off'})
+        self.fields['descripcion'].widget.attrs.update({'class': 'form-control form-control-sm fs_normal', 'autocomplete': 'off', 'rows': 3})
 
 
     def save(self, commit=True):

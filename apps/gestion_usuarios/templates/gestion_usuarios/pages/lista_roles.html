@@ -1,47 +1,154 @@
-{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
-{# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Lista de roles{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Lista de roles{% endblock %}
+{% extends 'gestion_usuarios/layouts/base.html' %}
+{% load static %}
+{% load i18n %} 
+
+{% block titulo_ventana %}Gestión de Roles{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-user-tag me-2"></i> Gestión de Roles
+    </span>
+{% endblock %}
 
 {% block contenido %}
 
-<table id="myTable" class="display tabla_1">
-    <thead class="color_blanco fondo_negro">
-        <tr>
-            <th>Nombre</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody class="fondo_secundario_variante">
-        {% if roles %}
-        {% for rol in roles %}
-        <tr>
-            
-            {# Nombre #}
-            <td
-            {% if rol.descripcion %}
-            title={{rol.descripcion}}
-            {% endif %}
-            >
-                {{rol.nombre|title}}
-            {% if rol.estacion %}
-                <span class="etiqueta fondo_morado color_blanco">Personalizado</span>
-            {% endif %}
-            </td>
-            
-            
+<div class="container-fluid mt-4">
 
-            {# Acciones #}
-            <td>
-                <button class="boton_s boton-menu-acciones fondo_transparente">
-                    <i class="fa-solid fa-ellipsis-vertical color_primario"></i>
-                </button>
-                {% include 'gestion_usuarios/partials/_menu_acciones_roles.html' with rol=rol %}
-            </td>
+{# Panel de Filtros y Búsqueda #}
+<div class="card shadow-sm mb-4">
+    <div class="card-header fs_normal">
+        <i class="fas fa-filter me-1"></i>
+        Filtros y Búsqueda
+    </div>
+    <div class="card-body">
+        <form method="get" action="{% url 'gestion_usuarios:ruta_lista_roles' %}">
+            <div class="row g-3 align-items-end"> 
+                
+                {# Buscar por Nombre #}
+                <div class="col-md-6 col-lg-5">
+                    <label for="search_query" class="form-label fw-bold fs_pequena">Buscar por Nombre</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control fs_normal" id="search_query" name="q" 
+                               placeholder="Nombre del rol..." 
+                               value="{{ current_q|default:'' }}">
+                    </div>
+                </div>
+                
+                {# Filtrar por Tipo #}
+                <div class="col-md-6 col-lg-4"> 
+                    <label for="filter_tipo" class="form-label fw-bold fs_pequena">Tipo de Rol</label>
+                    <select id="filter_tipo" name="tipo" class="form-select form-select-sm fs_normal">
+                        <option value="">Todos</option>
+                        <option value="global" {% if current_tipo == 'global' %}selected{% endif %}>Global</option>
+                        <option value="personalizado" {% if current_tipo == 'personalizado' %}selected{% endif %}>Personalizado</option>
+                    </select>
+                </div>
+                
+                {# Botones #}
+                <div class="col-md-12 col-lg-3 text-end">
+                    <a href="{% url 'gestion_usuarios:ruta_lista_roles' %}" class="btn btn-outline-secondary btn-sm fs_normal me-1">Limpiar</a>
+                    <button type="submit" class="btn btn-primary btn-sm fs_normal">
+                        <i class="fas fa-filter me-1"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
-        {% endfor %}
-        {% endif %}
-    </tbody>
-</table>
-    
-{% endblock  %}
+{# Tabla de Roles #}
+<div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-bold fs_normal">
+            <i class="fas fa-table me-1"></i>
+            Roles del Sistema
+        </span>
+        <a href="{% url 'gestion_usuarios:ruta_crear_rol' %}" class="btn btn-success btn-sm fs_normal"> {# Asume esta URL #}
+            <i class="fas fa-plus me-1"></i> Añadir Rol
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-sm align-middle">
+                <thead class="fs_pequena">
+                    <tr>
+                        <th style="width: 50%;">Nombre del Rol</th>
+                        <th style="width: 20%;" class="text-center">Tipo</th>
+                        <th style="width: 20%;" class="text-center">Total Permisos</th>
+                        <th style="width: 10%;" class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="fs_normal">
+                    {% for rol in roles %}
+                    <tr>
+                        {# Nombre (con tooltip) #}
+                        <td {% if rol.descripcion %}
+                            title="{{ rol.descripcion }}" 
+                            data-bs-toggle="tooltip" 
+                            data-bs-placement="top"
+                            {% endif %}>
+                            <strong>{{ rol.nombre|title }}</strong>
+                        </td>
+                        
+                        {# Tipo (Global o Personalizado) #}
+                        <td class="text-center">
+                            {% if rol.estacion %}
+                                <span class="badge bg-primary">Personalizado</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Global</span>
+                            {% endif %}
+                        </td>
+                        
+                        {# Total Permisos (de la anotación) #}
+                        <td class="text-center">
+                            {% if rol.nombre == "ADMINISTRADOR" and not rol.estacion %}
+                                <span class="badge bg-info text-dark fst-italic" 
+                                      title="Este rol tiene acceso total (Superusuario)">
+                                    Todos
+                                </span>
+                            {% else %}
+                                <span class="badge bg-dark rounded-pill">
+                                    {{ rol.permisos_count }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        {# Acciones (tu menú original) #}
+                        <td class="text-center">
+                            <button class="boton_s boton-menu-acciones fondo_transparente">
+                                <i class="fa-solid fa-ellipsis-vertical color_primario"></i>
+                            </button>
+                            {% include 'gestion_usuarios/partials/_menu_acciones_roles.html' with rol=rol %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center fst-italic py-4">
+                            No se encontraron roles que coincidan con los filtros seleccionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+{{ block.super }}
+<script>
+// (Opcional) Pequeño script para inicializar los tooltips de Bootstrap
+document.addEventListener('DOMContentLoaded', function () {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+  })
+});
+</script>
+{% endblock %}

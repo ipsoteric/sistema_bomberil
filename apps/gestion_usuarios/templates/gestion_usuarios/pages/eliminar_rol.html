@@ -1,51 +1,63 @@
-{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
-{# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Eliminar Rol: {{rol.id}}{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Eliminar Rol{% endblock %}
+{% extends 'gestion_usuarios/layouts/base.html' %}
+{% load static %}
+{% load i18n %} 
+
+{% block titulo_ventana %}Eliminar Rol: {{rol.nombre|title}}{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-trash-alt me-2"></i> Eliminar Rol
+    </span>
+{% endblock %}
 
 
 {% block contenido %}
-<div class="caja_para_pagina_contenido_arriba">
 
-
-<div class="alert alert-warning fs_normal" role="alert">
-    <strong><i class="fas fa-exclamation-triangle"></i> ¡Atención!</strong> Esta acción no se puede deshacer. Los usuarios que actualmente tengan este rol asignado lo perderán.
-</div>
-
-<div class="container mt-4">
+<div class="container-fluid mt-4">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card border-danger">
-                <div class="card-header bg-danger text-white">
-                    <h3 class="mb-0">Confirmar Eliminación de Rol</h3>
-                </div>
-                <div class="card-body fondo_secundario color_primario fs_normal">
-                    <p class="fs_normal">
-                        Estás a punto de eliminar permanentemente el rol:
-                    </p>
+        <div class="col-lg-7 col-md-9">
 
-                    <h2 class="text-center my-4"><strong>{{ rol.nombre|title }}</strong></h2>
+            {# 1. Alerta de Advertencia #}
+            <div class="alert alert-warning fs_normal" role="alert">
+                <strong><i class="fas fa-exclamation-triangle me-1"></i> ¡Atención!</strong> Esta acción no se puede deshacer. Los usuarios que actualmente tengan este rol asignado lo perderán.
+            </div>
+
+            {# 2. Tarjeta de Confirmación #}
+            <div class="card shadow-sm border-danger {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header bg-danger text-white fs_normal fw-bold">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Confirmar Eliminación
+                </div>
                 
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="card-body">
+                        <p class="fs_normal">
+                            Estás a punto de eliminar permanentemente el rol:
+                        </p>
 
-                    <span class="text-center mt-4">¿Estás seguro de que deseas continuar?</span>
+                        <h3 class="text-center my-4 text-danger">
+                            <strong>{{ rol.nombre|title }}</strong>
+                        </h3>
+                    
+                        <p class="fs_normal text-center mt-3">
+                            ¿Estás seguro de que deseas continuar?
+                        </p>
+                    </div>
 
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="d-flex justify-content-end mt-4">
-                            <a href="{% url 'gestion_usuarios:ruta_lista_roles' %}" class="boton_s color_primario_variante">
-                                Cancelar
-                            </a>
-                            <button type="submit" class="boton_s fondo_rojo color_blanco">
-                                Sí, Eliminar Rol
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    <div class="card-footer text-end">
+                        <a href="{% url 'gestion_usuarios:ruta_lista_roles' %}" class="btn btn-outline-secondary btn-sm fs_normal me-2">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-danger btn-sm fs_normal">
+                            <i class="fas fa-trash-alt me-1"></i>
+                            Sí, Eliminar Rol
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-
-</div>
 {% endblock %}
