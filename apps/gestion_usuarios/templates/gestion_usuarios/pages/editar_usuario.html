@@ -1,77 +1,109 @@
-{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
-{# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Modificar Usuario{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Modificar Información de Usuario{% endblock %}
+{% extends 'gestion_usuarios/layouts/base.html' %}
+{% load static %}
+{% load i18n %} 
+
+{% block titulo_ventana %}Modificar Usuario: {{ usuario.get_full_name|title }}{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-user-edit me-2"></i> Modificar Información de Usuario
+    </span>
+{% endblock %}
 
 {% block contenido %}
-<div class="caja_para_pagina_contenido_centrado">
 
-    <div class="contenedor_formulario_simple fondo_secundario">
-        <form 
-        method="post" 
-        action="{% url 'gestion_usuarios:ruta_editar_usuario' id=usuario.id %}"
-        class=" formulario_simple color_primario fs_normal"
-        >
-        {% csrf_token %}
-
-            {# Correo #}
-            <div class="input_box">
-                <div class="input_box__label color_primario_variante">
-                    <label for="">Corre Electrónico</label>
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            
+            <div class="card shadow-sm {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header fs_normal fw-bold">
+                    Editando a: {{ usuario.get_full_name|title }}
                 </div>
-                {{formulario.email}}
-            </div>
+                
+                <form method="post" enctype="multipart/form-data" action="{% url 'gestion_usuarios:ruta_editar_usuario' id=usuario.id %}">
+                    {% csrf_token %}
+                    
+                    <div class="card-body">
+                        {# Errores generales #}
+                        {% if formulario.non_field_errors %}
+                            <div class="alert alert-danger fs_pequena" role="alert">
+                                {% for error in formulario.non_field_errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
 
-            {# Rut #}
-            <div class="input_box">
-                <div class="input_box__label color_primario_variante">
-                    <label for="">Rut</label>
-                </div>
-                {{formulario.rut}}
+                        <div class="row g-3">
+                            {# --- Columna Izquierda --- #}
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ formulario.rut.id_for_label }}" class="form-label fw-bold fs_pequena text-muted">RUT</label>
+                                    {{ formulario.rut }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ formulario.first_name.id_for_label }}" class="form-label fw-bold fs_pequena">Nombre <span class="text-danger">*</span></label>
+                                    {{ formulario.first_name }}
+                                    {% if formulario.first_name.errors %}
+                                        <div class="invalid-feedback d-block fs_pequena">{% for error in formulario.first_name.errors %}{{ error }}{% endfor %}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ formulario.birthdate.id_for_label }}" class="form-label fw-bold fs_pequena">Fecha de Nacimiento</label>
+                                    {{ formulario.birthdate }}
+                                    {% if formulario.birthdate.errors %}
+                                        <div class="invalid-feedback d-block fs_pequena">{% for error in formulario.birthdate.errors %}{{ error }}{% endfor %}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {# --- Columna Derecha --- #}
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ formulario.email.id_for_label }}" class="form-label fw-bold fs_pequena">Correo</label>
+                                    {{ formulario.email }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ formulario.last_name.id_for_label }}" class="form-label fw-bold fs_pequena">Apellido <span class="text-danger">*</span></label>
+                                    {{ formulario.last_name }}
+                                    {% if formulario.last_name.errors %}
+                                        <div class="invalid-feedback d-block fs_pequena">{% for error in formulario.last_name.errors %}{{ error }}{% endfor %}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ formulario.phone.id_for_label }}" class="form-label fw-bold fs_pequena">Teléfono</label>
+                                    {{ formulario.phone }}
+                                    {% if formulario.phone.errors %}
+                                        <div class="invalid-feedback d-block fs_pequena">{% for error in formulario.phone.errors %}{{ error }}{% endfor %}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {# --- Campo Avatar (ancho completo) --- #}
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="{{ formulario.avatar.id_for_label }}" class="form-label fw-bold fs_pequena">Cambiar Avatar</label>
+                                    {{ formulario.avatar }}
+                                    {% if formulario.avatar.errors %}
+                                        <div class="invalid-feedback d-block fs_pequena">{% for error in formulario.avatar.errors %}{{ error }}{% endfor %}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer text-end">
+                        <a href="{% url 'gestion_usuarios:ruta_lista_usuarios' %}" class="btn btn-outline-secondary btn-sm fs_normal me-2">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success btn-sm fs_normal">
+                            <i class="fas fa-save me-1"></i>
+                            Guardar Cambios
+                        </button>
+                    </div>
+                </form>
             </div>
             
-            {# Nombre #}
-            <div class="input_box">
-                <div class="input_box__label color_primario">
-                    <i class="fa-solid fa-asterisk color_rojo"></i>
-                    <label for="">Nombre</label>
-                </div>
-                {{formulario.first_name}}
-            </div>
-            
-            {# Apellido #}
-            <div class="input_box">
-                <div class="input_box__label color_primario">
-                    <i class="fa-solid fa-asterisk color_rojo"></i>
-                    <label for="">Apellido</label>
-                </div>
-                {{formulario.last_name}}
-            </div>
-            
-            {# Fecha nacimiento #}
-            <div class="input_box">
-                <div class="input_box__label color_primario">
-                    <label for="">Fecha de nacimiento</label>
-                </div>
-                {{formulario.birthdate}}
-            </div>
-            
-            {# Teléfono #}
-            <div class="input_box">
-                <div class="input_box__label color_primario">
-                    <label for="">Teléfono</label>
-                </div>
-                {{formulario.phone}}
-            </div>
-
-            <div class="formulario_simple__caja_botones">
-                <button type="submit" class="boton fs_normal color_blanco fondo_verde hover_color">Guardar</button>
-                <a href="{% url 'gestion_usuarios:ruta_lista_usuarios' %}" class="color_primario fondo_transparente">Cancelar</a>
-            </div>
-
-        </form>
-    </div>  
-
+        </div>
+    </div>
 </div>
 
 {% endblock  %}

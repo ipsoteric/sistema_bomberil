@@ -78,44 +78,57 @@ class FormularioCrearUsuario(forms.Form):
 
 
 class FormularioEditarUsuario(forms.ModelForm):
-    class Meta:
-        model = Usuario
-        # Campos editables
-        fields = ['first_name', 'last_name', 'phone', 'birthdate', 'avatar']
-
+    
     # Campos de solo lectura
     rut = forms.CharField(
         label='RUT',
+        required=False, # No es 'required' porque no se está enviando, solo mostrando
         widget=forms.TextInput(attrs={
-                'id':'UsuarioInputRut',
-                'class':'input_box__input fs_normal color_primario_variante fondo_secundario',
-                'autocomplete':'off',
-                'readonly':'readonly'
-            })
+            # Usamos las clases de Bootstrap, pero mantenemos 'readonly'
+            'class': 'form-control form-control-sm fs_normal text-muted',
+            'autocomplete': 'off',
+            'readonly': 'readonly',
+            'tabindex': '-1'
+        })
     )
-    email = forms.EmailField(
-        label='Correo electrónico',
-        widget=forms.EmailInput(attrs={
-                'id':'UsuarioInputCorreo',
-                'class':'input_box__input fs_normal color_primario_variante fondo_secundario',
-                'autocomplete':'off',
-                'readonly':'readonly'
-            })
-    )
+
+    class Meta:
+        model = Usuario
+        # Campos editables
+        fields = ['email', 'first_name', 'last_name', 'phone', 'birthdate', 'avatar']
+        
+        # Definimos los widgets para los campos del ModelForm
+        widgets = {
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control form-control-sm fs_normal'
+            }),
+            'first_name': forms.TextInput(attrs={
+                'class': 'form-control form-control-sm fs_normal'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'form-control form-control-sm fs_normal'
+            }),
+            'phone': forms.TextInput(attrs={
+                'class': 'form-control form-control-sm fs_normal'
+            }),
+            'birthdate': forms.DateInput(attrs={
+                'class': 'form-control form-control-sm fs_normal',
+                'type': 'date' # Aseguramos que sea un input de fecha
+            }),
+            'avatar': forms.ClearableFileInput(attrs={
+                'class': 'form-control form-control-sm fs_normal'
+            }),
+        }
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         # El `instance` es el usuario que estamos editando
         if self.instance:
+            # Poblamos los campos 'readonly' que no están en el Meta
             self.fields['rut'].initial = self.instance.rut
             self.fields['email'].initial = self.instance.email
-
-        # Personaliza otros campos si es necesario
-        self.fields['first_name'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
-        self.fields['last_name'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
-        self.fields['birthdate'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
-        self.fields['phone'].widget.attrs.update({'class':'input_box__input fs_normal color_primario fondo_secundario'})
 
 
 

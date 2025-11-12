@@ -1,201 +1,202 @@
-{# Plantilla base #}{% extends 'gestion_usuarios/layouts/base.html' %}
-{# Cargar assets #}{% load static %}
-{# Cargar filtros #}{% load age_filters %}{% load humanize %}
-{# Título de la ventana #} {% block titulo_ventana %} {{membresia.usuario.get_full_name|title}} {% endblock %}
-{# Título de la página #} {% block titulo_pagina %} Información de usuario {% endblock %}
+{% extends 'gestion_usuarios/layouts/base.html' %}
+{% load static %}
+{% load age_filters %}{% load humanize %}
+
+{% block titulo_ventana %} {{membresia.usuario.get_full_name|title}} {% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-user-circle me-2"></i> Información de Usuario
+    </span>
+{% endblock %}
 
 {% block contenido %}
 
-<div class="caja_para_pagina_contenido_arriba">
-    <div class="usuarios_ver_usuario__cuadricula panel_base fondo_secundario_variante">
+<div class="container-fluid mt-4">
+    <div class="row">
 
-
-
-
-        {# --- SECCIÓN DEL AVATAR MODIFICADA PARA REUTILIZAR EL SCRIPT --- #}
-        <section id="avatar-container-admin" 
-                 class="usuarios_ver_usuario__avatar position-relative"
+        <div class="col-lg-4">
+            
+            {# --- Tarjeta del Avatar --- #}
+            {# Mantenemos toda la estructura de IDs y clases JS para tu script #}
+            <div id="avatar-container-admin" 
+                 class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}"
                  data-api-url="{% url 'api:ruta_editar_avatar_usuario' id=membresia.usuario.id %}">
-
-            <img class="js-avatar-image" 
-                 src="{% if membresia.usuario.avatar %}{{ membresia.usuario.avatar.url }}{% else %}{% static 'imagenes/default_avatar.png' %}{% endif %}" 
-                 alt="Avatar de {{ membresia.usuario.get_full_name }}">
-            
-            {# Solo mostramos el botón de editar si el admin tiene permiso #}
-            {% if perms.gestion_usuarios.change_user_personal_info %}
-            <span class="js-avatar-upload-button usuarios_ver_usuario__edit_avatar_icon fondo_secundario color_primario fs_grande position-absolute" 
-                  style="cursor: pointer;">
-                <i class="fa-solid fa-pen-to-square"></i>
-            </span>
-            <input type="file" class="js-avatar-upload-input" hidden accept="image/*">
-            {% endif %}
-        </section>
-
-
-
-
-        {# Descripción de usuario #}
-        <section class="usuarios_ver_usuario__descripcion">
-
-            {# Nombre completo #}
-            <h2 class="fs_x_grande color_primario">{{membresia.usuario.get_full_name|title}}</h2>
-            <span class="fs_pequena color_primario_variante">Miembro de la {{membresia.estacion.nombre|title}}</span>
-
-
-            {# Estado #}
-            <div class="descripcion__estados fs_pequena">
-
-                {% if membresia.usuario.is_superuser  %}
-                <span class="descripcion__estado fondo_primario color_secundario etiqueta">Administrador</span>
-                {% endif %}
-
-                {% if membresia.usuario.is_staff %}
-                <span class="descripcion__estado fondo_naranjo color_blanco etiqueta">Staff</span>
-                {% endif %}
-
-                {% if membresia.estado == 'ACTIVO' %}
-                <span class="descripcion__estado fondo_verde color_blanco etiqueta">Activo</span>
-                {% elif membresia.estado == 'INACTIVO' %}
-                <span class="descripcion__estado fondo_gris_oscuro color_blanco etiqueta">Inactivo</span>
-                {% endif %}
-
-                {% if membresia.usuario.is_verified %}
-                <span class="descripcion__estado fondo_azul color_blanco etiqueta">Verificado</span>
-                {% endif %}
+                
+                <div class="card-body text-center position-relative p-4">
+                    <img class="js-avatar-image rounded-circle img-fluid shadow-sm"
+                         src="{% if membresia.usuario.avatar %}{{ membresia.usuario.avatar.url }}{% else %}{% static 'imagenes/default_avatar.png' %}{% endif %}" 
+                         alt="Avatar de {{ membresia.usuario.get_full_name }}"
+                         style="width: 180px; height: 180px; object-fit: cover;">
+                    
+                    {% if perms.gestion_usuarios.change_user_personal_info %}
+                        <span class="js-avatar-upload-button rounded-circle bg-primary text-white fs_normal" 
+                              style="cursor: pointer; position: absolute; bottom: 25px; right: 25%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;"
+                              title="Cambiar avatar">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </span>
+                        <input type="file" class="js-avatar-upload-input" hidden accept="image/*">
+                    {% endif %}
+                </div>
             </div>
 
-
-            {# Roles del usuario #}
-            <div class="descripcion__roles fs_pequena color_primario">
-                Roles:
-                {% for rol in membresia.roles.all %}
-                <a href="{% url 'gestion_usuarios:ruta_ver_rol' id=rol.id %}" class="descripcion__rol color_azul">{{rol.nombre|title}}</a>
-                {% empty %}
-                <span class="descripcion__rol color_primario">Ninguno</span>
-                {% endfor %}
+            {# --- Tarjeta de Acciones --- #}
+            <div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header fs_normal fw-bold">
+                    <i class="fas fa-cogs me-1"></i> Acciones de Membresía
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'gestion_usuarios:ruta_editar_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal">
+                        <i class="fas fa-edit me-2 text-muted"></i> Modificar Información
+                    </a>
+                    <a href="{% url 'gestion_usuarios:ruta_asignar_roles_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal">
+                        <i class="fas fa-user-tag me-2 text-muted"></i> Asignar Roles
+                    </a>
+                    
+                    {% if perms.gestion_usuarios.force_password_reset %}
+                        <form id="resetPasswordForm" action="{% url 'gestion_usuarios:ruta_restablecer_contrasena' id=membresia.usuario.id %}" method="post" class="d-none">
+                            {% csrf_token %}
+                        </form>
+                        <a href="#" class="list-group-item list-group-item-action fs_normal" data-bs-toggle="modal" data-bs-target="#confirmResetModal">
+                            <i class="fas fa-key me-2 text-muted"></i> Restablecer Contraseña
+                        </a>
+                    {% endif %}
+                    
+                    {% if membresia.estado == 'ACTIVO' %}
+                        <a href="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal list-group-item-warning">
+                            <i class="fa-solid fa-ban me-2"></i> Desactivar Membresía
+                        </a>
+                    {% elif membresia.estado == 'INACTIVO' %}
+                        <a href="{% url 'gestion_usuarios:ruta_activar_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal list-group-item-success">
+                            <i class="fa-solid fa-circle-up me-2"></i> Activar Membresía
+                        </a>
+                    {% endif %}
+                    
+                    <a href="#" class="list-group-item list-group-item-action fs_normal list-group-item-danger">
+                        <i class="fa-solid fa-flag-checkered me-2"></i> Finalizar Membresía
+                    </a>
+                </div>
             </div>
 
-            {# Información adicional (PENDIENTE DE MODIFICAR) #}
-            <div class="descripcion__informacion_adicional fs_normal">
-                <a href="{% url 'gestion_usuarios:ruta_ver_permisos_usuario' id=membresia.usuario.id %}" class="boton fondo_gris_oscuro color_blanco">Ver Permisos</a>
-                <a class="boton fondo_morado color_blanco">Hoja de vida</a>
-                <a class="boton fondo_morado color_blanco">Ficha médica</a>
-            </div>
+        </div>
 
-        </section>
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
+                <div class="card-header">
+                    <h4 class="mb-0 fs_normal fw-bold">{{membresia.usuario.get_full_name|title}}</h4>
+                    <span class="fs_pequena text-muted">Miembro de la {{membresia.estacion.nombre|title}}</span>
+                </div>
+                
+                <div class="card-body">
+                    {# --- Estados (Badges) --- #}
+                    <div class="mb-3">
+                        <h5 class="fs_normal fw-bold">Estado</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% if membresia.estado == 'ACTIVO' %}
+                                <span class="badge bg-success fs_pequena">Activo</span>
+                            {% elif membresia.estado == 'INACTIVO' %}
+                                <span class="badge bg-warning text-dark fs_pequena">Inactivo</span>
+                            {% endif %}
+                            
+                            {% if membresia.usuario.is_superuser  %}
+                                <span class="badge bg-danger fs_pequena">Administrador</span>
+                            {% endif %}
+                            {% if membresia.usuario.is_staff %}
+                                <span class="badge bg-info text-dark fs_pequena">Staff (Admin)</span>
+                            {% endif %}
+                            {% if membresia.usuario.is_verified %}
+                                <span class="badge bg-primary fs_pequena">Verificado</span>
+                            {% endif %}
+                        </div>
+                    </div>
 
+                    {# --- Roles Asignados --- #}
+                    <div class="mb-3">
+                        <h5 class="fs_normal fw-bold">Roles Asignados</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for rol in membresia.roles.all %}
+                                <a href="{% url 'gestion_usuarios:ruta_ver_rol' id=rol.id %}" class="badge bg-secondary text-decoration-none fs_pequena">
+                                    {{rol.nombre|title}}
+                                </a>
+                            {% empty %}
+                                <span class="text-muted fst-italic fs_normal">Sin roles asignados.</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    {# --- Enlaces Adicionales --- #}
+                    <div class="mb-3">
+                        <h5 class="fs_normal fw-bold">Información Adicional</h5>
+                        <a href="{% url 'gestion_usuarios:ruta_ver_permisos_usuario' id=membresia.usuario.id %}" class="btn btn-outline-primary btn-sm fs_normal me-1">
+                            Ver Permisos Detallados
+                        </a>
+                        <a href="#" class="btn btn-outline-secondary btn-sm fs_normal me-1">
+                            Hoja de Vida
+                        </a>
+                        <a href="#" class="btn btn-outline-secondary btn-sm fs_normal">
+                            Ficha Médica
+                        </a>
+                    </div>
+                    
+                    <hr class="my-3">
 
-        {# Acciones #}
-        <section class="usuarios_ver_usuario__acciones">
-            <a class="boton_flex fondo_azul color_blanco fs_normal" href="{% url 'gestion_usuarios:ruta_editar_usuario' id=membresia.usuario.id %}">Modificar información</a>
+                    {# --- Información Personal (Lista de Definición) --- #}
+                    <h5 class="fs_normal fw-bold">Datos Personales</h5>
+                    <dl class="row fs_normal">
+                        <dt class="col-sm-4 text-muted">RUT:</dt>
+                        <dd class="col-sm-8">{{ membresia.usuario.rut|default:"No especificado" }}</dd>
 
-            <a class="boton_flex fondo_azul color_blanco fs_normal" href="{% url 'gestion_usuarios:ruta_asignar_roles_usuario' id=membresia.usuario.id %}">Asignar roles</a>
+                        <dt class="col-sm-4 text-muted">Correo Electrónico:</dt>
+                        <dd class="col-sm-8">{{ membresia.usuario.email|default:"No especificado" }}</dd>
 
-            {% if perms.gestion_usuarios.force_password_reset %}
-            <form id="resetPasswordForm" action="{% url 'gestion_usuarios:ruta_restablecer_contrasena' id=membresia.usuario.id %}" method="post" class="d-none">
-            {% csrf_token %}
-            </form>
-            <button type="button" class="boton_flex fondo_gris_oscuro color_blanco fs_normal" data-bs-toggle="modal" data-bs-target="#confirmResetModal">
-                Restablecer Contraseña
-            </button>
-            {% endif %}
+                        <dt class="col-sm-4 text-muted">Edad:</dt>
+                        <dd class="col-sm-8">
+                            {% if membresia.usuario.birthdate %}
+                                {{ membresia.usuario.birthdate|calculate_age }} años 
+                                <span class="text-muted fs_pequena">({{ membresia.usuario.birthdate|date:"d/m/Y" }})</span>
+                            {% else %}
+                                No especificado
+                            {% endif %}
+                        </dd>
 
-            {% if membresia.estado == 'ACTIVO' %}
-            <a class="boton_flex fondo_rojo color_blanco fs_normal" href="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=membresia.usuario.id %}">
-                <i class="fa-solid fa-ban"></i>
-                Desactivar
-            </a>
-            {% elif membresia.estado == 'INACTIVO' %}
-            <a class="boton_flex fondo_azul color_blanco fs_normal" href="{% url 'gestion_usuarios:ruta_activar_usuario' id=membresia.usuario.id %}">
-                <i class="fa-solid fa-circle-up"></i>
-                Activar
-            </a>
-            {% endif %}
+                        <dt class="col-sm-4 text-muted">Teléfono:</dt>
+                        <dd class="col-sm-8">{{ membresia.usuario.phone|default:"No especificado" }}</dd>
+                    </dl>
+                    
+                    <hr class="my-3">
 
-            <a class="boton_flex fondo_rojo color_blanco fs_normal" href="">
-                <i class="fa-solid fa-flag-checkered"></i>
-                Finalizar membresía
-            </a>
-        </section>
+                    {# --- Información de Sistema --- #}
+                    <h5 class="fs_normal fw-bold">Datos de Membresía</h5>
+                    <dl class="row fs_normal">
+                        <dt class="col-sm-4 text-muted">Ingreso a la Estación:</dt>
+                        <dd class="col-sm-8">{{ membresia.fecha_inicio|date:"d/m/Y" }}</dd>
 
+                        <dt class="col-sm-4 text-muted">Usuario Creado:</dt>
+                        <dd class="col-sm-8">{{ membresia.usuario.created_at|date:"d/m/Y" }}</dd>
 
-        {# Información del usuario #}
-        <section class="usuarios_ver_usuario__informacion">
-        <div class="informacion__seccion">
+                        <dt class="col-sm-4 text-muted">Última Actualización:</dt>
+                        <dd class="col-sm-8">{{ membresia.usuario.updated_at|naturaltime }}</dd>
+                    </dl>
 
-            <div class="informacion__campo fs_normal">
-                <span class="informacion__label color_primario_variante">RUT:</span>
-                {% if membresia.usuario.rut %}
-                <span class="color_primario">{{membresia.usuario.rut}}</span>
-                {% else %}
-                <span class="color_primario">No especificado</span>
-                {% endif %}
-            </div>
-
-            <div class="informacion__campo fs_normal">
-                <span class="informacion__label color_primario_variante">Correo electrónico:</span>
-                {% if membresia.usuario.email %}
-                <span class="color_primario">{{membresia.usuario.email}}</span>
-                {% else %}
-                <span class="color_primario">No especificado</span>
-                {% endif %}
-            </div>
-            
-            <div class="informacion__campo fs_normal">
-                <span class="informacion__label color_primario_variante">Edad:</span>
-                {% if membresia.usuario.birthdate %}
-                <span class="color_primario">{{membresia.usuario.birthdate|calculate_age}} años</span>
-                {% else %}
-                <span class="color_primario">No especificado</span>
-                {% endif %}
-            </div>
-            
-            <div class="informacion__campo fs_normal">
-                <span class="informacion__label color_primario_variante">Teléfono:</span>
-                {% if membresia.usuario.phone %}
-                <span class="color_primario">{{membresia.usuario.phone}}</span>
-                {% else %}
-                <span class="color_primario">No especificado</span>
-                {% endif %}
+                </div>
             </div>
         </div>
-            
-        <div class="informacion__seccion">
-            <div class="informacion__campo fs_normal">
-                <span class="informacion__label color_primario_variante">Creado:</span>
-                <span class="color_primario">{{membresia.usuario.created_at|naturalday}}</span>
-            </div>
-            
-            <div class="informacion__campo fs_normal">
-                <span class="informacion__label color_primario_variante">Ingreso a la compañía:</span>
-                <span class="color_primario">{{membresia.fecha_inicio|naturalday}}</span>
-            </div>
-
-            <div class="informacion__campo fs_normal">
-                <span class="informacion__label color_primario_variante">Actualizado:</span>
-                <span class="color_primario">{{membresia.usuario.updated_at|naturalday }}</span>
-            </div>
-        </div>
-        </section>
-
     </div>
 </div>
 
 {% include "gestion_usuarios/partials/_modal_restablecer_contrasena.html" %}
 
-{# Token CSRF, necesario para el script #}
+{# Token CSRF, necesario para el script de avatar #}
 {% csrf_token %} 
 {% endblock %}
 
 
-{# --- BLOQUE DE SCRIPTS MODIFICADO --- #}
+{# --- BLOQUE DE SCRIPTS (SIN CAMBIOS) --- #}
 {% block scripts %}
-    {# 1. Incluimos el script genérico que creamos #}
+    {{ block.super }}
     <script src="{% static 'js/avatar_uploader.js' %}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 2. Inicializamos el script para el contenedor de esta página
-            //    con su ID único 'avatar-container-admin'.
             inicializarCargadorAvatar('avatar-container-admin');
         });
     </script>
@@ -203,13 +204,11 @@
     {# Modal de confirmación restablecer contraseña #}
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // Obtenemos el nombre una sola vez al cargar la página
         const modalUserName = document.getElementById('modalUserName');
         if(modalUserName) {
             modalUserName.textContent = '{{ membresia.usuario.get_full_name|title|escapejs }}';
         }
 
-        // Conectamos el botón de confirmación del modal al formulario
         const modalConfirmButton = document.getElementById('modalConfirmResetBtn');
         const resetForm = document.getElementById('resetPasswordForm');
         
