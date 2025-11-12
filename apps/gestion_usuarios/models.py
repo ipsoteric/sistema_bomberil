@@ -183,8 +183,17 @@ class Membresia(models.Model):
 
             # === GESTIÓN DE INVENTARIO: CONFIGURACIÓN ===
             ("acceso_gestion_inventario", "Puede acceder al módulo de Gestión de Inventario"),
+            
+            # --- Permisos de Ubicaciones ---
+            ("accion_gestion_inventario_ver_ubicaciones", "Puede ver la lista de Áreas, Vehículos y Compartimentos"), # <-- ¡NUEVO!
             ("accion_gestion_inventario_gestionar_ubicaciones", "Puede crear, editar y eliminar Áreas, Vehículos y Compartimentos"),
+            
+            # --- Permisos de Proveedores ---
+            ("accion_gestion_inventario_ver_proveedores", "Puede ver la lista de Proveedores y sus contactos"), # <-- ¡NUEVO!
             ("accion_gestion_inventario_gestionar_proveedores", "Puede crear, editar y eliminar Proveedores y sus contactos"),
+            
+            # --- Permisos de Catálogo ---
+            ("accion_gestion_inventario_ver_catalogos", "Puede ver el Catálogo Local de la estación y el Catálogo Global"),
             ("accion_gestion_inventario_gestionar_catalogo_local", "Puede añadir y administrar el Catálogo Local de productos"),
             ("accion_gestion_inventario_crear_producto_global", "Puede crear nuevos productos en el Catálogo Global"),
 
@@ -195,6 +204,7 @@ class Membresia(models.Model):
             ("accion_gestion_inventario_gestionar_bajas_stock", "Puede dar de baja, anular o reportar extravío de existencias"),
 
             # === GESTIÓN DE INVENTARIO: FLUJOS EXTERNOS ===
+            ("accion_gestion_inventario_ver_prestamos", "Puede ver el historial de préstamos y sus detalles"), # <-- ¡NUEVO!
             ("accion_gestion_inventario_gestionar_prestamos", "Puede crear préstamos, gestionar devoluciones y administrar destinatarios"),
             ("accion_gestion_inventario_trasladar_stock_externo", "Puede trasladar existencias (stock) a otra estación"),
 
