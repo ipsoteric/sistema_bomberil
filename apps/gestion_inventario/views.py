@@ -78,9 +78,10 @@ from .utils import generar_sku_sugerido
 from core.settings import INVENTARIO_AREA_NOMBRE as AREA_NOMBRE
 
 from apps.gestion_usuarios.models import Membresia
+from apps.common.mixins import ModuleAccessMixin
 
 
-class InventarioInicioView(LoginRequiredMixin, TemplateView):
+class InventarioInicioView(LoginRequiredMixin, ModuleAccessMixin, TemplateView):
     """
     Vista de inicio (Dashboard) del módulo de Gestión de Inventario.
     Muestra KPIs, alertas y accesos directos.
@@ -211,20 +212,14 @@ class InventarioInicioView(LoginRequiredMixin, TemplateView):
 
 
 
-class InventarioPruebasView(View):
-    def get(self, request):
-        return render(request, "gestion_inventario/pages/pruebas.html")
-
-
-
-
-class AreaListaView(LoginRequiredMixin, View):
+class AreaListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para listar las Áreas (Ubicaciones) de la estación activa,
     excluyendo vehículos y mostrando conteos optimizados.
     """
     template_name = "gestion_inventario/pages/lista_areas.html"
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_ubicaciones"
 
     def get(self, request):
         estacion_id = request.session.get('active_estacion_id')
@@ -267,7 +262,9 @@ class AreaListaView(LoginRequiredMixin, View):
 
 
 
-class AreaCrearView(View):
+class AreaCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
+
     def get(self, request):
         estacion_id = request.session.get('active_estacion_id')
         if not estacion_id:
@@ -315,7 +312,7 @@ class AreaCrearView(View):
 
 
 
-class UbicacionDetalleView(LoginRequiredMixin, View):
+class UbicacionDetalleView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para gestionar un área/ubicación: muestra detalles, 
     resúmenes de stock, lista de compartimentos con sus totales,
@@ -323,6 +320,8 @@ class UbicacionDetalleView(LoginRequiredMixin, View):
     """
     template_name = 'gestion_inventario/pages/gestionar_ubicacion.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_ubicaciones"
+    model = Ubicacion
 
     def get(self, request, ubicacion_id):
         estacion_id = request.session.get('active_estacion_id')
@@ -382,13 +381,15 @@ class UbicacionDetalleView(LoginRequiredMixin, View):
 
 
 
-class UbicacionDeleteView(LoginRequiredMixin, View):
+class UbicacionDeleteView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para confirmar y ejecutar la eliminación de una Ubicación (Área o Vehículo).
     Maneja ProtectedError si la ubicación aún tiene compartimentos.
     """
     template_name = 'gestion_inventario/pages/eliminar_ubicacion.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
+    model = Ubicacion
 
     def get(self, request, ubicacion_id):
         estacion_id = request.session.get('active_estacion_id')
@@ -446,8 +447,11 @@ class UbicacionDeleteView(LoginRequiredMixin, View):
 
 
 
-class AreaEditarView(View):
+class AreaEditarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """Editar datos de una ubicación/almacén."""
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
+    model = Ubicacion
+
     def get(self, request, ubicacion_id):
         ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id)
         form = CompartimentoForm.__module__  # placeholder to avoid unused import warnings
@@ -468,11 +472,12 @@ class AreaEditarView(View):
 
 
 
-class VehiculoListaView(LoginRequiredMixin, View):
+class VehiculoListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para listar los Vehículos (Ubicaciones de tipo 'VEHÍCULO')
     de la estación activa, mostrando conteos optimizados.
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_ubicaciones"
     template_name = "gestion_inventario/pages/lista_vehiculos.html"
     login_url = '/acceso/login/'
 
@@ -519,11 +524,12 @@ class VehiculoListaView(LoginRequiredMixin, View):
 
 
 
-class VehiculoCreateView(LoginRequiredMixin, View):
+class VehiculoCreateView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para crear un nuevo Vehículo.
     Maneja la creación simultánea en los modelos Ubicacion y Vehiculo.
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
     template_name = 'gestion_inventario/pages/crear_vehiculo.html'
     login_url = '/acceso/login/'
 
@@ -592,15 +598,17 @@ class VehiculoCreateView(LoginRequiredMixin, View):
 
 
 
-class VehiculoEditView(LoginRequiredMixin, View):
+class VehiculoEditView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para editar los detalles de un Vehículo.
     Maneja dos formularios:
     1. VehiculoUbicacionEditForm (para el modelo Ubicacion)
     2. VehiculoDetalleEditForm (para el modelo Vehiculo)
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
     template_name = 'gestion_inventario/pages/editar_vehiculo.html'
     login_url = '/acceso/login/'
+    model = Ubicacion
 
     def get(self, request, ubicacion_id):
         estacion_id = request.session.get('active_estacion_id')
@@ -689,8 +697,10 @@ class VehiculoEditView(LoginRequiredMixin, View):
 
 
 
-class CompartimentoListaView(View):
+class CompartimentoListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """Lista potente de compartimentos con filtros y búsqueda."""
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_ubicaciones"
+
     def get(self, request):
         estacion_id = request.session.get('active_estacion_id')
 
@@ -731,8 +741,10 @@ class CompartimentoListaView(View):
 
 
 
-class CompartimentoCrearView(View):
+class CompartimentoCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """Crear un compartimento asociado a una ubicación (almacén)."""
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
+
     def get(self, request, ubicacion_id):
         form = CompartimentoForm()
         ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id)
@@ -752,14 +764,16 @@ class CompartimentoCrearView(View):
 
 
 
-class CompartimentoDetalleView(LoginRequiredMixin, View):
+class CompartimentoDetalleView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para ver el detalle de un compartimento: muestra detalles, 
     resúmenes de stock y una lista detallada de todas las 
     existencias en el compartimento.
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_ubicaciones"
     template_name = 'gestion_inventario/pages/detalle_compartimento.html'
     login_url = '/acceso/login/'
+    model = Compartimento
 
     def get(self, request, compartimento_id):
         estacion_id = request.session.get('active_estacion_id')
@@ -815,12 +829,14 @@ class CompartimentoDetalleView(LoginRequiredMixin, View):
 
 
 
-class CompartimentoEditView(LoginRequiredMixin, View):
+class CompartimentoEditView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para editar los detalles de un compartimento (nombre, descripción, imagen).
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
     template_name = 'gestion_inventario/pages/editar_compartimento.html'
     login_url = '/acceso/login/'
+    model = Compartimento
 
     def get(self, request, compartimento_id):
         estacion_id = request.session.get('active_estacion_id')
@@ -873,13 +889,15 @@ class CompartimentoEditView(LoginRequiredMixin, View):
 
 
 
-class CompartimentoDeleteView(LoginRequiredMixin, View):
+class CompartimentoDeleteView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para confirmar y ejecutar la eliminación de un Compartimento.
     Maneja ProtectedError si el compartimento aún tiene existencias (Activos o Lotes).
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
     template_name = 'gestion_inventario/pages/eliminar_compartimento.html'
     login_url = '/acceso/login/'
+    model = Compartimento
 
     def get(self, request, compartimento_id):
         estacion_id = request.session.get('active_estacion_id')
@@ -934,13 +952,14 @@ class CompartimentoDeleteView(LoginRequiredMixin, View):
 
 
 
-class CatalogoGlobalListView(View):
+class CatalogoGlobalListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Muestra el Catálogo Maestro Global de Productos con filtros avanzados
     de búsqueda, marca, categoría y asignación.
     """
     template_name = 'gestion_inventario/pages/catalogo_global.html'
     paginate_by = 12
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_catalogos"
 
     def get(self, request, *args, **kwargs):
         
@@ -1033,11 +1052,13 @@ class CatalogoGlobalListView(View):
 
 
 # --- VISTA API 1: OBTENER DETALLES Y SKU ---
-class ApiGetProductoGlobalSKU(View):
+class ApiGetProductoGlobalSKU(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     API (GET) para obtener los detalles de un ProductoGlobal y 
     generar un SKU sugerido para el modal.
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_catalogos"
+    
     def get(self, request, pk, *args, **kwargs):
         try:
             producto_global = ProductoGlobal.objects.select_related('categoria', 'marca').get(pk=pk)
@@ -1059,11 +1080,14 @@ class ApiGetProductoGlobalSKU(View):
 
 
 # --- VISTA API 2: CREAR EL PRODUCTO LOCAL ---
-class ApiAnadirProductoLocal(View):
+class ApiAnadirProductoLocal(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     API (POST) para crear un nuevo registro de Producto (catálogo local)
     desde el modal del catálogo global.
     """
+
+    permission_required = "gestion_usuarios.accion_gestion_inventario_crear_producto_global"
+
     def post(self, request, *args, **kwargs):
         try:
             # Obtener la estación activa
@@ -1116,7 +1140,8 @@ class ApiAnadirProductoLocal(View):
 
 
 
-class ProductoGlobalCrearView(View):
+class ProductoGlobalCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+    permission_required = "gestion_usuarios.accion_gestion_inventario_crear_producto_global"
     template_name = 'gestion_inventario/pages/crear_producto_global.html'
     form_class = ProductoGlobalForm
 
@@ -1179,13 +1204,14 @@ class ProductoGlobalCrearView(View):
 
 
 
-class ProductoLocalListView(View):
+class ProductoLocalListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Muestra el Catálogo Local de Productos para la estación activa.
     Incluye filtros avanzados, ordenación y cambio de vista (galería/tabla).
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_catalogos"
     template_name = 'gestion_inventario/pages/catalogo_local.html'
-    paginate_by = 12 # Ajusta según prefieras
+    paginate_by = 12
 
     def get(self, request, *args, **kwargs):
         
@@ -1305,9 +1331,11 @@ class ProductoLocalListView(View):
 
 
 
-class ProductoLocalEditView(View):
+class ProductoLocalEditView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     template_name = 'gestion_inventario/pages/editar_producto_local.html'
     form_class = ProductoLocalEditForm
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_catalogo_local"
+    model = Producto
 
     def dispatch(self, request, *args, **kwargs):
         """
@@ -1411,13 +1439,15 @@ class ProductoLocalEditView(View):
 
 
 
-class ProductoLocalDetalleView(LoginRequiredMixin, View):
+class ProductoLocalDetalleView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Muestra los detalles de un Producto (Local y Global) y 
     lista todo el stock existente (Activos o Lotes) de ese 
     producto en la estación.
     """
     template_name = 'gestion_inventario/pages/detalle_producto_local.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_catalogos"
+    model = Producto
 
     def get(self, request, *args, **kwargs):
         # 1. Obtener Estación Activa (tu lógica de sesión)
@@ -1540,7 +1570,7 @@ class ProductoLocalDetalleView(LoginRequiredMixin, View):
 
 
 
-class ProveedorListView(View):
+class ProveedorListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Muestra una lista paginada de todos los Proveedores globales.
     Permite filtrar por nombre/RUT, Región y Comuna.
@@ -1548,6 +1578,7 @@ class ProveedorListView(View):
     MODIFICADO: El filtro de ubicación (Región/Comuna) ahora busca en
     el Contacto Principal Y en todos los Contactos Personalizados.
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_proveedores"
     template_name = 'gestion_inventario/pages/lista_proveedores.html'
     paginate_by = 15
 
@@ -1643,8 +1674,9 @@ class ProveedorListView(View):
 
 
 
-class ProveedorCrearView(View):
+class ProveedorCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     template_name = 'gestion_inventario/pages/crear_proveedor.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_proveedores"
 
     def get(self, request, *args, **kwargs):
         estacion_id = request.session.get('active_estacion_id')
@@ -1709,12 +1741,14 @@ class ProveedorCrearView(View):
 
 
 
-class ProveedorDetalleView(View):
+class ProveedorDetalleView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Muestra el detalle de un Proveedor, separando el contacto principal (global)
     de los contactos personalizados por estación.
     """
     template_name = 'gestion_inventario/pages/detalle_proveedor.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_proveedores"
+    model = Proveedor
 
     def get(self, request, *args, **kwargs):
         proveedor_id = self.kwargs.get('pk')
@@ -1776,12 +1810,13 @@ class ProveedorDetalleView(View):
 
 
 
-class ContactoPersonalizadoCrearView(View):
+class ContactoPersonalizadoCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Permite a una estación activa crear un ContactoProveedor específico
     (un 'ContactoPersonalizado') para un Proveedor existente.
     """
     template_name = 'gestion_inventario/pages/crear_contacto_personalizado.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_proveedores"
 
     def get(self, request, *args, **kwargs):
         estacion_id = request.session.get('active_estacion_id')
@@ -1864,12 +1899,14 @@ class ContactoPersonalizadoCrearView(View):
 
 
 
-class ContactoPersonalizadoEditarView(View):
+class ContactoPersonalizadoEditarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Permite a una estación activa editar SU PROPIO ContactoProveedor
     específico (su 'ContactoPersonalizado').
     """
     template_name = 'gestion_inventario/pages/editar_contacto_personalizado.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_proveedores"
+    model = ContactoProveedor
 
     def get_objeto_seguro(self, request, pk_contacto):
         """
@@ -1960,7 +1997,7 @@ class ContactoPersonalizadoEditarView(View):
 
 
 
-class StockActualListView(LoginRequiredMixin, View):
+class StockActualListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para mostrar, filtrar y buscar en el stock actual
     de Activos (serializados) y Lotes de Insumo (fungibles).
@@ -1968,6 +2005,7 @@ class StockActualListView(LoginRequiredMixin, View):
     template_name = 'gestion_inventario/pages/stock_actual.html'
     login_url = '/acceso/login/' # Ajusta si es necesario
     paginate_by = 25
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_stock"
 
     def get(self, request, *args, **kwargs):
         context = {}
@@ -2133,9 +2171,10 @@ class StockActualListView(LoginRequiredMixin, View):
 
 
 
-class RecepcionStockView(LoginRequiredMixin, View):
+class RecepcionStockView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     template_name = 'gestion_inventario/pages/recepcion_stock.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_recepcionar_stock"
 
     def get(self, request, *args, **kwargs):
         estacion_id = request.session.get('active_estacion_id')
@@ -2299,13 +2338,15 @@ class RecepcionStockView(LoginRequiredMixin, View):
 
 
 
-class AgregarStockACompartimentoView(LoginRequiredMixin, View):
+class AgregarStockACompartimentoView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para añadir stock (Activos o Lotes) directamente
     a un compartimento específico.
     """
     template_name = 'gestion_inventario/pages/agregar_stock_compartimento.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_recepcionar_stock"
+    model = Compartimento
 
     def get_context_data(self, request, compartimento_id, **kwargs):
         """Helper para construir el contexto básico."""
@@ -2437,13 +2478,14 @@ def get_or_create_anulado_compartment(estacion: Estacion) -> Compartimento:
 
 
 
-class AnularExistenciaView(LoginRequiredMixin, View):
+class AnularExistenciaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para anular un registro de existencia (Activo o LoteInsumo)
     que fue ingresado por error.
     """
     template_name = 'gestion_inventario/pages/anular_existencia.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock"
 
     def _get_item_and_check_permission(self, estacion_id, tipo_item, item_id):
         """
@@ -2556,13 +2598,14 @@ class AnularExistenciaView(LoginRequiredMixin, View):
 
 
 
-class AjustarStockLoteView(LoginRequiredMixin, View):
+class AjustarStockLoteView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para ajustar la cantidad de un LoteInsumo y crear
     un MovimientoInventario de tipo AJUSTE.
     """
     template_name = 'gestion_inventario/pages/ajustar_stock_lote.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno"
 
     def _get_lote_and_check_permission(self, estacion_id, lote_id):
         """ Helper para obtener el Lote y verificar permisos """
@@ -2649,13 +2692,14 @@ class AjustarStockLoteView(LoginRequiredMixin, View):
 
 
 
-class BajaExistenciaView(LoginRequiredMixin, View):
+class BajaExistenciaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para Dar de Baja una existencia (Activo o LoteInsumo),
     cambiando su estado y generando un movimiento de SALIDA.
     """
     template_name = 'gestion_inventario/pages/dar_de_baja_existencia.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock"
 
     def _get_item_and_check_permission(self, estacion_id, tipo_item, item_id):
         """ Helper para obtener el ítem y verificar estado """
@@ -2789,13 +2833,14 @@ def get_or_create_extraviado_compartment(estacion: Estacion) -> Compartimento:
 
 
 
-class ExtraviadoExistenciaView(LoginRequiredMixin, View):
+class ExtraviadoExistenciaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para reportar una existencia como Extraviada (Activo o LoteInsumo),
     cambiando su estado, moviéndola al limbo y generando un movimiento de SALIDA.
     """
     template_name = 'gestion_inventario/pages/extraviado_existencia.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock"
 
     def _get_item_and_check_permission(self, estacion_id, tipo_item, item_id):
         """ Helper para obtener el ítem y verificar estado """
@@ -2918,13 +2963,14 @@ class ExtraviadoExistenciaView(LoginRequiredMixin, View):
 
 
 
-class ConsumirStockLoteView(LoginRequiredMixin, View):
+class ConsumirStockLoteView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para consumir una cantidad de un LoteInsumo y crear
     un MovimientoInventario de tipo SALIDA.
     """
     template_name = 'gestion_inventario/pages/consumir_stock_lote.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno"
 
     def _get_lote_and_check_permission(self, estacion_id, lote_id):
         """ Helper para obtener el Lote y verificar permisos de consumo """
@@ -3010,13 +3056,14 @@ class ConsumirStockLoteView(LoginRequiredMixin, View):
 
 
 
-class TransferenciaExistenciaView(LoginRequiredMixin, View):
+class TransferenciaExistenciaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Mueve una existencia (Activo o Lote) de un compartimento a otro
     dentro de la misma estación, generando un movimiento de TRANSFERENCIA_INTERNA.
     """
     template_name = 'gestion_inventario/pages/transferir_existencia.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno"
 
     def _get_item_and_check_permission(self, estacion_id, tipo_item, item_id):
         """ Helper para obtener el ítem y verificar estado """
@@ -3156,13 +3203,14 @@ class TransferenciaExistenciaView(LoginRequiredMixin, View):
 
 
 
-class CrearPrestamoView(LoginRequiredMixin, View):
+class CrearPrestamoView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista para crear un Préstamo (Cabecera y Detalles)
     usando un flujo de "scan-first".
     """
     template_name = 'gestion_inventario/pages/crear_prestamo.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
 
     def get(self, request, *args, **kwargs):
         estacion_id = request.session.get('active_estacion_id')
@@ -3306,11 +3354,13 @@ class CrearPrestamoView(LoginRequiredMixin, View):
 
 
 
-class BuscarItemPrestamoJson(LoginRequiredMixin, View):
+class BuscarItemPrestamoJson(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     API endpoint (solo GET) para buscar un ítem por su código
     y verificar si está disponible para préstamo.
     """
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_prestamos"
+
     def get(self, request, *args, **kwargs):
         estacion_id = request.session.get('active_estacion_id')
         codigo = kwargs.get('codigo')
@@ -3363,13 +3413,14 @@ class BuscarItemPrestamoJson(LoginRequiredMixin, View):
 
 
 
-class HistorialPrestamosView(LoginRequiredMixin, View):
+class HistorialPrestamosView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista (basada en View) para mostrar el historial de préstamos externos
     de la estación activa del usuario.
     """
     template_name = 'gestion_inventario/pages/historial_prestamos.html'
     paginate_by = 25
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_prestamos"
 
     def get(self, request, *args, **kwargs):
         # 1. Obtener la estación activa del usuario (vía Membresia)
@@ -3441,12 +3492,13 @@ class HistorialPrestamosView(LoginRequiredMixin, View):
 
 
 
-class GestionarDevolucionView(LoginRequiredMixin, View):
+class GestionarDevolucionView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Vista (basada en View) para gestionar la devolución de un préstamo.
     Muestra los detalles del préstamo y procesa el registro de devoluciones.
     """
     template_name = 'gestion_inventario/pages/gestionar_devolucion.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
 
     def get_estacion_activa(self):
         """Helper para obtener la estación activa del usuario."""
@@ -3631,13 +3683,14 @@ class GestionarDevolucionView(LoginRequiredMixin, View):
 
 
 
-class DestinatarioListView(LoginRequiredMixin, View):
+class DestinatarioListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Lista todos los destinatarios (para préstamos) de la estación activa.
     Obtiene la estación desde la sesión.
     """
     template_name = 'gestion_inventario/pages/lista_destinatarios.html'
     paginate_by = 25
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_prestamos"
 
     def get(self, request, *args, **kwargs):
         # --- CORRECCIÓN ---
@@ -3677,12 +3730,13 @@ class DestinatarioListView(LoginRequiredMixin, View):
 
 
 
-class DestinatarioCreateView(LoginRequiredMixin, View):
+class DestinatarioCreateView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Crea un nuevo destinatario.
     Asigna la estación activa desde la SESIÓN.
     """
     template_name = 'gestion_inventario/pages/form_destinatario.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
 
     def get(self, request, *args, **kwargs):
         form = DestinatarioForm()
@@ -3725,12 +3779,14 @@ class DestinatarioCreateView(LoginRequiredMixin, View):
 
 
 
-class DestinatarioEditView(LoginRequiredMixin, View):
+class DestinatarioEditView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Edita un destinatario existente.
     Verifica la pertenencia usando la estación de la SESIÓN.
     """
     template_name = 'gestion_inventario/pages/form_destinatario.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
+    model = Destinatario
 
     def get(self, request, *args, **kwargs):
         # --- CORRECCIÓN ---
@@ -3785,7 +3841,7 @@ class DestinatarioEditView(LoginRequiredMixin, View):
 
 
 
-class MovimientoInventarioListView(LoginRequiredMixin, View):
+class MovimientoInventarioListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Muestra una lista paginada y filtrable de todos los 
     movimientos de inventario de la estación activa.
@@ -3793,6 +3849,7 @@ class MovimientoInventarioListView(LoginRequiredMixin, View):
     template_name = 'gestion_inventario/pages/historial_movimientos.html'
     login_url = '/acceso/login/'
     paginate_by = 50 # 50 movimientos por página
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_historial_movimientos"
 
     def get(self, request):
         estacion_id = request.session.get('active_estacion_id')
@@ -3868,12 +3925,14 @@ class MovimientoInventarioListView(LoginRequiredMixin, View):
 
 
 
-class GenerarQRView(View):
+class GenerarQRView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Esta vista no renderiza HTML.
     Genera una imagen QR basada en el 'codigo' proporcionado
     y la devuelve como una respuesta de imagen PNG.
     """
+
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_stock"
     
     def get(self, request, *args, **kwargs):
         # 1. Obtenemos el código de la URL
@@ -3909,7 +3968,7 @@ class GenerarQRView(View):
 
 
 
-class ImprimirEtiquetasView(LoginRequiredMixin, View):
+class ImprimirEtiquetasView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
     """
     Muestra una página diseñada para imprimir etiquetas QR
     para Activos y Lotes.
@@ -3920,6 +3979,7 @@ class ImprimirEtiquetasView(LoginRequiredMixin, View):
     """
     template_name = 'gestion_inventario/pages/imprimir_etiquetas.html'
     login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_imprimir_etiquetas_qr"
 
     def get_context_data(self, request, estacion_id):
         """Prepara el contexto de la vista (filtros y querysets)"""

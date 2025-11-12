@@ -1,7 +1,6 @@
 from django.urls import path
 from .views import (
     InventarioInicioView, 
-    InventarioPruebasView, 
     AreaListaView,
     AreaCrearView,
     AreaEditarView,
@@ -53,8 +52,6 @@ app_name = 'gestion_inventario'
 urlpatterns = [
     # Página Inicial de la gestión de inventario
     path('', InventarioInicioView.as_view(), name="ruta_inicio"),
-    # Pruebas
-    path('pruebas/', InventarioPruebasView.as_view(), name="ruta_pruebas"),
 
     # Lista de áreas
     path('areas/', AreaListaView.as_view(), name="ruta_lista_areas"),

@@ -11,7 +11,7 @@ urlpatterns = [
 
     path('logout/', LogoutView.as_view(), name="ruta_logout"),
 
-     path('reset_password/', CustomPasswordResetView.as_view(), name="password_reset"),
+    path('reset_password/', CustomPasswordResetView.as_view(), name="password_reset"),
 
     path('reset_password/done/',
          auth_views.PasswordResetDoneView.as_view(template_name="acceso/pages/password_reset_done.html"),
