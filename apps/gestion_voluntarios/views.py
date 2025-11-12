@@ -15,8 +15,8 @@ from apps.gestion_usuarios.models import Membresia
 # Importamos el modelo Estacion de gestion_inventario
 from apps.gestion_inventario.models import Estacion
 
-# --- ¡NUEVO! Importamos los formularios ---
-from .forms import UsuarioForm, VoluntarioForm
+# --- ¡Importamos TODOS los formularios de nuestro forms.py local! ---
+from .forms import UsuarioForm, VoluntarioForm, ProfesionForm, CargoForm
 
 # Página Inicial
 class VoluntariosInicioView(View):
@@ -127,10 +127,9 @@ class VoluntariosModificarView(View):
     
     # Cuando se carga la página
     def get(self, request, id):
-        # 1. Obtenemos el voluntario y su usuario asociado
         voluntario = get_object_or_404(Voluntario.objects.select_related('usuario'), id=id)
         
-        # 2. Creamos instancias de los formularios con los datos del voluntario
+        # Creamos instancias de los formularios con los datos del voluntario
         usuario_form = UsuarioForm(instance=voluntario.usuario)
         voluntario_form = VoluntarioForm(instance=voluntario)
 
@@ -145,21 +144,16 @@ class VoluntariosModificarView(View):
     def post(self, request, id):
         voluntario = get_object_or_404(Voluntario.objects.select_related('usuario'), id=id)
         
-        # 1. Recibimos los datos del POST en los formularios
         usuario_form = UsuarioForm(request.POST, instance=voluntario.usuario)
         voluntario_form = VoluntarioForm(request.POST, instance=voluntario)
 
-        # 2. Validamos ambos formularios
         if usuario_form.is_valid() and voluntario_form.is_valid():
-            # 3. Guardamos los cambios
             usuario_form.save()
             voluntario_form.save()
             
             messages.success(request, f'Se han guardado los cambios de {voluntario.usuario.get_full_name}.')
-            # 4. Redirigimos a la "Hoja de Vida" (Ver Voluntario)
             return redirect('gestion_voluntarios:ruta_ver_voluntario', id=voluntario.id)
         
-        # Si los formularios no son válidos, se re-renderiza la página con los errores
         context = {
             'voluntario': voluntario,
             'usuario_form': usuario_form,
@@ -171,60 +165,119 @@ class VoluntariosModificarView(View):
 
 # GESTIÓN DE CARGOS Y PROFESIONES
 
-# Lista de cargos y profesiones
 class CargosListaView(View):
     def get(self, request):
         
-        # --- Traemos los datos reales ---
         profesiones = Profesion.objects.all().order_by('nombre')
-        # Usamos select_related para traer también la categoría (TipoCargo)
         cargos = Cargo.objects.select_related('tipo_cargo').all().order_by('nombre')
 
         context = {
             'profesiones': profesiones,
-            'cargos': cargos, # 'cargos' es el modelo para "Rangos Bomberiles"
+            'cargos': cargos,
         }
         return render(request, "gestion_voluntarios/pages/lista_cargos_profes.html", context)
 
 
-# Crear profesion
+# --- VISTA "CREAR PROFESIÓN" (ACTUALIZADA) ---
 class ProfesionesCrearView(View):
     def get(self, request):
-        return render(request, "gestion_voluntarios/pages/crear_profesion.html")
+        form = ProfesionForm()
+        context = {
+            'form': form
+        }
+        return render(request, "gestion_voluntarios/pages/crear_profesion.html", context)
 
     def post(self, request):
-        # Lógica para guardar profesion
-        return render(request, "gestion_voluntarios/pages/crear_profesion.html")
+        form = ProfesionForm(request.POST)
+        if form.is_valid():
+            profesion = form.save()
+            messages.success(request, f'Se ha agregado la profesión "{profesion.nombre}".')
+            return redirect('gestion_voluntarios:ruta_cargos_lista')
+        
+        context = {
+            'form': form
+        }
+        messages.error(request, 'Error al guardar. Revisa los campos.')
+        return render(request, "gestion_voluntarios/pages/crear_profesion.html", context)
 
 
-# Editar profesion
+# --- VISTA "MODIFICAR PROFESIÓN" (ACTUALIZADA) ---
 class ProfesionesModificarView(View):
     def get(self, request, id):
-        return render(request, "gestion_voluntarios/pages/modificar_profesion.html")
+        profesion = get_object_or_404(Profesion, id=id)
+        form = ProfesionForm(instance=profesion)
+        context = {
+            'form': form,
+            'profesion': profesion
+        }
+        return render(request, "gestion_voluntarios/pages/modificar_profesion.html", context)
 
     def post(self, request, id):
-        # Lógica para actualizar profesion
-        return render(request, "gestion_voluntarios/pages/modificar_profesion.html")
+        profesion = get_object_or_404(Profesion, id=id)
+        form = ProfesionForm(request.POST, instance=profesion)
+        
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Se ha actualizado la profesión "{profesion.nombre}".')
+            return redirect('gestion_voluntarios:ruta_cargos_lista')
+        
+        context = {
+            'form': form,
+            'profesion': profesion
+        }
+        messages.error(request, 'Error al guardar. Revisa los campos.')
+        return render(request, "gestion_voluntarios/pages/modificar_profesion.html", context)
 
 
-# Crear cargo
+# --- VISTA "CREAR CARGO" (ACTUALIZADA) ---
 class CargosCrearView(View):
     def get(self, request):
-        return render(request, "gestion_voluntarios/pages/crear_cargo.html")
+        form = CargoForm()
+        context = {
+            'form': form
+        }
+        return render(request, "gestion_voluntarios/pages/crear_cargo.html", context)
 
     def post(self, request):
-        # Lógica para guardar cargo
-        return render(request, "gestion_voluntarios/pages/crear_cargo.html")
+        form = CargoForm(request.POST)
+        if form.is_valid():
+            cargo = form.save()
+            messages.success(request, f'Se ha agregado el rango "{cargo.nombre}".')
+            return redirect('gestion_voluntarios:ruta_cargos_lista')
+        
+        context = {
+            'form': form
+        }
+        messages.error(request, 'Error al guardar. Revisa los campos.')
+        return render(request, "gestion_voluntarios/pages/crear_cargo.html", context)
 
 
-# Editar cargo
+# --- VISTA "MODIFICAR CARGO" (ACTUALIZADA) ---
 class CargosModificarView(View):
     def get(self, request, id):
-        return render(request, "gestion_voluntarios/pages/modificar_cargo.html")
+        cargo = get_object_or_404(Cargo, id=id)
+        form = CargoForm(instance=cargo)
+        context = {
+            'form': form,
+            'cargo': cargo
+        }
+        return render(request, "gestion_voluntarios/pages/modificar_cargo.html", context)
 
     def post(self, request, id):
-        # Lógica para actualizar cargo
-        return render(request, "gestion_voluntarios/pages/modificar_cargo.html")
+        cargo = get_object_or_404(Cargo, id=id)
+        form = CargoForm(request.POST, instance=cargo)
+        
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Se ha actualizado el rango "{cargo.nombre}".')
+            return redirect('gestion_voluntarios:ruta_cargos_lista')
+        
+        context = {
+            'form': form,
+            'cargo': cargo
+        }
+        messages.error(request, 'Error al guardar. Revisa los campos.')
+        return render(request, "gestion_voluntarios/pages/modificar_cargo.html", context)
     
 
 # MODULO DE REPORTES EXPORTAR Y GENERAR HOJA DE VIDA

@@ -1,17 +1,16 @@
 {# Plantilla base #}{% extends 'gestion_voluntarios/layouts/base.html' %}
 {# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Agregar Profesión{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Agregar Nueva Profesión{% endblock %}
+{# Título de la ventana #} {% block titulo_ventana %}Modificar Rango{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Modificar Rango{% endblock %}
 
 {% block contenido %}
     <div class="container">
-        <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="back-link"><i class="fas fa-arrow-left"></i> Volver al listado</a>
+        <h1>Modificar Rango: {{ cargo.nombre }}</h1>
         
-        <form method="POST" class="form-centered">
+        <form method="POST">
             {% csrf_token %}
             
             <div class="form-section">
-                <h2>Datos de la Profesión</h2>
                 {% for field in form %}
                     <div class="form-group">
                         {{ field.label_tag }}
@@ -24,7 +23,7 @@
             </div>
             
             <div class="button-group">
-                <button type="submit" class="btn-primary">Guardar Profesión</button>
+                <button type="submit" class="btn-primary">Guardar Cambios</button>
                 <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="btn-secondary">Cancelar</a>
             </div>
         </form>

@@ -1,42 +1,32 @@
 {# Plantilla base #}{% extends 'gestion_voluntarios/layouts/base.html' %}
 {# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Módulo{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Título de la Página{% endblock %}
+{# Título de la ventana #} {% block titulo_ventana %}Agregar Rango{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Agregar Nuevo Rango{% endblock %}
 
 {% block contenido %}
-
-<div class="container">
-
-        <div class="header_modulo">
-            <h1 class="titulo_secundario">Formulario de Rango Bomberil</h1>
-            <a href="#" class="boton_secundario">
-                <i class="fa-solid fa-arrow-left"></i>
-                Volver al Listado
-            </a>
-        </div>
-
-        <div class="panel_base">
-            <div class="panel_base__contenido">
-                
-                <form class="formulario" action="#" method="POST">
-
-                    <div class="formulario__campo">
-                        <label for="nombre" class="formulario__label">
-                            Nombre del Rango
-                        </label>
-                        <input type="text" id="nombre" class="input_base" 
-                               placeholder="Ej: Aspirante, Voluntario Activo, Capitán">
+    <div class="container">
+        <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="back-link"><i class="fas fa-arrow-left"></i> Volver al listado</a>
+        
+        <form method="POST" class="form-centered">
+            {% csrf_token %}
+            
+            <div class="form-section">
+                <h2>Datos del Rango</h2>
+                {% for field in form %}
+                    <div class="form-group">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="error-message" style="color: red;">{{ field.errors|first }}</div>
+                        {% endif %}
                     </div>
-                    
-                    <div class="formulario__opciones">
-                        <button type="submit" class="boton_primario">
-                            <i class="fa-solid fa-save"></i>
-                            Guardar Rango
-                        </button>
-                    </div>
-
-                </form>
+                {% endfor %}
             </div>
-        </div>
-
+            
+            <div class="button-group">
+                <button type="submit" class="btn-primary">Guardar Rango</button>
+                <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
 {% endblock  %}

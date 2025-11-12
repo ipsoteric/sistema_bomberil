@@ -1,6 +1,10 @@
 from django import forms
 from apps.gestion_usuarios.models import Usuario
-from .models import Voluntario
+from .models import Voluntario, Profesion, Cargo, TipoCargo
+
+# ==========================================================
+# 1. FORMULARIOS PARA LA VISTA "MODIFICAR VOLUNTARIO"
+# ==========================================================
 
 class UsuarioForm(forms.ModelForm):
     """
@@ -63,4 +67,44 @@ class VoluntarioForm(forms.ModelForm):
             'domicilio_calle': forms.TextInput(attrs={'class': 'form-control'}),
             'domicilio_numero': forms.TextInput(attrs={'class': 'form-control'}),
             'numero_registro_bomberil': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+# ==========================================================
+# 2. FORMULARIOS PARA "MODIFICAR PROFESIÓN" Y "MODIFICAR RANGO"
+# ==========================================================
+
+class ProfesionForm(forms.ModelForm):
+    """
+    Formulario para Crear y Modificar Profesiones
+    """
+    class Meta:
+        model = Profesion
+        fields = ['nombre']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'nombre': 'Nombre de la Profesión u Oficio',
+        }
+
+class CargoForm(forms.ModelForm):
+    """
+    Formulario para Crear y Modificar Cargos (Rangos)
+    """
+    # Creamos un menú desplegable con los Tipos de Cargo
+    tipo_cargo = forms.ModelChoiceField(
+        queryset=TipoCargo.objects.all().order_by('nombre'),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Categoría del Rango",
+        required=True
+    )
+
+    class Meta:
+        model = Cargo
+        fields = ['nombre', 'tipo_cargo']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'nombre': 'Nombre del Rango (Ej: Teniente 1°)',
         }
