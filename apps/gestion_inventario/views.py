@@ -10,7 +10,7 @@ from django.http import JsonResponse, HttpResponse
 from django.db import models
 from django.db.models import Count, Sum, Q, Subquery, OuterRef, ProtectedError, Value, Case, When, CharField, F
 from django.db.models.functions import Coalesce
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -47,6 +47,7 @@ from .models import (
     )
 from .forms import (
     AreaForm, 
+    AreaEditForm,
     VehiculoUbicacionCreateForm,
     VehiculoUbicacionEditForm,
     VehiculoDetalleEditForm,
@@ -75,13 +76,17 @@ from .forms import (
     EtiquetaFilterForm
     )
 from .utils import generar_sku_sugerido
-from core.settings import INVENTARIO_AREA_NOMBRE as AREA_NOMBRE
+from core.settings import (
+    INVENTARIO_UBICACION_AREA_NOMBRE as AREA_NOMBRE, 
+    INVENTARIO_UBICACION_VEHICULO_NOMBRE as VEHICULO_NOMBRE, 
+)
 
 from apps.gestion_usuarios.models import Membresia
-from apps.common.mixins import ModuleAccessMixin
+from apps.common.mixins import ModuleAccessMixin, EstacionActivaRequiredMixin, BaseEstacionMixin
+from apps.gestion_inventario.mixins import UbicacionMixin
 
 
-class InventarioInicioView(LoginRequiredMixin, ModuleAccessMixin, TemplateView):
+class InventarioInicioView(BaseEstacionMixin, TemplateView):
     """
     Vista de inicio (Dashboard) del módulo de Gestión de Inventario.
     Muestra KPIs, alertas y accesos directos.
@@ -90,31 +95,14 @@ class InventarioInicioView(LoginRequiredMixin, ModuleAccessMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        # 1. Obtener la Estación Activa (fundamental)
-        # Asumimos que el ID está en la sesión como 'active_estacion_id'
-        try:
-            estacion_activa_id = self.request.session.get('active_estacion_id')
-            if not estacion_activa_id:
-                # Manejar caso donde no hay estación activa (o usar un Mixin)
-                context['error_estacion'] = True
-                return context
-            
-            # NOTA: No necesitamos el objeto Estacion completo para la mayoría
-            # de los filtros, solo el ID, lo cual es más eficiente.
-            
-        except Exception as e:
-            # Manejo de errores
-            context['error_estacion'] = str(e)
-            return context
 
-        # 2. Definir filtros base por estación
+        # 1. Definir filtros base por estación
         # Filtro para Activos (tienen FK directo a estacion)
-        activos_estacion_qs = Activo.objects.filter(estacion_id=estacion_activa_id)
+        activos_estacion_qs = Activo.objects.filter(estacion_id=self.estacion_activa)
         
         # Filtro para Lotes (vía compartimento -> ubicacion -> estacion)
         lotes_estacion_qs = LoteInsumo.objects.filter(
-            compartimento__ubicacion__estacion_id=estacion_activa_id
+            compartimento__ubicacion__estacion_id=self.estacion_activa
         )
 
         # ======== KPIs DE LA FILA SUPERIOR ========
@@ -180,7 +168,7 @@ class InventarioInicioView(LoginRequiredMixin, ModuleAccessMixin, TemplateView):
         # Alerta 3: Préstamos Atrasados
         # Préstamos de la estación, vencidos (fecha < hoy) y aún 'Pendientes'
         context['alerta_prestamos_atrasados'] = Prestamo.objects.filter(
-            estacion_id=estacion_activa_id,
+            estacion_id=self.estacion_activa,
             fecha_devolucion_esperada__lt=hoy,
             estado=Prestamo.EstadoPrestamo.PENDIENTE
         ).select_related('destinatario')[:5]
@@ -189,7 +177,7 @@ class InventarioInicioView(LoginRequiredMixin, ModuleAccessMixin, TemplateView):
 
         # Obtenemos los últimos 10 movimientos
         movimientos = MovimientoInventario.objects.filter(
-            estacion_id=estacion_activa_id
+            estacion_id=self.estacion_activa
         ).select_related(
             'usuario', 
             'compartimento_origen', 
@@ -212,132 +200,145 @@ class InventarioInicioView(LoginRequiredMixin, ModuleAccessMixin, TemplateView):
 
 
 
-class AreaListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class AreaListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
     """
     Vista para listar las Áreas (Ubicaciones) de la estación activa,
     excluyendo vehículos y mostrando conteos optimizados.
     """
     template_name = "gestion_inventario/pages/lista_areas.html"
-    login_url = '/acceso/login/'
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_ubicaciones"
+    model = Ubicacion
 
-    def get(self, request):
-        estacion_id = request.session.get('active_estacion_id')
-
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        # --- CONSULTA OPTIMIZADA ---
-        # Usamos .annotate() para calcular todo en una sola consulta.
-        ubicaciones_con_totales = (
-            Ubicacion.objects
-            .filter(estacion_id=estacion_id)
-            .filter(tipo_ubicacion__nombre='ÁREA')
+    def get_queryset(self):
+        return (
+            # --- CONSULTA OPTIMIZADA ---
+            # Usamos .annotate() para calcular todo en una sola consulta.
+            self.model.objects
+            .filter(estacion_id=self.estacion_activa_id)
+            .filter(tipo_ubicacion__nombre=AREA_NOMBRE)
             .annotate(
                 # 1. Contar el número de compartimentos
                 total_compartimentos=Count('compartimento', distinct=True),
-                
                 # 2. Contar el número de Activos únicos
                 total_activos=Count('compartimento__activo', distinct=True),
-                
                 # 3. Sumar la CANTIDAD de todos los Lotes de Insumos
                 total_cantidad_insumos=Coalesce(Sum('compartimento__loteinsumo__cantidad'), 0)
             )
             .select_related('tipo_ubicacion') # Optimiza la carga del tipo_ubicacion
             .order_by('nombre') # Ordenamos alfabéticamente
         )
-
+    
+    def get_context_data(self, **kwargs):
+        ubicaciones_con_totales = self.get_queryset()
         # --- CÁLCULO FINAL (Tu lógica) ---
         # Iteramos para sumar los totales en una sola variable para la plantilla.
         for ubicacion in ubicaciones_con_totales:
             ubicacion.total_existencias = ubicacion.total_activos + ubicacion.total_cantidad_insumos
 
-        return render(
-            request, 
-            self.template_name, 
-            {'ubicaciones': ubicaciones_con_totales}
-        )
-
-
-
-
-class AreaCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
-
+        context = {'ubicaciones': ubicaciones_con_totales}
+        return context
+         
     def get(self, request):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No tienes una estación activa. No puedes crear áreas.")
-            return redirect(reverse('portal:ruta_inicio'))
+        context = self.get_context_data()
+        return render(request, self.template_name, context)
 
-        form = AreaForm()
-        return render(request, 'gestion_inventario/pages/crear_area.html', {'formulario': form})
 
-    def post(self, request):
-        form = AreaForm(request.POST)
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No tienes una estación activa. No puedes crear areas.")
-            return redirect(reverse('portal:ruta_inicio'))
+
+
+class AreaCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para crear ubicaciones de tipo "ÁREA"
+    """
+    template_name = "gestion_inventario/pages/crear_area.html"
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
+    form_class = AreaForm
+
+    def get_form(self, data=None): # Helper para instanciar el formulario
+        return self.form_class(data)
+
+    def get_context_data(self, **kwargs): # Helper para poblar el contexto
+        context = {'formulario': kwargs.get('form')}
+        return context
+    
+    def get_success_url(self, ubicacion_id):
+        return reverse('gestion_inventario:ruta_gestionar_ubicacion', kwargs={'ubicacion_id': ubicacion_id})
+
+
+    def get(self, request, *args, **kwargs):
+        form = self.get_form()
+        context = self.get_context_data(form=form)
+        return render(request, self.template_name, context)
+
+
+    def post(self, request, *args, **kwargs):
+        form = self.get_form(request.POST)
 
         if form.is_valid():
-            # Guardar sin confirmar para asignar tipo_ubicacion y potencialmente estacion desde sesión
-            ubicacion = form.save(commit=False)
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+        
 
-            # Obtener o crear el Tipoubicacion con nombre 'ÁREA' (mayúsculas para consistencia)
-            tipo_ubicacion, created = TipoUbicacion.objects.get_or_create(nombre__iexact=AREA_NOMBRE, defaults={'nombre': AREA_NOMBRE})
-            # Si get_or_create con lookup no funciona en el dialecto usado, fallback a get_or_create por nombre exacto
-            if not tipo_ubicacion:
-                tipo_ubicacion, created = TipoUbicacion.objects.get_or_create(nombre=AREA_NOMBRE)
+    def form_valid(self, form):
+        # Guardar sin confirmar para asignar campos
+        ubicacion = form.save(commit=False)
 
-            ubicacion.tipo_ubicacion = tipo_ubicacion
+        # Obtener tipo de ubicación "ÁREA". Si no existe, se crea
+        tipo_ubicacion, _ = TipoUbicacion.objects.get_or_create(
+            nombre__iexact=AREA_NOMBRE, 
+            defaults={'nombre': AREA_NOMBRE}
+        )
+        # Asignar tipo de ubicación
+        ubicacion.tipo_ubicacion = tipo_ubicacion
 
-            # Si hay una estación activa en sesión, asignarla; si no, mantener la seleccionada en el formulario
-            # Asignar la estación desde la sesión (usuario sólo puede crear para su compañía)
-            try:
-                estacion_obj = Estacion.objects.get(id=estacion_id)
-                ubicacion.estacion = estacion_obj
-            except Estacion.DoesNotExist:
-                messages.error(request, "La estación activa en sesión no es válida.")
-                return redirect(reverse('portal:ruta_inicio'))
+        # Asignar la estación desde la sesión
+        try:
+            estacion_obj = self.estacion_activa
+            ubicacion.estacion = estacion_obj
+        except Estacion.DoesNotExist:
+            messages.error(self.request, "La estación activa en sesión no es válida.")
+            # Usamos reverse() aquí porque no es a nivel de clase
+            return redirect(reverse('portal:ruta_inicio'))
+        
+        # Guardar el objeto final
+        ubicacion.save()
 
-            ubicacion.save()
-            messages.success(request, f'Almacén/ubicación "{ubicacion.nombre.title()}" creado exitosamente.')
-            # Redirigir a la lista de areas
-            return redirect(reverse('gestion_inventario:ruta_lista_areas'))
-        # Si hay errores, volver a mostrar el formulario con errores
-        return render(request, 'gestion_inventario/pages/crear_area.html', {'formulario': form})
+        # Enviar mensaje de éxito
+        messages.success(self.request, f'Almacén/ubicación "{ubicacion.nombre.title()}" creado exitosamente.')
+
+        return redirect(self.get_success_url(ubicacion.id))
+    
+
+    def form_invalid(self, form):
+        context = self.get_context_data(form=form)
+        return render(self.request, self.template_name, context)
 
 
 
 
-class UbicacionDetalleView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class UbicacionDetalleView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, View):
     """
     Vista para gestionar un área/ubicación: muestra detalles, 
     resúmenes de stock, lista de compartimentos con sus totales,
     y una lista detallada de todas las existencias en el área.
     """
     template_name = 'gestion_inventario/pages/gestionar_ubicacion.html'
-    login_url = '/acceso/login/'
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_ubicaciones"
+    redirect_url = reverse_lazy('gestion_inventario:ruta_inicio')
     model = Ubicacion
 
-    def get(self, request, ubicacion_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        # 1. Obtener la Ubicación (genérica)
-        ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id, estacion_id=estacion_id)
 
-        # 2. Denegar acceso si es de tipo ADMINISTRATIVA
-        if ubicacion.tipo_ubicacion.nombre == 'ADMINISTRATIVA':
-            messages.error(request, "Esta ubicación es interna del sistema y no se puede gestionar.")
-            return redirect('gestion_inventario:ruta_stock_actual')
+    def get_object(self):
+        ubicacion_id = self.kwargs.get('ubicacion_id')
+        return(
+            get_object_or_404(self.model, id=ubicacion_id, estacion_id=self.estacion_activa_id)
+        )
 
-        # 3. Obtener compartimentos con sus totales de stock anotados
+
+    def get_context_data(self, **kwargs):
+        # 1. Obtener el objeto ubicación
+        ubicacion = self.object
+
         compartimentos_con_stock = Compartimento.objects.filter(ubicacion=ubicacion).annotate(
             total_activos=Count('activo', distinct=True),
             total_cantidad_insumos=Coalesce(Sum('loteinsumo__cantidad'), 0)
@@ -376,47 +377,55 @@ class UbicacionDetalleView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequ
             'resumen_total_area': resumen_total_area,
             'today': timezone.now().date(),
         }
+        return context
+
+
+    def get(self, request, *args, **kwargs):
+        context = self.get_context_data()
         return render(request, self.template_name, context)
 
 
 
 
-class UbicacionDeleteView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class UbicacionDeleteView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, View):
     """
     Vista para confirmar y ejecutar la eliminación de una Ubicación (Área o Vehículo).
     Maneja ProtectedError si la ubicación aún tiene compartimentos.
     """
     template_name = 'gestion_inventario/pages/eliminar_ubicacion.html'
-    login_url = '/acceso/login/'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
+    redirect_url = reverse_lazy('gestion_inventario:ruta_gestionar_ubicacion')
     model = Ubicacion
 
-    def get(self, request, ubicacion_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        ubicacion = get_object_or_404(
-            Ubicacion.objects.select_related('tipo_ubicacion'),
+    def get_object(self):
+        ubicacion_id = self.kwargs.get('ubicacion_id')
+        return (
+            get_object_or_404(
+            self.model.objects.select_related('tipo_ubicacion'),
             id=ubicacion_id,
-            estacion_id=estacion_id
+            estacion_id=self.estacion_activa
+            )
         )
-        
-        context = { 'ubicacion': ubicacion }
+    
+
+    def get_context_data(self, **kwargs):
+        ubicacion = self.object
+        context = {'ubicacion':ubicacion}
+        return context
+
+    
+    def get_success_url(self, **kwargs):
+        return reverse(f'gestion_inventario:ruta_lista_{kwargs.get("tipo_ubicacion")}')
+
+
+    def get(self, request, *args, **kwargs):  
+        context = self.get_context_data()
         return render(request, self.template_name, context)
 
-    def post(self, request, ubicacion_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
 
-        ubicacion = get_object_or_404(
-            Ubicacion.objects.select_related('tipo_ubicacion'),
-            id=ubicacion_id,
-            estacion_id=estacion_id
-        )
+    def post(self, request, *args, **kwargs):
+
+        ubicacion = self.object
         
         # Guardamos el tipo y nombre antes de borrar
         tipo_nombre = ubicacion.tipo_ubicacion.nombre
@@ -430,70 +439,109 @@ class UbicacionDeleteView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequi
             
             # Redirigir a la lista correspondiente
             if tipo_nombre == 'VEHÍCULO':
-                return redirect('gestion_inventario:ruta_lista_vehiculos')
+                return redirect(self.get_success_url(tipo_ubicacion = "vehiculos"))
             else:
-                return redirect('gestion_inventario:ruta_lista_areas')
+                return redirect(self.get_success_url(tipo_ubicacion = "areas"))
 
         except ProtectedError:
             # Si falla (on_delete=PROTECT), capturamos el error
             messages.error(request, f"No se puede eliminar '{ubicacion_nombre}'. Asegúrese de que todos sus compartimentos (incluido 'General') estén vacíos y hayan sido eliminados primero.")
             # Devolvemos al usuario a la página de gestión
-            return redirect('gestion_inventario:ruta_gestionar_ubicacion', ubicacion_id=ubicacion.id)
+            return redirect(self.redirect_url, ubicacion_id=ubicacion.id)
         
         except Exception as e:
             messages.error(request, f"Ocurrió un error inesperado: {e}")
-            return redirect('gestion_inventario:ruta_gestionar_ubicacion', ubicacion_id=ubicacion.id)
+            return redirect(self.redirect_url, ubicacion_id=ubicacion.id)
 
 
 
 
-class AreaEditarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    """Editar datos de una ubicación/almacén."""
+class AreaEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, View):
+    """
+    Editar datos de una ubicación/almacén.
+    """
+    template_name = "gestion_inventario/pages/editar_area.html"
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
+    form_class = AreaEditForm
     model = Ubicacion
 
-    def get(self, request, ubicacion_id):
-        ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id)
-        form = CompartimentoForm.__module__  # placeholder to avoid unused import warnings
-        from .forms import AreaEditForm
-        form = AreaEditForm(instance=ubicacion)
-        return render(request, 'gestion_inventario/pages/editar_area.html', {'formulario': form, 'ubicacion': ubicacion})
 
-    def post(self, request, ubicacion_id):
-        ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id)
-        from .forms import AreaEditForm
-        form = AreaEditForm(request.POST, request.FILES, instance=ubicacion)
+    def get_object(self):
+        ubicacion_id = self.kwargs.get('ubicacion_id')
+        return get_object_or_404(
+            self.model.objects.select_related('tipo_ubicacion'),
+            id=ubicacion_id,
+            estacion_id=self.estacion_activa,
+            tipo_ubicacion__nombre=AREA_NOMBRE
+        )
+
+
+    def get_context_data(self, **kwargs):
+        context = {
+            'formulario': kwargs.get('form'),
+            # Añadimos 'ubicacion' al contexto (útil en el template)
+            # 'self.object' fue establecido por el mixin antes de llegar aquí.
+            'ubicacion': self.object 
+        }
+        return context
+    
+
+    def get_success_url(self):
+        return reverse('gestion_inventario:ruta_gestionar_ubicacion', kwargs={'ubicacion_id': self.object.id})
+    
+
+    def get(self, request, *args, **kwargs):
+        # Instanciamos el form con la 'instance' para pre-llenarlo
+        form = self.form_class(instance=self.object)
+        
+        context = self.get_context_data(form=form)
+        return render(request, self.template_name, context)
+
+
+    def post(self, request, *args, **kwargs):
+        # Instanciamos el form con los datos del POST Y la 'instance'
+        form = self.form_class(
+            request.POST, 
+            request.FILES, 
+            instance=self.object
+        )
+        
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Almacén actualizado correctamente.')
-            return redirect(reverse('gestion_inventario:ruta_gestionar_area', kwargs={'ubicacion_id': ubicacion.id}))
-        return render(request, 'gestion_inventario/pages/editar_area.html', {'formulario': form, 'ubicacion': ubicacion})
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+    
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(self.request, 'Almacén actualizado correctamente.')
+        return redirect(self.get_success_url())
+
+
+    def form_invalid(self, form):
+        context = self.get_context_data(form=form)
+        return render(self.request, self.template_name, context)
 
 
 
 
-class VehiculoListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class VehiculoListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
     """
     Vista para listar los Vehículos (Ubicaciones de tipo 'VEHÍCULO')
     de la estación activa, mostrando conteos optimizados.
     """
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_ubicaciones"
     template_name = "gestion_inventario/pages/lista_vehiculos.html"
-    login_url = '/acceso/login/'
+    model = Ubicacion
 
-    def get(self, request):
-        estacion_id = request.session.get('active_estacion_id')
-
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        # --- CONSULTA OPTIMIZADA PARA VEHÍCULOS ---
-        vehiculos_con_totales = (
-            Ubicacion.objects
+    def get_queryset(self):
+        # Obtener lista de vehículos
+        return (
+            # --- CONSULTA OPTIMIZADA PARA VEHÍCULOS ---
+            self.model.objects
             .filter(
-                estacion_id=estacion_id,
-                tipo_ubicacion__nombre__iexact='VEHÍCULO' # Filtro clave
+                tipo_ubicacion__nombre__iexact=VEHICULO_NOMBRE,
+                estacion_id=self.estacion_activa
             )
             .annotate(
                 total_compartimentos=Count('compartimento', distinct=True),
@@ -510,189 +558,225 @@ class VehiculoListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequire
             .order_by('nombre')
         )
 
+
+    def get_context_data(self):
+        # Obtener lista de vehículos
+        vehiculos_con_totales = self.get_queryset()
         # Calculamos el total de existencias
         for vehiculo in vehiculos_con_totales:
             vehiculo.total_existencias = vehiculo.total_activos + vehiculo.total_cantidad_insumos
 
-        return render(
-            request, 
-            self.template_name, 
-            # Cambiamos el nombre del contexto para claridad en la plantilla
-            {'vehiculos': vehiculos_con_totales} 
-        )
+        context = {"vehiculos":vehiculos_con_totales}
+        return context
+
+
+    def get(self, request):
+        context = self.get_context_data()
+        return render(request, self.template_name, context)
 
 
 
 
-class VehiculoCreateView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class VehiculoCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
     """
     Vista para crear un nuevo Vehículo.
     Maneja la creación simultánea en los modelos Ubicacion y Vehiculo.
     """
-    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
     template_name = 'gestion_inventario/pages/crear_vehiculo.html'
-    login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
+    config_error_redirect_url = 'gestion_inventario:ruta_lista_vehiculos'
+    form_ubicacion_class = VehiculoUbicacionCreateForm
+    form_detalles_class = VehiculoDetalleEditForm
 
-    def get(self, request, *args, **kwargs):
-        # Instanciamos los formularios vacíos
-        form_ubicacion = VehiculoUbicacionCreateForm()
-        form_detalles = VehiculoDetalleEditForm() # Reutilizamos el form de edición
-        
+    def get_context_data(self, **kwargs):
         context = {
-            'form_ubicacion': form_ubicacion,
-            'form_detalles': form_detalles,
+            'form_ubicacion': kwargs.get('form_ubicacion'),
+            'form_detalles': kwargs.get('form_detalles'),
         }
+        return context
+    
+    
+    def get(self, request, *args, **kwargs):
+        context = self.get_context_data(
+            form_ubicacion=self.form_ubicacion_class(),
+            form_detalles=self.form_detalles_class()
+        )
         return render(request, self.template_name, context)
+    
 
     def post(self, request, *args, **kwargs):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        # Obtenemos los objetos fijos que necesitamos
-        try:
-            estacion_activa = Estacion.objects.get(id=estacion_id)
-            tipo_vehiculo_obj = TipoUbicacion.objects.get(nombre='VEHÍCULO')
-        except (Estacion.DoesNotExist, TipoUbicacion.DoesNotExist):
-            messages.error(request, "Error de configuración: No se encontró la estación o el tipo 'VEHÍCULO'.")
-            return redirect('gestion_inventario:ruta_lista_vehiculos') # O a la lista
-
         # Instanciamos formularios con los datos del POST
-        form_ubicacion = VehiculoUbicacionCreateForm(request.POST)
-        form_detalles = VehiculoDetalleEditForm(request.POST) # Reutilizamos el form
+        form_ubicacion = self.form_ubicacion_class(request.POST)
+        form_detalles = self.form_detalles_class(request.POST)
 
+        # Validamos AMBOS
         if form_ubicacion.is_valid() and form_detalles.is_valid():
+            # Obtenemos el TipoUbicacion (solo si los forms son válidos)
             try:
-                # Usamos una transacción para asegurar que ambos se creen o ninguno
-                with transaction.atomic():
-                    # 1. Guardar la parte de Ubicacion (sin commit)
-                    ubicacion_obj = form_ubicacion.save(commit=False)
-                    # Asignar los campos faltantes
-                    ubicacion_obj.estacion = estacion_activa
-                    ubicacion_obj.tipo_ubicacion = tipo_vehiculo_obj
-                    ubicacion_obj.save() # Guardar en la BD
+                tipo_vehiculo_obj = TipoUbicacion.objects.get(nombre=VEHICULO_NOMBRE)
 
-                    # 2. Guardar la parte de Detalles (sin commit)
-                    detalles_obj = form_detalles.save(commit=False)
-                    # Asignar la relación OneToOne
-                    detalles_obj.ubicacion = ubicacion_obj 
-                    detalles_obj.save() # Guardar en la BD
-                
-                messages.success(request, f"Vehículo '{ubicacion_obj.nombre}' creado exitosamente.")
-                # Redirigimos a la vista de gestión del nuevo vehículo
-                return redirect('gestion_inventario:ruta_gestionar_ubicacion', ubicacion_id=ubicacion_obj.id)
+            except TipoUbicacion.DoesNotExist:
+                messages.error(request, f'Error de configuración: No se encontró el tipo "{VEHICULO_NOMBRE}"')
+                return redirect(self.config_error_redirect_url)
             
-            except Exception as e:
-                messages.error(request, f"Ocurrió un error inesperado al guardar: {e}")
-
-        else:
-            messages.error(request, "Hubo un error. Por favor, revisa los campos de ambos formularios.")
+            return self.form_valid(form_ubicacion, form_detalles, tipo_vehiculo_obj)
         
-        context = {
-            'form_ubicacion': form_ubicacion,
-            'form_detalles': form_detalles,
-        }
-        return render(request, self.template_name, context)
+        else:
+            return self.form_invalid(form_ubicacion, form_detalles)
+        
+
+    def form_valid(self, form_ubicacion, form_detalles, tipo_vehiculo_obj):
+        try:
+            # Tu lógica de transacción es perfecta
+            with transaction.atomic():
+                # 1. Guardar Ubicacion (sin commit)
+                ubicacion_obj = form_ubicacion.save(commit=False)
+                
+                # Asignar campos faltantes
+                ubicacion_obj.estacion = self.estacion_activa 
+                ubicacion_obj.tipo_ubicacion = tipo_vehiculo_obj
+                ubicacion_obj.save() # Guardar en BD
+
+                # 2. Guardar Detalles (sin commit)
+                detalles_obj = form_detalles.save(commit=False)
+                # Asignar la relación OneToOne al objeto recién creado
+                detalles_obj.ubicacion = ubicacion_obj 
+                detalles_obj.save() # Guardar en BD
+            
+            messages.success(self.request, f"Vehículo '{ubicacion_obj.nombre}' creado exitosamente.")
+            
+            # Redirigimos a la vista de gestión del NUEVO vehículo
+            return redirect('gestion_inventario:ruta_gestionar_ubicacion', ubicacion_id=ubicacion_obj.id)
+        
+        except Exception as e:
+            # Si la transacción falla, volvemos al form_invalid
+            messages.error(self.request, f"Ocurrió un error inesperado al guardar: {e}")
+            return self.form_invalid(form_ubicacion, form_detalles)
+        
+
+    def form_invalid(self, form_ubicacion, form_detalles):
+        messages.error(self.request, "Hubo un error. Por favor, revisa los campos de ambos formularios.")
+
+        context = self.get_context_data(
+            form_ubicacion=form_ubicacion, 
+            form_detalles=form_detalles
+        )
+        return render(self.request, self.template_name, context)
 
 
 
 
-class VehiculoEditView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class VehiculoEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, View):
     """
     Vista para editar los detalles de un Vehículo.
     Maneja dos formularios:
     1. VehiculoUbicacionEditForm (para el modelo Ubicacion)
     2. VehiculoDetalleEditForm (para el modelo Vehiculo)
     """
-    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
     template_name = 'gestion_inventario/pages/editar_vehiculo.html'
-    login_url = '/acceso/login/'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones"
+    form_ubicacion_class = VehiculoUbicacionEditForm
+    form_detalles_class = VehiculoDetalleEditForm
     model = Ubicacion
 
-    def get(self, request, ubicacion_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        # Obtenemos la Ubicacion (Vehículo)
-        ubicacion = get_object_or_404(
-            Ubicacion,
+    def get_object(self):
+        ubicacion_id = self.kwargs.get('ubicacion_id')
+        return (
+            get_object_or_404(
+            self.model,
             id=ubicacion_id,
-            estacion_id=estacion_id,
-            tipo_ubicacion__nombre='VEHÍCULO'
+            estacion_id=self.estacion_activa,
+            tipo_ubicacion__nombre=VEHICULO_NOMBRE
+            )
         )
-        
-        # Obtenemos los detalles del vehículo (modelo Vehiculo)
-        # Usamos try-except por si acaso se borró el registro hijo
+    
+    def get_details_object(self, ubicacion):
         try:
-            vehiculo_detalles = ubicacion.detalles_vehiculo
+            return ubicacion.detalles_vehiculo
         except Vehiculo.DoesNotExist:
-            vehiculo_detalles = None # El POST creará uno nuevo
-
-        # Instanciamos ambos formularios
-        form_ubicacion = VehiculoUbicacionEditForm(instance=ubicacion)
-        form_detalles = VehiculoDetalleEditForm(instance=vehiculo_detalles)
-        
+            return None # El POST creará uno nuevo
+    
+    def get_context_data(self, **kwargs):
         context = {
-            'form_ubicacion': form_ubicacion,
-            'form_detalles': form_detalles,
-            'ubicacion': ubicacion
+            'form_ubicacion': kwargs.get('form_ubicacion'),
+            'form_detalles': kwargs.get('form_detalles'),
+            'ubicacion': self.object 
         }
-        return render(request, self.template_name, context)
+        return context
+    
+    def get_success_url(self):
+        return reverse('gestion_inventario:ruta_gestionar_ubicacion', kwargs={'ubicacion_id': self.object.id})
+    
 
-    def post(self, request, ubicacion_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-
-        ubicacion = get_object_or_404(
-            Ubicacion,
-            id=ubicacion_id,
-            estacion_id=estacion_id,
-            tipo_ubicacion__nombre='VEHÍCULO'
-        )
+    def get(self, request, *args, **kwargs):
+        # Obtenemos los objetos
+        ubicacion = self.object
+        vehiculo_detalles = self.get_details_object(ubicacion)
         
-        try:
-            vehiculo_detalles = ubicacion.detalles_vehiculo
-        except Vehiculo.DoesNotExist:
-            vehiculo_detalles = None
+        # Instanciamos los formularios con sus respectivas instancias
+        form_ubicacion = self.form_ubicacion_class(instance=self.object)
+        form_detalles = self.form_detalles_class(instance=vehiculo_detalles)
+        
+        context = self.get_context_data(
+            form_ubicacion=form_ubicacion, 
+            form_detalles=form_detalles
+        )
+        return render(request, self.template_name, context)
+    
 
-        # Instanciamos formularios con los datos del POST y los archivos
-        form_ubicacion = VehiculoUbicacionEditForm(request.POST, request.FILES, instance=ubicacion)
-        form_detalles = VehiculoDetalleEditForm(request.POST, instance=vehiculo_detalles)
+    def post(self, request, *args, **kwargs):
+        # Ya no necesitamos verificar la sesión, get_object() lo hace.
+        ubicacion = self.object
+        vehiculo_detalles = self.get_details_object(ubicacion)
 
+        # Instanciamos formularios con los datos del POST y las instancias
+        form_ubicacion = self.form_ubicacion_class(
+            request.POST, request.FILES, instance=self.object
+        )
+        form_detalles = self.form_detalles_class(
+            request.POST, instance=vehiculo_detalles
+        )
+
+        # Validamos AMBOS formularios
         if form_ubicacion.is_valid() and form_detalles.is_valid():
-            try:
-                # Usamos una transacción para asegurar que ambos formularios se guarden
-                with transaction.atomic():
-                    # Guardamos el formulario de Ubicacion
-                    form_ubicacion.save()
-                    
-                    # Guardamos el formulario de Detalles (sin commit)
-                    detalles_obj = form_detalles.save(commit=False)
-                    # Asignamos la relación OneToOne a la Ubicacion padre
-                    detalles_obj.ubicacion = ubicacion 
-                    detalles_obj.save()
-                
-                messages.success(request, f"El vehículo '{ubicacion.nombre}' se actualizó correctamente.")
-                # Redirigimos de vuelta a la vista de gestión
-                return redirect('gestion_inventario:ruta_gestionar_ubicacion', ubicacion_id=ubicacion.id)
-            
-            except Exception as e:
-                messages.error(request, f"Ocurrió un error inesperado: {e}")
-
+            return self.form_valid(form_ubicacion, form_detalles)
         else:
-            messages.error(request, "Hubo un error. Por favor, revisa los campos de ambos formularios.")
+            return self.form_invalid(form_ubicacion, form_detalles)
         
-        context = {
-            'form_ubicacion': form_ubicacion,
-            'form_detalles': form_detalles,
-            'ubicacion': ubicacion
-        }
-        return render(request, self.template_name, context)
+    
+    def form_valid(self, form_ubicacion, form_detalles):
+        try:
+            with transaction.atomic():
+                # Guardamos el formulario de Ubicacion
+                form_ubicacion.save()
+                
+                # Guardamos el formulario de Detalles (sin commit)
+                detalles_obj = form_detalles.save(commit=False)
+                # Asignamos la relación OneToOne a la Ubicacion (self.object)
+                detalles_obj.ubicacion = self.object 
+                detalles_obj.save()
+            
+            messages.success(self.request, f"El vehículo '{self.object.nombre}' se actualizó correctamente.")
+            return redirect(self.get_success_url())
+        
+        except Exception as e:
+            # Si la transacción falla, volvemos al form_invalid
+            messages.error(self.request, f"Ocurrió un error inesperado: {e}")
+            return self.form_invalid(form_ubicacion, form_detalles)
+    
+
+    def form_invalid(self, form_ubicacion, form_detalles):
+        # Solo mostramos el mensaje de error si no es por una excepción de 'form_valid' (para no duplicar mensajes)
+        if not any(form_ubicacion.errors.values()) and not any(form_detalles.errors.values()):
+             pass # El error ya fue añadido en form_valid
+        else:
+             messages.error(self.request, "Hubo un error. Por favor, revisa los campos de ambos formularios.")
+
+        context = self.get_context_data(
+            form_ubicacion=form_ubicacion, 
+            form_detalles=form_detalles
+        )
+        return render(self.request, self.template_name, context)
 
 
 

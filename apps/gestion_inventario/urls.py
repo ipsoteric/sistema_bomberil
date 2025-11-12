@@ -4,8 +4,8 @@ from .views import (
     AreaListaView,
     AreaCrearView,
     AreaEditarView,
-    VehiculoCreateView,
-    VehiculoEditView,
+    VehiculoCrearView,
+    VehiculoEditarView,
     UbicacionDetalleView,
     UbicacionDeleteView,
     CompartimentoListaView,
@@ -75,9 +75,9 @@ urlpatterns = [
     # Lista de vehículos
     path('vehiculos/', VehiculoListaView.as_view(), name='ruta_lista_vehiculos'),
     # Crear vehículo
-    path('vehiculos/crear/', VehiculoCreateView.as_view(), name='ruta_crear_vehiculo'),
+    path('vehiculos/crear/', VehiculoCrearView.as_view(), name='ruta_crear_vehiculo'),
     # Editar Vehículo
-    path('vehiculos/<int:ubicacion_id>/editar/', VehiculoEditView.as_view(), name='ruta_editar_vehiculo'),
+    path('vehiculos/<int:ubicacion_id>/editar/', VehiculoEditarView.as_view(), name='ruta_editar_vehiculo'),
 
     # Eliminar ubicación
     path('ubicaciones/<int:ubicacion_id>/eliminar/', UbicacionDeleteView.as_view(), name='ruta_eliminar_ubicacion'),
