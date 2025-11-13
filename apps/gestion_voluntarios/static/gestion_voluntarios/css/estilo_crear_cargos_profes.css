@@ -44,13 +44,6 @@
     box-sizing: border-box;
 }
 
-body {
-    font-family: 'Raleway', sans-serif;
-    font-size: var(--fs-normal);
-    background-color: var(--color-fondo);
-    color: var(--color-texto-primario);
-    padding: 2rem;
-}
 
 .container {
     max-width: 900px;
