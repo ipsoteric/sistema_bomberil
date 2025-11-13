@@ -45,7 +45,10 @@ class UsuarioListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
         # Empezamos con el queryset base (igual al que tenías)
         queryset = (
             self.model.objects
-            .filter(estacion_id=self.estacion_activa)
+            .filter(
+                estacion_id=self.estacion_activa,
+                estado__in=[self.model.Estado.ACTIVO, self.model.Estado.INACTIVO]
+            )
             .select_related('usuario')
             .prefetch_related('roles') # Optimización para cargar roles
         )
@@ -980,3 +983,89 @@ class UsuarioFinalizarMembresiaView(LoginRequiredMixin, ModuleAccessMixin, Permi
         
         messages.success(request, f"La membresía de '{usuario_nombre}' ha sido finalizada correctamente.")
         return redirect(self.success_url)
+
+
+
+
+class HistorialMembresiasView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Muestra un historial paginado de todas las membresías FINALIZADAS
+    de la estación activa, con filtros de búsqueda y fecha.
+    """
+    template_name = 'gestion_usuarios/pages/historial_membresias.html'
+    permission_required = 'gestion_usuarios.accion_usuarios_ver_usuarios_compania'
+    model = Membresia
+    paginate_by = 20
+
+    def get_queryset(self):
+        """
+        Obtiene el queryset base (solo membresías finalizadas)
+        y aplica los filtros de búsqueda y fecha.
+        """
+        
+        # 1. Queryset Base: Solo membresías FINALIZADAS de la estación activa.
+        # (self.estacion_activa viene del BaseEstacionMixin)
+        queryset = (
+            self.model.objects
+            .filter(
+                estacion_id=self.estacion_activa,
+                estado=Membresia.Estado.FINALIZADO
+            )
+            .select_related('usuario')
+            .prefetch_related('roles')
+            .order_by('-fecha_fin') # Ordenar por fecha de fin (más reciente primero)
+        )
+
+        # 2. Aplicar filtro de Búsqueda (q)
+        if hasattr(self, 'search_q') and self.search_q:
+            queryset = queryset.filter(
+                Q(usuario__first_name__icontains=self.search_q) |
+                Q(usuario__last_name__icontains=self.search_q) |
+                Q(usuario__email__icontains=self.search_q) |
+                Q(usuario__rut__icontains=self.search_q)
+            )
+
+        # 3. Aplicar filtros de Fecha (sobre fecha_fin)
+        if hasattr(self, 'fecha_desde') and self.fecha_desde:
+            queryset = queryset.filter(fecha_fin__gte=self.fecha_desde)
+        if hasattr(self, 'fecha_hasta') and self.fecha_hasta:
+            queryset = queryset.filter(fecha_fin__lte=self.fecha_hasta)
+            
+        return queryset.distinct()
+
+    def get_context_data(self):
+        """
+        Prepara el contexto para la plantilla, incluyendo la paginación
+        y los valores de los filtros.
+        """
+        membresias_filtradas = self.get_queryset()
+
+        paginator = Paginator(membresias_filtradas, self.paginate_by)
+        page_number = self.request.GET.get('page')
+
+        try:
+            page_obj = paginator.get_page(page_number)
+        except PageNotAnInteger:
+            page_obj = paginator.get_page(1)
+        except EmptyPage:
+            page_obj = paginator.get_page(paginator.num_pages)
+
+        context = {
+            'page_obj': page_obj,
+            'current_q': getattr(self, 'search_q', ''),
+            'current_fecha_desde': getattr(self, 'fecha_desde', ''),
+            'current_fecha_hasta': getattr(self, 'fecha_hasta', ''),
+        }
+        return context
+
+    def get(self, request, *args, **kwargs):
+        """
+        Maneja la solicitud GET.
+        Captura los filtros de la URL antes de llamar a get_context_data.
+        """
+        self.search_q = request.GET.get('q', '')
+        self.fecha_desde = request.GET.get('fecha_desde', '')
+        self.fecha_hasta = request.GET.get('fecha_hasta', '')
+        
+        context = self.get_context_data()
+        return render(request, self.template_name, context)

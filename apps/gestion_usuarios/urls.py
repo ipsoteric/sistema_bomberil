@@ -1,5 +1,25 @@
 from django.urls import path
-from .views import *
+from .views import (
+    UsuarioInicioView,
+    UsuarioListaView,
+    UsuarioObtenerView,
+    UsuarioAgregarView,
+    UsuarioCrearView,
+    UsuarioEditarView,
+    UsuarioDesactivarView,
+    UsuarioActivarView,
+    UsuarioAsignarRolesView,
+    UsuarioRestablecerContrasena,
+    UsuarioVerPermisos,
+    UsuarioFinalizarMembresiaView,
+    HistorialMembresiasView,
+    RolListaView,
+    RolObtenerView,
+    RolCrearView,
+    RolEditarView,
+    RolAsignarPermisosView,
+    RolEliminarView,
+)
 
 app_name = "gestion_usuarios"
 
@@ -39,6 +59,9 @@ urlpatterns = [
 
     # Finalizar membresía de un usuario
     path('usuarios/<int:id>/finalizar-membresia/', UsuarioFinalizarMembresiaView.as_view(), name='ruta_finalizar_membresia'),
+
+    # Historial de membresías
+    path('usuarios/historial/', HistorialMembresiasView.as_view(), name="ruta_historial_membresias"),
 
 
 

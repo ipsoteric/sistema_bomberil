@@ -47,15 +47,15 @@
         <div class="barra_lateral__modulo" data-toggle="modulo">
             <a href="" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario scale">
                 <i class="fa-solid fa-clipboard-list"></i>
-                <span>Auditoría (Pendiente)</span>
+                <span>Auditoría</span>
             </a>
             <i class="fa-solid fa-chevron-down color_primario barra_lateral__flecha_modulo"></i>
         </div>
 
         <ul class="barra_lateral__lista_opciones oculto">
             <li class="fondo_opcion_nav hover_color">
-                <a class="color_primario fs_pequena fs_nav_opcion" href="">
-                    Pendiente
+                <a class="color_primario fs_pequena fs_nav_opcion" href="{% url 'gestion_usuarios:ruta_historial_membresias' %}">
+                    Historial de membresías
                 </a>
             </li>
         </ul>

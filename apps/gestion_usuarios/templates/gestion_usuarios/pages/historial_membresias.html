@@ -1,0 +1,157 @@
+{% extends 'gestion_usuarios/layouts/base.html' %}
+{% load static %}
+{% load i18n %} 
+
+{% block titulo_ventana %}Historial de Membresías{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-history me-2"></i> Historial de Membresías
+    </span>
+{% endblock %}
+
+{% block contenido %}
+
+<div class="container-fluid mt-4">
+
+{# Panel de Filtros y Búsqueda #}
+<div class="card shadow-sm mb-4">
+    <div class="card-header fs_normal">
+        <i class="fas fa-filter me-1"></i>
+        Filtros y Búsqueda
+    </div>
+    <div class="card-body">
+        <form method="get" action="{% url 'gestion_usuarios:ruta_historial_membresias' %}">
+            <div class="row g-3 align-items-end"> 
+                
+                {# Buscar #}
+                <div class="col-md-5">
+                    <label for="search_query" class="form-label fw-bold fs_pequena">Buscar</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control fs_normal" id="search_query" name="q" 
+                               placeholder="Nombre, Apellido, Email, RUT..." 
+                               value="{{ current_q|default:'' }}">
+                    </div>
+                </div>
+                
+                {# Fecha Desde #}
+                <div class="col-md-3 col-lg-2">
+                    <label for="fecha_desde" class="form-label fw-bold fs_pequena">Finalizado Desde</label>
+                    <input type="date" name="fecha_desde" id="fecha_desde" 
+                           class="form-control form-control-sm fs_normal" 
+                           value="{{ current_fecha_desde|default:'' }}">
+                </div>
+                {# Fecha Hasta #}
+                <div class="col-md-3 col-lg-2">
+                    <label for="fecha_hasta" class="form-label fw-bold fs_pequena">Finalizado Hasta</label>
+                    <input type="date" name="fecha_hasta" id="fecha_hasta" 
+                           class="form-control form-control-sm fs_normal" 
+                           value="{{ current_fecha_hasta|default:'' }}">
+                </div>
+                
+                {# Botones #}
+                <div class="col-md-1 col-lg-3 text-end">
+                    <a href="{% url 'gestion_usuarios:ruta_historial_membresias' %}" class="btn btn-outline-secondary btn-sm fs_normal me-1">Limpiar</a>
+                    <button type="submit" class="btn btn-primary btn-sm fs_normal">
+                        <i class="fas fa-filter me-1"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Tabla de Historial #}
+<div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-bold fs_normal">
+            <i class="fas fa-table me-1"></i>
+            Usuarios con Membresía Finalizada
+        </span>
+        <a href="{% url 'gestion_usuarios:ruta_lista_usuarios' %}" class="btn btn-outline-secondary btn-sm fs_normal"> 
+            <i class="fas fa-users me-1"></i> Ver Usuarios Activos
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-sm align-middle">
+                <thead class="fs_pequena">
+                    <tr>
+                        <th style="width: 30%;">Usuario</th>
+                        <th style="width: 25%;">Periodo de Membresía</th>
+                        <th style="width: 20%;" class="text-center">Estado</th>
+                        <th style="width: 20%;">Últimos Roles</th>
+                        <th style="width: 5%;" class="text-center">Acc.</th>
+                    </tr>
+                </thead>
+                <tbody class="fs_normal">
+                    {% for membresia in page_obj %}
+                    <tr class="opacity-75"> {# Atenuamos la fila por ser historial #}
+                        {# Usuario #}
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if membresia.usuario.avatar_thumb_small %}
+                                    <img class="rounded-circle me-2" 
+                                         src="{{ membresia.usuario.avatar_thumb_small.url }}" 
+                                         alt="Avatar" style="width: 32px; height: 32px; object-fit: cover;">
+                                {% else %}
+                                    <img class="rounded-circle me-2" 
+                                         src="{% static 'imagenes/default_avatar.png' %}" 
+                                         alt="Avatar" style="width: 32px; height: 32px;">
+                                {% endif %}
+                                <div>
+                                    <strong class="d-block">{{ membresia.usuario.get_full_name|title }}</strong>
+                                    <small class="text-muted">{{ membresia.usuario.rut|default:"N/A" }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        {# Periodo #}
+                        <td class="fs_pequena">
+                            Inicio: {{ membresia.fecha_inicio|date:"d/m/Y" }}
+                            <br>
+                            Fin: <strong>{{ membresia.fecha_fin|date:"d/m/Y"|default:"N/A" }}</strong>
+                        </td>
+
+                        {# Estado #}
+                        <td class="text-center">
+                            <span class="badge bg-secondary">Finalizado</span>
+                        </td>
+
+                        {# Roles #}
+                        <td class="fs_pequena">
+                            {% for rol in membresia.roles.all %}
+                                <span class="badge bg-light text-dark me-1 mb-1">{{ rol.nombre|title }}</span>
+                            {% empty %}
+                                <span class="text-muted fst-italic">Sin roles</span>
+                            {% endfor %}
+                        </td>
+                        
+                        {# Acciones #}
+                        <td class="text-center">
+                            <a href="#" {# (Link a Hoja de Vida) #}
+                               class="btn btn-sm btn-outline-secondary" title="Ver Hoja de Vida">
+                                <i class="fas fa-user-shield"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center fst-italic py-4">
+                            No se encontraron membresías finalizadas que coincidan con los filtros.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# Paginación #}
+        {% include 'gestion_usuarios/partials/_paginacion.html' with page_obj=page_obj %}
+
+    </div>
+</div>
+
+</div>
+{% endblock  %}
