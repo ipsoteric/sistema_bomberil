@@ -1,0 +1,81 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Listado de Voluntarios</title>
+    <style>
+        @page {
+            size: A4 landscape; /* Hoja horizontal para que quepa la tabla */
+            margin: 2cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            font-size: 9pt;
+        }
+        h1 {
+            font-size: 1.5em;
+            color: #000;
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        thead {
+            background-color: #f0f0f0;
+            color: #000;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Listado de Voluntarios</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>RUT</th>
+                <th>Nombre Completo</th>
+                <th>Email</th>
+                <th>Teléfono</th>
+                <th>Estación Actual</th>
+                <th>Estado</th>
+                <th>Cargo Actual</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for voluntario in voluntarios %}
+                {% with membresia=voluntario.usuario.membresia_activa_list|first cargo_actual=voluntario.cargo_actual_list|first %}
+                <tr>
+                    <td>{{ voluntario.usuario.rut|default:"" }}</td>
+                    <td>{{ voluntario.usuario.get_full_name }}</td>
+                    <td>{{ voluntario.usuario.email|default:"" }}</td>
+                    <td>{{ voluntario.usuario.phone|default:"" }}</td>
+                    <td>{% if membresia %}{{ membresia.estacion.nombre }}{% else %}Sin Estación{% endif %}</td>
+                    <td>{% if membresia %}{{ membresia.get_estado_display }}{% else %}Inactivo{% endif %}</td>
+                    <td>{% if cargo_actual %}{{ cargo_actual.cargo.nombre }}{% else %}Sin Cargo{% endif %}</td>
+                </tr>
+                {% endwith %}
+            {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center;">No hay voluntarios registrados.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 {# Plantilla base #}{% extends 'gestion_voluntarios/layouts/base.html' %}
 {# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Módulo{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Título de la Página{% endblock %}
+{# Título de la ventana #} {% block titulo_ventana %}Exportar Listado{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Exportar Listado de Voluntarios{% endblock %}
 
 {% block contenido %}
 
@@ -14,29 +14,40 @@
         
         <div class="card-reporte">
             <h2 class="card-title-report">Filtros y Formato de Salida</h2>
-            <p class="text-muted-report">Aplique filtros por Estación y Rango para exportar solo un subconjunto de voluntarios y elija el formato de salida (Excel o CSV).</p>
+            <p class="text-muted-report">Aplique filtros por Estación y Rango para exportar solo un subconjunto de voluntarios y elija el formato de salida.</p>
 
-            <form action="#" method="GET">
+            <form action="{% url 'gestion_voluntarios:ruta_exportar_listado' %}" method="GET" target="_blank">
+                {# Usamos target="_blank" para que la descarga no "congele" la página #}
+                
                 <div class="form-row-report">
+                    
                     <div class="form-group">
                         <label for="filtro_estacion" class="label-custom">Filtrar por Estación:</label>
                         <select id="filtro_estacion" name="estacion" class="form-control">
                             <option value="global">Global (Todas)</option>
-                            <option value="1">Compañía 1</option>
+                            {% for estacion in estaciones %}
+                            <option value="{{ estacion.id }}">{{ estacion.nombre }}</option>
+                            {% endfor %}
                         </select>
                     </div>
+                    
                     <div class="form-group">
                         <label for="filtro_rango" class="label-custom">Filtrar por Rango:</label>
                         <select id="filtro_rango" name="rango" class="form-control">
                             <option value="global">Todos los Rangos</option>
-                            <option value="capitan">Capitán</option>
+                            {% for cargo in cargos %}
+                            <option value="{{ cargo.id }}">{{ cargo.nombre }}</option>
+                            {% endfor %}
                         </select>
                     </div>
+                    
                     <div class="form-group">
                         <label for="formato_export" class="label-custom">Formato de Exportación:</label>
-                        <select id="formato_export" name="formato" class="form-control" required>
-                            <option value="excel">Microsoft Excel (.xlsx)</option>
+                        <select id="formato_export" name="format" class="form-control" required>
                             <option value="csv">Valores Separados por Coma (.csv)</option>
+                            <option value="excel">Microsoft Excel (.xlsx)</option>
+                            <option value="pdf">Documento PDF (.pdf)</option>
+                            <option value="json">Datos (JSON)</option>
                         </select>
                     </div>
                 </div>
@@ -50,4 +61,4 @@
     </div>
 </div>
 
-        {% endblock  %}
+{% endblock  %}

@@ -2,10 +2,15 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.db.models import Prefetch
 from django.contrib import messages
-# --- ¡NUEVAS IMPORTACIONES PARA PDF! ---
-from django.http import HttpResponse
+# --- ¡NUEVAS IMPORTACIONES PARA PDF Y EXPORTACIÓN! ---
+import csv
+import json
+from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string 
+from django.utils import timezone # Para el nombre del archivo
+from django.core import serializers
 import weasyprint
+import openpyxl # <--- Biblioteca para Excel
 # -------------------------------------
 
 # Importamos los modelos de voluntarios
@@ -20,12 +25,10 @@ from apps.gestion_usuarios.models import Membresia
 # Importamos el modelo Estacion de gestion_inventario
 from apps.gestion_inventario.models import Estacion
 
-# --- ¡CORRECCIÓN DE IMPORTACIONES! ---
-# Importamos TODOS los formularios de nuestro forms.py local
+# Importamos los formularios
 try:
     from .forms import ProfesionForm, CargoForm, UsuarioForm, VoluntarioForm
 except ImportError:
-    # Maneja el caso si forms.py aún no existe
     ProfesionForm = CargoForm = UsuarioForm = VoluntarioForm = None
 
 # Página Inicial
@@ -375,5 +378,165 @@ class HojaVidaView(View):
         return response
 # Exportar listado 
 class ExportarListadoView(View):
+    
+    def _get_voluntarios_data(self, request):
+        """
+        Obtiene el queryset de voluntarios, filtrado según los 
+        parámetros GET 'estacion' y 'rango'.
+        """
+        estacion_id = request.GET.get('estacion')
+        cargo_id = request.GET.get('rango')
+        
+        voluntarios_qs = Voluntario.objects.select_related('usuario')
+
+        if estacion_id and estacion_id != 'global':
+            voluntarios_qs = voluntarios_qs.filter(
+                usuario__membresias__estacion_id=estacion_id, 
+                usuario__membresias__estado='ACTIVO'
+            )
+        
+        if cargo_id and cargo_id != 'global':
+            voluntarios_qs = voluntarios_qs.filter(
+                historial_cargos__cargo_id=cargo_id,
+                historial_cargos__fecha_fin__isnull=True
+            )
+
+        # Pre-cargamos los datos necesarios para el reporte
+        active_membresia_prefetch = Prefetch(
+            'usuario__membresias',
+            queryset=Membresia.objects.filter(estado='ACTIVO').select_related('estacion'),
+            to_attr='membresia_activa_list'
+        )
+        current_cargo_prefetch = Prefetch(
+            'historial_cargos',
+            queryset=HistorialCargo.objects.filter(fecha_fin__isnull=True).select_related('cargo'),
+            to_attr='cargo_actual_list'
+        )
+        
+        return voluntarios_qs.prefetch_related(
+            active_membresia_prefetch,
+            current_cargo_prefetch
+        ).distinct() # Evita duplicados si los filtros causan joins múltiples
+
+    def _export_csv(self, voluntarios):
+        """Genera y devuelve una respuesta HTTP con un archivo CSV."""
+        response = HttpResponse(
+            content_type='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename="listado_voluntarios_{timezone.now().strftime("%Y-%m-%d")}.csv"'
+            },
+        )
+        response.write(u'\ufeff'.encode('utf8')) # BOM para UTF-8 (acentos)
+        writer = csv.writer(response, delimiter=';')
+        
+        writer.writerow(['RUT', 'Nombre Completo', 'Email', 'Teléfono', 'Estación Actual', 'Estado', 'Cargo Actual'])
+
+        for v in voluntarios:
+            membresia = v.usuario.membresia_activa_list[0] if v.usuario.membresia_activa_list else None
+            cargo_actual = v.cargo_actual_list[0] if v.cargo_actual_list else None
+            writer.writerow([
+                v.usuario.rut or '',
+                v.usuario.get_full_name, # <--- CORREGIDO (sin paréntesis)
+                v.usuario.email or '',
+                v.usuario.phone or '',
+                membresia.estacion.nombre if membresia and membresia.estacion else 'Sin Estación',
+                membresia.get_estado_display() if membresia else 'Inactivo',
+                cargo_actual.cargo.nombre if cargo_actual and cargo_actual.cargo else 'Sin Cargo'
+            ])
+        return response
+
+    def _export_excel(self, voluntarios):
+        """Genera y devuelve una respuesta HTTP con un archivo Excel (.xlsx)."""
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={
+                'Content-Disposition': f'attachment; filename="listado_voluntarios_{timezone.now().strftime("%Y-%m-%d")}.xlsx"'
+            },
+        )
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Listado Voluntarios"
+
+        headers = ['RUT', 'Nombre Completo', 'Email', 'Teléfono', 'Estación Actual', 'Estado', 'Cargo Actual']
+        ws.append(headers)
+
+        for v in voluntarios:
+            membresia = v.usuario.membresia_activa_list[0] if v.usuario.membresia_activa_list else None
+            cargo_actual = v.cargo_actual_list[0] if v.cargo_actual_list else None
+            ws.append([
+                v.usuario.rut or '',
+                v.usuario.get_full_name, # <--- CORREGIDO (sin paréntesis)
+                v.usuario.email or '',
+                v.usuario.phone or '',
+                membresia.estacion.nombre if membresia and membresia.estacion else 'Sin Estación',
+                membresia.get_estado_display() if membresia else 'Inactivo',
+                cargo_actual.cargo.nombre if cargo_actual and cargo_actual.cargo else 'Sin Cargo'
+            ])
+        
+        wb.save(response)
+        return response
+    
+    def _export_pdf(self, request, voluntarios):
+        """Genera y devuelve una respuesta HTTP con un archivo PDF."""
+        context = {
+            'voluntarios': voluntarios,
+            'request': request
+        }
+        html_string = render_to_string(
+            "gestion_voluntarios/pages/lista_voluntarios_pdf.html", 
+            context
+        )
+        base_url = request.build_absolute_uri('/')
+        pdf = weasyprint.HTML(string=html_string, base_url=base_url).write_pdf()
+        
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="listado_voluntarios_{timezone.now().strftime("%Y-%m-%d")}.pdf"'
+        return response
+
+    def _export_json(self, voluntarios):
+        """Genera y devuelve una respuesta HTTP con un archivo JSON."""
+        data_list = []
+        for v in voluntarios:
+            membresia = v.usuario.membresia_activa_list[0] if v.usuario.membresia_activa_list else None
+            cargo_actual = v.cargo_actual_list[0] if v.cargo_actual_list else None
+            data_list.append({
+                'rut': v.usuario.rut or '',
+                'nombre_completo': v.usuario.get_full_name, # <--- CORREGIDO (sin paréntesis)
+                'email': v.usuario.email or '',
+                'telefono': v.usuario.phone or '',
+                'estacion': membresia.estacion.nombre if membresia and membresia.estacion else None,
+                'estado': membresia.get_estado_display() if membresia else 'Inactivo',
+                'cargo': cargo_actual.cargo.nombre if cargo_actual and cargo_actual.cargo else None
+            })
+        
+        return JsonResponse(data_list, safe=False, json_dumps_params={'ensure_ascii': False, 'indent': 2})
+
+    
+    # --- VISTA GET PRINCIPAL ---
     def get(self, request):
-        return render(request, "gestion_voluntarios/pages/exportar_listado.html")
+        # Leemos el formato de la URL (?format=...)
+        formato = request.GET.get('format')
+
+        if formato:
+            # Si se pide un formato, generar el archivo
+            voluntarios = self._get_voluntarios_data(request) # Get filtered data
+            
+            if formato == 'excel':
+                return self._export_excel(voluntarios)
+            elif formato == 'pdf':
+                return self._export_pdf(request, voluntarios)
+            elif formato == 'json':
+                return self._export_json(voluntarios)
+            else: # Default to CSV
+                return self._export_csv(voluntarios)
+        
+        else:
+            # Si no se pide formato, mostrar la página de opciones
+            estaciones = Estacion.objects.all().order_by('nombre')
+            cargos = Cargo.objects.all().order_by('nombre')
+            
+            context = {
+                'estaciones': estaciones,
+                'cargos': cargos
+            }
+            return render(request, "gestion_voluntarios/pages/exportar_listado.html", context)
