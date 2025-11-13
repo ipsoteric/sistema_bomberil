@@ -1,17 +1,15 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Count
 from django.contrib import messages
-# --- ¡NUEVAS IMPORTACIONES PARA PDF Y EXPORTACIÓN! ---
-import csv
-import json
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.template.loader import render_to_string 
-from django.utils import timezone # Para el nombre del archivo
+from django.utils import timezone
 from django.core import serializers
 import weasyprint
-import openpyxl # <--- Biblioteca para Excel
-# -------------------------------------
+import openpyxl
+import csv
+import json # <--- Importar JSON para los gráficos
 
 # Importamos los modelos de voluntarios
 from .models import (
@@ -34,7 +32,48 @@ except ImportError:
 # Página Inicial
 class VoluntariosInicioView(View):
     def get(self, request):
-        return render(request, "gestion_voluntarios/pages/home.html")
+        
+        # --- 1. Datos para las Tarjetas (Cards) ---
+        # Contamos los voluntarios según el estado de su membresía
+        voluntarios_activos = Membresia.objects.filter(estado='ACTIVO').count()
+        voluntarios_inactivos = Membresia.objects.filter(estado='INACTIVO').count()
+        total_voluntarios_general = voluntarios_activos + voluntarios_inactivos
+
+        # --- 2. Datos para Gráfico de Rangos (Cargos) ---
+        # Agrupamos los cargos actuales (fecha_fin IS NULL) y contamos cuántos hay de cada uno
+        rangos_data = HistorialCargo.objects.filter(fecha_fin__isnull=True) \
+                      .values('cargo__nombre') \
+                      .annotate(count=Count('cargo')) \
+                      .order_by('-count') # Ordenamos de mayor a menor
+
+        # Separamos los datos en etiquetas (labels) y cuentas (counts) para Chart.js
+        chart_rangos_labels = [item['cargo__nombre'] for item in rangos_data]
+        chart_rangos_counts = [item['count'] for item in rangos_data]
+
+        # --- 3. Datos para Gráfico de Profesiones (Top 5) ---
+        # Agrupamos las profesiones de los perfiles de voluntarios y contamos
+        profesiones_data = Voluntario.objects.exclude(profesion__isnull=True) \
+                            .values('profesion__nombre') \
+                            .annotate(count=Count('profesion')) \
+                            .order_by('-count')[:5] # Tomamos solo el Top 5
+
+        chart_profes_labels = [item['profesion__nombre'] for item in profesiones_data]
+        chart_profes_counts = [item['count'] for item in profesiones_data]
+
+        # --- 4. Preparamos el Contexto ---
+        context = {
+            'total_voluntarios_general': total_voluntarios_general,
+            'voluntarios_activos': voluntarios_activos,
+            'voluntarios_inactivos': voluntarios_inactivos,
+            
+            # Convertimos las listas de Python a JSON para que JavaScript pueda leerlas
+            'chart_rangos_labels': json.dumps(chart_rangos_labels),
+            'chart_rangos_counts': json.dumps(chart_rangos_counts),
+            'chart_profes_labels': json.dumps(chart_profes_labels),
+            'chart_profes_counts': json.dumps(chart_profes_counts),
+        }
+        
+        return render(request, "gestion_voluntarios/pages/home.html", context)
     
 
 # Lista de voluntarios
@@ -416,7 +455,7 @@ class ExportarListadoView(View):
         return voluntarios_qs.prefetch_related(
             active_membresia_prefetch,
             current_cargo_prefetch
-        ).distinct() # Evita duplicados si los filtros causan joins múltiples
+        ).distinct()
 
     def _export_csv(self, voluntarios):
         """Genera y devuelve una respuesta HTTP con un archivo CSV."""
@@ -426,7 +465,7 @@ class ExportarListadoView(View):
                 'Content-Disposition': f'attachment; filename="listado_voluntarios_{timezone.now().strftime("%Y-%m-%d")}.csv"'
             },
         )
-        response.write(u'\ufeff'.encode('utf8')) # BOM para UTF-8 (acentos)
+        response.write(u'\ufeff'.encode('utf8'))
         writer = csv.writer(response, delimiter=';')
         
         writer.writerow(['RUT', 'Nombre Completo', 'Email', 'Teléfono', 'Estación Actual', 'Estado', 'Cargo Actual'])
@@ -436,7 +475,7 @@ class ExportarListadoView(View):
             cargo_actual = v.cargo_actual_list[0] if v.cargo_actual_list else None
             writer.writerow([
                 v.usuario.rut or '',
-                v.usuario.get_full_name, # <--- CORREGIDO (sin paréntesis)
+                v.usuario.get_full_name, # Corregido (es propiedad)
                 v.usuario.email or '',
                 v.usuario.phone or '',
                 membresia.estacion.nombre if membresia and membresia.estacion else 'Sin Estación',
@@ -465,7 +504,7 @@ class ExportarListadoView(View):
             cargo_actual = v.cargo_actual_list[0] if v.cargo_actual_list else None
             ws.append([
                 v.usuario.rut or '',
-                v.usuario.get_full_name, # <--- CORREGIDO (sin paréntesis)
+                v.usuario.get_full_name, # Corregido (es propiedad)
                 v.usuario.email or '',
                 v.usuario.phone or '',
                 membresia.estacion.nombre if membresia and membresia.estacion else 'Sin Estación',
@@ -501,7 +540,7 @@ class ExportarListadoView(View):
             cargo_actual = v.cargo_actual_list[0] if v.cargo_actual_list else None
             data_list.append({
                 'rut': v.usuario.rut or '',
-                'nombre_completo': v.usuario.get_full_name, # <--- CORREGIDO (sin paréntesis)
+                'nombre_completo': v.usuario.get_full_name, # Corregido (es propiedad)
                 'email': v.usuario.email or '',
                 'telefono': v.usuario.phone or '',
                 'estacion': membresia.estacion.nombre if membresia and membresia.estacion else None,
