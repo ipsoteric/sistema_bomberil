@@ -1,6 +1,9 @@
 from django.contrib.auth.mixins import AccessMixin
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.http import Http404
+from django.contrib import messages
+from django.urls import reverse_lazy
+
 from .models import Membresia, Rol
 
 
@@ -72,4 +75,49 @@ class RolValidoParaEstacionMixin(AccessMixin):
             raise Http404
 
         # Si la validación es exitosa, la vista continúa.
+        return super().dispatch(request, *args, **kwargs)
+
+
+
+
+class MembresiaGestionableMixin:
+    """
+    Este Mixin comprueba si la Membresia obtenida por la vista
+    tiene un estado "gestionable" (ACTIVO o INACTIVO).
+    
+    Si está, por ejemplo, "FINALIZADA", redirige con un
+    mensaje de error.
+    
+    Requiere que la vista que lo usa defina un método get_object().
+    """
+    
+    # Estados que SÍ permitimos gestionar
+    ESTADOS_GESTIONABLES = [
+        Membresia.Estado.ACTIVO,
+        Membresia.Estado.INACTIVO
+    ]
+    
+    # URL a la que redirigir si la validación falla
+    redirect_url_no_gestiona = reverse_lazy('gestion_usuarios:ruta_lista_usuarios')
+    mensaje_no_gestiona = (
+        "La membresía de este usuario no se puede gestionar "
+        "porque su estado es 'Finalizada' o ya no es vigente."
+    )
+
+    def dispatch(self, request, *args, **kwargs):
+        # 1. Obtenemos el objeto (la vista debe definir get_object)
+        #    (El get_object de la vista debe validar la pertenencia a la estación)
+        try:
+            self.object = self.get_object()
+        except Exception as e:
+            # Si get_object() lanza 404, dejamos que Django lo maneje
+            return super().dispatch(request, *args, **kwargs)
+
+        # 2. Verificamos si el estado NO está en la lista permitida
+        if self.object.estado not in self.ESTADOS_GESTIONABLES:
+            messages.error(request, self.mensaje_no_gestiona)
+            return redirect(self.redirect_url_no_gestiona)
+
+        # 3. Si la validación pasa, continuamos con la vista normal
+        #    El objeto está disponible en 'self.object'
         return super().dispatch(request, *args, **kwargs)
