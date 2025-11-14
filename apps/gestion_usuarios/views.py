@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.forms import PasswordResetForm
 from django.db import IntegrityError, transaction
 from django.urls import reverse, reverse_lazy
-from django.http import HttpResponseNotAllowed
+from django.http import HttpResponseNotAllowed, Http404
 from django.utils import timezone
 from django.db.models import Q, Count
 from collections import defaultdict
@@ -18,7 +18,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from .models import Usuario, Membresia, Rol
 from .forms import FormularioCrearUsuario, FormularioEditarUsuario, FormularioRol
-from .mixins import UsuarioDeMiEstacionMixin, RolValidoParaEstacionMixin
+from .mixins import UsuarioDeMiEstacionMixin, RolValidoParaEstacionMixin, MembresiaGestionableMixin
 from apps.common.mixins import ModuleAccessMixin, ObjectInStationRequiredMixin, BaseEstacionMixin
 from .utils import generar_contraseña_segura
 from apps.gestion_inventario.models import Estacion
@@ -34,7 +34,7 @@ class UsuarioInicioView(BaseEstacionMixin, View):
 
 
 class UsuarioListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
-    '''Vista para listar usuarios'''
+    '''Vista para listar usuarios con membresías vigentes en la estación. Se excluyen membresías con el estado "FINALIZADO".'''
 
     template_name = "gestion_usuarios/pages/lista_usuarios.html"
     permission_required = 'gestion_usuarios.accion_usuarios_ver_usuarios_compania'
@@ -42,7 +42,6 @@ class UsuarioListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
     paginate_by = 20
 
     def get_queryset(self):    
-        # Empezamos con el queryset base (igual al que tenías)
         queryset = (
             self.model.objects
             .filter(
@@ -128,117 +127,176 @@ class UsuarioListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
 
 
-class UsuarioObtenerView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, ObjectInStationRequiredMixin, View):
-    '''Vista para obtener el detalle de un usuario'''
-
+class UsuarioObtenerView(BaseEstacionMixin, PermissionRequiredMixin, MembresiaGestionableMixin, View):
+    """
+    Vista para obtener el detalle de la última membresía 
+    (activa/inactiva) de un usuario en la estación actual.
+    """
+    # --- 1. Atributos de Configuración ---
     template_name = "gestion_usuarios/pages/ver_usuario.html"
-    model = Membresia
     permission_required = 'gestion_usuarios.accion_usuarios_ver_usuarios_compania'
+    model = Membresia
 
-    def get(self, request, id):
-        membresia = self.model.objects.filter(
-            usuario_id=id,
-            estacion_id=request.session.get('active_estacion_id'),
-            estado__in=['ACTIVO', 'INACTIVO']
-        ).select_related('usuario', 'estacion').prefetch_related('roles').latest('fecha_inicio')
-
-        # Pasamos la membresía encontrada al contexto.
-        context = {'membresia': membresia}
+    # --- 2. Métodos Helper (Obtención y Contexto) ---
+    def get_object(self):
+        """
+        Obtiene la *última* membresía (de cualquier estado)
+        del usuario en la estación actual.
+        El 'MembresiaGestionableMixin' la validará.
+        """
+        usuario_id = self.kwargs.get('id') 
         
+        try:
+            membresia = self.model.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id
+            ).select_related('usuario', 'estacion'
+            ).prefetch_related('roles').latest('fecha_inicio')
+            
+            return membresia
+            
+        except self.model.DoesNotExist:
+            # Si no hay NINGUNA membresía, lanzamos 404
+            raise Http404(
+                "No se encontró ninguna membresía "
+                "para este usuario en la estación actual."
+            )
+
+    def get_context_data(self, **kwargs):
+        """Prepara el contexto para el template."""
+        context = {
+            # 'self.object' fue establecido y validado por el mixin
+            'membresia': self.object 
+        }
+        return context
+
+    def get(self, request, *args, **kwargs):
+        # (El 'dispatch' del mixin ya llamó a 'get_object'
+        # y validó el estado. Si era 'FINALIZADO', ya redirigió)
+        
+        context = self.get_context_data()
         return render(request, self.template_name, context)
 
 
 
 
-class UsuarioAgregarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    '''Vista para agregar usuario y que pueda acceder a la información de la compañía'''
-
+class UsuarioAgregarView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para agregar un usuario existente (sin membresía activa)
+    a la estación actual.
+    """
+    # --- 1. Atributos de Configuración ---
     template_name = "gestion_usuarios/pages/agregar_usuario.html"
     permission_required = 'gestion_usuarios.accion_usuarios_crear_usuario'
+    # URLs para redirección
+    success_redirect_url = 'gestion_usuarios:ruta_lista_usuarios'
+    fail_redirect_url = 'gestion_usuarios:ruta_agregar_usuario'
 
-    def get(self, request):
+
+    def get(self, request, *args, **kwargs):
+        """Maneja GET: Simplemente renderiza el template."""
         return render(request, self.template_name)
-    
+
 
     def post(self, request, *args, **kwargs):
-        # 1. OBTENER DATOS de la petición y la sesión
+        """
+        Maneja POST: Valida y crea la nueva membresía.
+        """
+        
+        # 1. OBTENER DATOS de la petición
         usuario_id = request.POST.get('usuario_id')
-        estacion_id = request.session.get('active_estacion_id') # Cambia 'estacion_id_actual' por el nombre de tu variable de sesión
 
         # 2. VALIDAR DATOS DE ENTRADA
-        if not usuario_id or not estacion_id:
-            messages.error(request, 'Hubo un error en la solicitud. Faltan datos necesarios.')
-            return redirect('gestion_usuarios:ruta_agregar_usuario') # Redirige a la misma página
+        if not usuario_id:
+            messages.error(request, 'No se proporcionó un ID de usuario.')
+            return redirect(self.fail_redirect_url)
 
         try:
-            # 3. OBTENER OBJETOS de la base de datos
+            # 3. OBTENER OBJETOS
             usuario = Usuario.objects.get(id=usuario_id)
-            estacion = Estacion.objects.get(id=estacion_id)
+            
+            # 4. REGLA DE NEGOCIO: Verificar que el usuario esté disponible
+            # (Usamos el Enum del modelo como buena práctica)
+            estados_restringidos = [
+                Membresia.Estado.ACTIVO,
+                Membresia.Estado.INACTIVO
+            ]
+            
+            if Membresia.objects.filter(
+                usuario=usuario, 
+                estado__in=estados_restringidos
+            ).exists():
+                messages.warning(request, f'El usuario {usuario.get_full_name().title()} ya se encuentra activo o inactivo en otra estación.')
+                return redirect(self.fail_redirect_url)
 
-            # 4. REGLA DE NEGOCIO: Re-verificar que el usuario esté realmente disponible
-            if Membresia.objects.filter(usuario=usuario, estado__in=['ACTIVO', 'INACTIVO']).exists():
-                messages.warning(request, f'El usuario {usuario.get_full_name.title()} ya se encuentra activo o inactivo en otra estación.')
-                return redirect('gestion_usuarios:ruta_agregar_usuario')
+            # 5. CREAR LA MEMBRESÍA (envuelta en transacción)
+            with transaction.atomic():
+                Membresia.objects.create(
+                    usuario=usuario,
+                    estacion=self.estacion_activa, # <-- Usamos el objeto del mixin
+                    estado=Membresia.Estado.ACTIVO, # <-- Usamos el Enum
+                    fecha_inicio=timezone.now().date()
+                )
 
-            # 5. CREAR LA MEMBRESÍA
-            Membresia.objects.create(
-                usuario=usuario,
-                estacion=estacion,
-                estado='ACTIVO',
-                fecha_inicio=timezone.now().date() # Asigna la fecha actual como inicio
-            )
-
-            messages.success(request, f'¡{usuario.get_full_name.title()} ha sido agregado a la estación exitosamente!')
-            # Redirige a una página de éxito, como la lista de usuarios.
-            return redirect('gestion_usuarios:ruta_lista_usuarios')
+            messages.success(request, f'¡{usuario.get_full_name().title()} ha sido agregado a la estación exitosamente!')
+            return redirect(self.success_redirect_url)
 
         except Usuario.DoesNotExist:
             messages.error(request, 'El usuario que intentas agregar no existe.')
-        except Estacion.DoesNotExist:
-            messages.error(request, 'La estación seleccionada no es válida. Revisa tu sesión.')
-        
-        return redirect('gestion_usuarios:ruta_agregar_usuario')
+            return redirect(self.fail_redirect_url)
     
 
 
 
 
-class UsuarioCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    '''Vista para crear usuarios'''
-
+class UsuarioCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para crear un nuevo Usuario y su Membresía inicial.
+    Refactorizada con el patrón de helpers de CBV.
+    """
+    
+    # --- 1. Atributos de Configuración ---
     template_name = "gestion_usuarios/pages/crear_usuario.html"
     permission_required = 'gestion_usuarios.accion_usuarios_crear_usuario'
+    form_class = FormularioCrearUsuario
+    success_url = reverse_lazy('gestion_usuarios:ruta_lista_usuarios')
 
-    def get(self, request):
-        formulario = FormularioCrearUsuario()
-        return render(request, self.template_name, context={'formulario':formulario})
+    # --- 2. Métodos Helper (Formulario, Contexto) ---
+    def get_form(self, data=None, files=None):
+        """Helper para instanciar el formulario (incluye files)."""
+        return self.form_class(data, files)
+
+    def get_context_data(self, **kwargs):
+        """Helper para poblar el contexto."""
+        context = {'formulario': kwargs.get('form')}
+        return context
 
 
-    def post(self, request):
-        formulario = FormularioCrearUsuario(request.POST, request.FILES)
+    def get(self, request, *args, **kwargs):
+        form = self.get_form()
+        context = self.get_context_data(form=form)
+        return render(request, self.template_name, context)
 
-        if not formulario.is_valid():
-            messages.add_message(request, messages.ERROR, "Formulario no válido")
-            return render(request, self.template_name, {'formulario': formulario})
-        
-        # Obtenemos la estación de la sesión
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Tu sesión ha expirado o no tienes una estación asignada. No se puede crear el usuario.")
-            return render(request, self.template_name, {'formulario': formulario})
-        
-        
+
+    def post(self, request, *args, **kwargs):
+        form = self.get_form(request.POST, request.FILES)
+
+        if form.is_valid():
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+            
+
+    def form_valid(self, form):
         try:
             with transaction.atomic():
-
-                # 1. Obtener el objeto Estacion
-                estacion_actual = Estacion.objects.get(id=estacion_id)
+                # 1. Obtener la estación (del Mixin)
+                estacion_actual = self.estacion_activa
 
                 # 2. Crear el usuario
-                datos_limpios = formulario.cleaned_data
+                datos_limpios = form.cleaned_data
                 contrasena_plana = generar_contraseña_segura()
 
-                # create_user para hashear la contraseña correctamente
                 nuevo_usuario = Usuario.objects.create_user(
                     password=contrasena_plana,
                     rut=datos_limpios.get('rut'),
@@ -250,143 +308,275 @@ class UsuarioCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequired
                     avatar=datos_limpios.get('avatar'),
                 )
 
-                # 3. Crear membresía inicial para el nuevo usuario
+                # 3. Crear membresía inicial
                 Membresia.objects.create(
                     usuario=nuevo_usuario,
                     estacion=estacion_actual,
-                    estado='ACTIVO',
+                    estado=Membresia.Estado.ACTIVO, # Usando el Enum
                     fecha_inicio=timezone.now().date()
                 )
 
-                print(f"Contraseña para {nuevo_usuario.email}: {contrasena_plana}")
+            print(f"Contraseña para {nuevo_usuario.email}: {contrasena_plana}")
+            messages.success(self.request, f"Usuario {nuevo_usuario.get_full_name().title()} creado y asignado a la estación exitosamente.")
+            return redirect(self.success_url)
 
-                messages.success(request, f"Usuario {nuevo_usuario.get_full_name.title()} creado y asignado a la estación exitosamente.")
-                return redirect(reverse('gestion_usuarios:ruta_lista_usuarios'))
-
-        except Estacion.DoesNotExist:
-            messages.error(request, "La estación guardada en tu sesión no es válida.")
         except IntegrityError:
-            messages.error(request, "Ya existe un usuario con el mismo RUT o correo electrónico.")
+            # Si 'create_user' falla (RUT/email duplicado)
+            messages.error(self.request, "Ya existe un usuario con el mismo RUT o correo electrónico.")
         except Exception as e:
+            # Captura cualquier otro error inesperado
             print(f"Ocurrió un error inesperado: {e}")
-            messages.error(request, "Ocurrió un error inesperado. Intenta nuevamente más tarde.")
+            messages.error(self.request, "Ocurrió un error inesperado. Intenta nuevamente más tarde.")
         
-        return render(request, self.template_name, {'formulario': formulario})
+        # Si la transacción falló, volvemos a renderizar el formulario
+        return self.form_invalid(form)
+    
+
+    def form_invalid(self, form):
+        # Añadimos un mensaje de error solo si 'form_valid' no lo hizo ya
+        if not messages.get_messages(self.request):
+            messages.error(self.request, "Formulario no válido. Por favor, revisa los campos.")
+            
+        context = self.get_context_data(form=form)
+        return render(self.request, self.template_name, context)
 
 
 
 
-class UsuarioEditarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
-    '''Vista para editar usuarios'''
-
+class UsuarioEditarView(BaseEstacionMixin, PermissionRequiredMixin, MembresiaGestionableMixin, View):
+    """
+    Vista para editar la información personal de un Usuario.
+    
+    SOLUCIÓN:
+    1. 'MembresiaGestionableMixin' valida que la 'Membresia' (obtenida por 'id'
+       de la URL) sea ACTIVA/INACTIVA y pertenezca a la estación.
+    2. Los métodos 'get' y 'post' usan 'self.object.usuario' (el Usuario)
+       como la instancia para el formulario.
+    """
+    
+    # --- 1. Atributos de Configuración ---
     template_name = "gestion_usuarios/pages/editar_usuario.html"
     permission_required = 'gestion_usuarios.accion_usuarios_modificar_info_personal'
+    form_class = FormularioEditarUsuario
+    model = Usuario # El formulario edita un Usuario
+    success_url = reverse_lazy('gestion_usuarios:ruta_lista_usuarios')
+    
+    # Personalizamos el mensaje del mixin para esta vista
+    mensaje_no_gestiona = (
+        "No se puede editar este usuario porque "
+        "su membresía está 'Finalizada'."
+    )
 
 
-    def get(self, request, id):
-        # Obtiene el usuario o retorna un 404 si no existe
-        usuario = get_object_or_404(Usuario, id=id)
+    # --- 2. Método de Obtención (Requerido por el Mixin) ---
+    def get_object(self):
+        """
+        Este método es llamado por 'MembresiaGestionableMixin'.
+        Obtiene la *última membresía* basada en el 'usuario_id' de la URL.
+        """
+        usuario_id = self.kwargs.get('id') 
         
-        # Instancia el formulario con los datos del usuario
-        formulario = FormularioEditarUsuario(instance=usuario)
+        try:
+            # Buscamos la *última* membresía de este usuario
+            # en la estación activa.
+            membresia = Membresia.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id
+            ).latest('fecha_inicio')
+            
+            return membresia
+            
+        except Membresia.DoesNotExist:
+            raise Http404(
+                "No se encontró ninguna membresía para este usuario "
+                "en la estación actual."
+            )
+
+
+    # --- 3. Métodos Helper (sin cambios) ---
+    def get_form(self, data=None, files=None, instance=None):
+        return self.form_class(data, files, instance=instance)
+
+    def get_context_data(self, **kwargs):
+        context = {
+            'formulario': kwargs.get('form'),
+            'usuario': kwargs.get('usuario_obj'),
+            'membresia': self.object # 'self.object' es la Membresia
+        }
+        return context
+
+    def get_success_url(self):
+        return self.success_url
+
+
+    # --- 4. Manejador GET ---
+    def get(self, request, *args, **kwargs):
+        usuario_a_editar = self.object.usuario # 'self.object' (la Membresia) ya fue validada por el mixin.
         
-        return render(request, self.template_name, {'formulario': formulario, 'usuario': usuario})
+        form = self.get_form(instance=usuario_a_editar)
+        context = self.get_context_data(form=form, usuario_obj=usuario_a_editar)
+        return render(request, self.template_name, context)
 
 
-    def post(self, request, id):
-        usuario = get_object_or_404(Usuario, id=id)
+    # --- 5. Manejador POST ---
+    def post(self, request, *args, **kwargs):
+        usuario_a_editar = self.object.usuario # 'self.object' (la Membresia) ya fue validada por el mixin.
         
-        # Instancia el formulario con los datos de la petición y los datos del usuario
-        formulario = FormularioEditarUsuario(request.POST, request.FILES, instance=usuario)
+        form = self.get_form(
+            request.POST, 
+            request.FILES, 
+            instance=usuario_a_editar
+        )
 
-        if formulario.is_valid():
-            # El formulario se encarga de guardar los cambios en el objeto 'usuario'
-            formulario.save()
-            messages.success(request, f"Usuario {usuario.get_full_name.title()} actualizado exitosamente.")
-            return redirect(reverse('gestion_usuarios:ruta_lista_usuarios'))
+        if form.is_valid():
+            return self.form_valid(form)
         else:
-            print("FORMULARIO NO VALIDO")
-            messages.error(request, "Formulario no válido. Por favor, revisa los datos.")
-            return render(request, self.template_name, {'formulario': formulario, 'usuario': usuario})
+            return self.form_invalid(form)
+          
+            
+    # --- 6. Lógica de Formulario ---
+    def form_valid(self, form):
+        usuario = form.save()
+        messages.success(self.request, f"Usuario {usuario.get_full_name().title()} actualizado exitosamente.")
+        return redirect(self.get_success_url())
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Formulario no válido. Por favor, revisa los datos.")
+        context = self.get_context_data(
+            form=form, 
+            usuario_obj=self.object.usuario 
+        )
+        return render(self.request, self.template_name, context)
 
 
 
-
-class UsuarioDesactivarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
-    '''Vista para desactivar usuarios. Desactivar un usuario consiste en no permitirle iniciar sesión en la compañía.'''
-
+class UsuarioDesactivarView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista (solo POST) para desactivar la membresía de un usuario
+    (cambia su estado a 'INACTIVO').
+    """
+    
+    # --- 1. Atributos de Configuración ---
     permission_required = 'gestion_usuarios.accion_usuarios_desactivar_usuario'
+    success_url = reverse_lazy("gestion_usuarios:ruta_lista_usuarios")
 
 
     def get(self, request, *args, **kwargs):
         return HttpResponseNotAllowed(['POST'])
 
-    def post(self, request, id, *args, **kwargs):
-        active_estacion_id = request.session.get('active_estacion_id')
-        if not active_estacion_id:
-            messages.error(request, "No se pudo determinar la estación activa. Por favor, inicie sesión de nuevo.")
-            return redirect(reverse("gestion_usuarios:ruta_lista_usuarios"))
 
+    def get_object(self):
+        """
+        Obtiene la membresía que se va a desactivar.
+        Lanza Http404 si no se encuentra, o si no está 'ACTIVA'.
+        """
+        usuario_id = self.kwargs.get('id')
         
         try:
-            membresia = get_object_or_404(
-                Membresia, 
-                usuario_id=id, 
-                estacion_id=active_estacion_id
-            )
+            # 1. Buscamos la *última* membresía (para evitar MultipleObjectsReturned)
+            #    'self.estacion_activa_id' viene de BaseEstacionMixin.
+            membresia = Membresia.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id
+            ).latest('fecha_inicio')
+        
+        except Membresia.DoesNotExist:
+            raise Http404("El usuario no tiene una membresía en esta estación.")
 
-            membresia.estado = 'INACTIVO'
+        # 2. Lógica de Negocio: Solo podemos desactivar membresías 'ACTIVA'
+        if membresia.estado != Membresia.Estado.ACTIVO:
+            raise Http404(f"No se puede desactivar esta membresía. Su estado actual es '{membresia.estado}'.")
+        
+        return membresia
+
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # 1. Obtenemos el objeto (ya validado por get_object)
+            membresia = self.get_object() 
+            
+            # 2. Ejecutamos la acción
+            membresia.estado = Membresia.Estado.INACTIVO
             membresia.save()
 
-            # Mensaje de éxito para el usuario
-            messages.success(request, f"El usuario '{membresia.usuario.get_full_name.title()}' ha sido desactivado correctamente.")
+            messages.success(request, f"El usuario '{membresia.usuario.get_full_name().title()}' ha sido desactivado correctamente.")
 
-        except Membresia.DoesNotExist:
-            messages.error(request, "El usuario no tiene acceso a esta estación.")
+        except Http404 as e:
+            # 3. Si get_object falló, mostramos el error
+            messages.error(request, str(e))
+            
         except Exception as e:
+            # 4. Cualquier otro error
             messages.error(request, f"Ocurrió un error inesperado: {e}")
 
-        # Redirige a la lista de usuarios (asegúrate que esta URL exista)
-        return redirect(reverse("gestion_usuarios:ruta_lista_usuarios"))
+        # 5. Redirigimos
+        return redirect(self.success_url)
 
 
 
 
-class UsuarioActivarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
-    '''Vista para activar usuarios. Activar un usuario le permitirle iniciar sesión en la compañía.'''
-
+class UsuarioActivarView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista (solo POST) para activar la membresía de un usuario
+    (cambia su estado a 'ACTIVO').
+    """
+    # --- 1. Atributos de Configuración ---
     permission_required = 'gestion_usuarios.accion_usuarios_desactivar_usuario'
+    
+    success_url = reverse_lazy("gestion_usuarios:ruta_lista_usuarios")
+    model = Membresia
 
+    # --- 2. Método GET (Correcto: esta acción no debe ser GET) ---
     def get(self, request, *args, **kwargs):
         return HttpResponseNotAllowed(['POST'])
 
-    def post(self, request, id, *args, **kwargs):
-        active_estacion_id = request.session.get('active_estacion_id')
-        if not active_estacion_id:
-            messages.error(request, "No se pudo determinar la estación activa. Por favor, inicie sesión de nuevo.")
-            return redirect(reverse("gestion_usuarios:ruta_lista_usuarios"))
-
+    # --- 3. Método de Obtención de Objeto ---
+    def get_object(self):
+        """
+        Obtiene la membresía que se va a activar.
+        Lanza Http404 si no se encuentra, o si no está 'INACTIVA'.
+        """
+        usuario_id = self.kwargs.get('id')
         
         try:
-            membresia = get_object_or_404(
-                Membresia, 
-                usuario_id=id, 
-                estacion_id=active_estacion_id
-            )
+            # 1. Buscamos la *última* membresía de este usuario
+            #    en la estación activa (viene de BaseEstacionMixin)
+            membresia = self.model.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id
+            ).latest('fecha_inicio')
+        
+        except self.model.DoesNotExist:
+            raise Http404("El usuario no tiene una membresía en esta estación.")
 
-            membresia.estado = 'ACTIVO'
+        # 2. Lógica de Negocio: Solo podemos activar membresías 'INACTIVA'
+        if membresia.estado != self.model.Estado.INACTIVO:
+            raise Http404(f"No se puede activar esta membresía. Su estado actual es '{membresia.estado}'.")
+        
+        return membresia
+
+    # --- 4. Manejador POST (Lógica de la Acción) ---
+    def post(self, request, *args, **kwargs):
+        try:
+            # 1. Obtenemos el objeto (ya validado por get_object)
+            membresia = self.get_object() 
+            
+            # 2. Ejecutamos la acción
+            membresia.estado = self.model.Estado.ACTIVO # <-- Usando Enum
             membresia.save()
 
-            # Mensaje de éxito para el usuario
-            messages.success(request, f"El usuario '{membresia.usuario.get_full_name.title()}' ha sido activado correctamente.")
+            messages.success(request, f"El usuario '{membresia.usuario.get_full_name().title()}' ha sido activado correctamente.")
 
-        except Membresia.DoesNotExist:
-            messages.error(request, "El usuario no tiene acceso a esta estación.")
+        except Http404 as e:
+            # 3. Si get_object falló, mostramos el error
+            messages.error(request, str(e))
+            
         except Exception as e:
+            # 4. Cualquier otro error
             messages.error(request, f"Ocurrió un error inesperado: {e}")
 
-        # Redirige a la lista de usuarios (asegúrate que esta URL exista)
-        return redirect(reverse("gestion_usuarios:ruta_lista_usuarios"))
+        # 5. Redirigimos
+        return redirect(self.success_url)
 
 
 
