@@ -515,8 +515,7 @@ class Activo(models.Model):
     estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT, verbose_name="Estación", help_text="Seleccionar estación propietaria de la existencia")
     numero_serie_fabricante = models.CharField(max_length=100, blank=True)
 
-    horas_de_uso = models.IntegerField(verbose_name="(opcional) Horas de uso", null=True, blank=True)
-    horas_de_uso_totales = models.IntegerField(verbose_name="(opcional) Horas de uso totales", null=True, blank=True)
+    horas_uso_totales = models.DecimalField(max_digits=7, decimal_places=2, default=0.00, verbose_name="Horas de Uso Totales", help_text="Total acumulado de horas de uso del activo.")
     notas_adicionales = models.TextField(verbose_name="(opcional) Notas adicionales", blank=True, null=True)
     estado = models.ForeignKey(Estado, on_delete=models.PROTECT, verbose_name="Estado de la existencia/lote", null=True, blank=True)
     compartimento = models.ForeignKey(Compartimento, on_delete=models.PROTECT, verbose_name="Compartimento", help_text="Seleccionar compartimento donde se encuentra la existencia")
@@ -613,6 +612,28 @@ class Activo(models.Model):
 
     def __str__(self):
         return f"{self.producto.producto_global.nombre_oficial} ({self.codigo_activo})"
+
+
+
+
+class RegistroUsoActivo(models.Model):
+    """
+    Bitácora de cada uso que se le da a un activo, registrando las horas.
+    """
+    activo = models.ForeignKey(Activo, on_delete=models.CASCADE, related_name="registros_uso", verbose_name="Activo Utilizado")
+    usuario_registra = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuario que registra")
+    fecha_uso = models.DateTimeField(verbose_name="Fecha y Hora de Uso")
+    horas_registradas = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="Horas Registradas")
+    notas = models.TextField(blank=True, null=True, verbose_name="Notas/Observaciones")
+    fecha_creacion_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Creación del Registro")
+
+    class Meta:
+        verbose_name = "Registro de Uso de Activo"
+        verbose_name_plural = "Registros de Uso de Activos"
+        ordering = ['-fecha_uso']
+
+    def __str__(self):
+        return f"Uso de {self.activo} ({self.horas_registradas}h) en {self.fecha_uso.strftime('%Y-%m-%d')}"
 
 
 
