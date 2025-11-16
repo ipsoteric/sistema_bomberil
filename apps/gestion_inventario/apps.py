@@ -6,6 +6,10 @@ class GestionInventarioConfig(AppConfig):
     name = 'apps.gestion_inventario'
     verbose_name = "Gestión de Inventario"
 
+    def ready(self):
+        # Importa los signals para que se registren
+        import apps.gestion_inventario.signals
+
     #def ready(self):
     #    from django.db.models.signals import post_migrate
     #    from apps.common.utils import crear_permiso_de_acceso_al_modulo
