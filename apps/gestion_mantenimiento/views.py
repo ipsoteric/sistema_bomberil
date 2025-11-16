@@ -1,6 +1,6 @@
 import json
 from django.views import View
-from django.views.generic import ListView, CreateView, DetailView, UpdateView
+from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
@@ -118,6 +118,9 @@ class PlanMantenimientoGestionarView(BaseEstacionMixin, ObjectInStationRequiredM
         
         return context
 
+
+
+
 class PlanMantenimientoEditarView(BaseEstacionMixin, ObjectInStationRequiredMixin, UpdateView):
     """
     Vista para editar un plan existente.
@@ -142,11 +145,41 @@ class PlanMantenimientoEditarView(BaseEstacionMixin, ObjectInStationRequiredMixi
         messages.error(self.request, 'No se pudieron guardar los cambios. Revise el formulario.')
         return super().form_invalid(form)
 
-class PlanMantenimientoEliminarView(View):
-    pass
+
+
+
+class PlanMantenimientoEliminarView(BaseEstacionMixin, ObjectInStationRequiredMixin, DeleteView):
+    """
+    Vista para eliminar un plan de mantenimiento.
+    Protegida para asegurar que solo se borren planes de la propia estación.
+    """
+    model = PlanMantenimiento
+    template_name = 'gestion_mantenimiento/pages/eliminar_plan.html'
+    success_url = reverse_lazy('gestion_mantenimiento:ruta_lista_planes')
+    station_lookup = 'estacion'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = f'Eliminar Plan: {self.object.nombre}'
+        
+        # Información de impacto para mostrar en la alerta
+        context['ordenes_pendientes'] = self.object.ordenes_generadas.filter(
+            estado__in=['PENDIENTE', 'EN_CURSO']
+        ).count()
+        return context
+
+    def form_valid(self, form):
+        nombre_plan = self.object.nombre
+        response = super().form_valid(form)
+        messages.success(self.request, f'El plan "{nombre_plan}" ha sido eliminado correctamente.')
+        return response
+
+
+
 
 class ApiTogglePlanActivoView(View):
     pass
+
 
 
 
