@@ -6,16 +6,11 @@
     <section class="barra_lateral__seccion">
 
         <div class="barra_lateral__modulo" data-toggle="modulo">
-            <a href="" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario scale">
-                <i class="fa-solid fa-truck-ramp-box"></i> 
-                <span>Programas de Mantenimiento</span>
+            <a href="{% url 'gestion_mantenimiento:ruta_lista_planes' %}" class="barra_lateral__modulo_nombre fs_nav_seccion color_primario scale">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <span>Planes de mantenimiento</span>
             </a>
-            <i class="fa-solid fa-chevron-down color_primario barra_lateral__flecha_modulo fs_nav_seccion"></i>
         </div>
-        
-        <ul class="barra_lateral__lista_opciones oculto">
-            <li class="fondo_opcion_nav"><a class="color_primario fs_pequena fs_nav_opcion" href="">Pendiente</a></li>
-        </ul>
     </section>
 
 

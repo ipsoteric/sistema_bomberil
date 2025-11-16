@@ -1,0 +1,208 @@
+{% extends 'gestion_mantenimiento/layouts/base.html' %}
+{% load static %}
+
+{# Bloque de Título de la ventana del navegador #}
+{% block titulo_ventana %}Planes de Mantenimiento | Bomberos{% endblock %}
+
+{# Bloque de Título de la página (h1) #}
+{% block titulo_pagina %}
+    <i class="fas fa-clipboard-list me-2"></i>Planes de Mantenimiento
+{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid px-0">
+
+    <!-- Barra de Herramientas y Filtros -->
+    <div class="card shadow-sm mb-4 border-0">
+        <div class="card-body p-3">
+            <div class="row g-3 align-items-center">
+                <!-- Buscador -->
+                <div class="col-12 col-md-6">
+                    <form method="get" action="" class="d-flex">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="fas fa-search text-muted"></i>
+                            </span>
+                            <input type="text" name="q" class="form-control border-start-0 ps-0" 
+                                   placeholder="Buscar plan por nombre..." 
+                                   value="{{ busqueda }}">
+                            <button class="btn btn-primary" type="submit">Buscar</button>
+                            {% if busqueda %}
+                                <a href="{% url 'gestion_mantenimiento:ruta_lista_planes' %}" class="btn btn-outline-secondary" title="Limpiar filtro">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="col-12 col-md-6 text-md-end">
+                    <a href="{% url 'gestion_mantenimiento:ruta_crear_plan' %}" class="btn btn-success">
+                        <i class="fas fa-plus me-1"></i> Nuevo Plan
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Resultados -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-secondary">
+                        <tr>
+                            <th class="ps-4 text-uppercase small fw-bold" style="width: 25%;">Nombre del Plan</th>
+                            <th class="text-uppercase small fw-bold">Disparador (Trigger)</th>
+                            <th class="text-uppercase small fw-bold">Configuración</th>
+                            <th class="text-uppercase small fw-bold text-center">Estado</th>
+                            <th class="text-uppercase small fw-bold text-center">Activos</th>
+                            <th class="pe-4 text-end text-uppercase small fw-bold">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for plan in planes %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">{{ plan.nombre }}</div>
+                                <small class="text-muted">Creado: {{ plan.fecha_creacion|date:"d/m/Y" }}</small>
+                            </td>
+                            
+                            <!-- Columna Trigger -->
+                            <td>
+                                {% if plan.tipo_trigger == 'TIEMPO' %}
+                                    <span class="badge bg-info text-dark">
+                                        <i class="far fa-clock me-1"></i> Tiempo
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-tachometer-alt me-1"></i> Uso
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Columna Configuración -->
+                            <td>
+                                {% if plan.tipo_trigger == 'TIEMPO' %}
+                                    <span class="text-secondary">
+                                        Cada <strong>{{ plan.intervalo }}</strong> {{ plan.get_frecuencia_display }}(s)
+                                    </span>
+                                {% else %}
+                                    <span class="text-secondary">
+                                        Cada <strong>{{ plan.horas_uso_trigger }}</strong> horas
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Columna Estado -->
+                            <td class="text-center">
+                                {% if plan.activo_en_sistema %}
+                                    <span class="badge rounded-pill bg-success bg-opacity-10 text-success px-3">
+                                        Activo
+                                    </span>
+                                {% else %}
+                                    <span class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary px-3">
+                                        Inactivo
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Columna Cantidad Activos (usamos related_name) -->
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark border">
+                                    {{ plan.activos.count }}
+                                </span>
+                            </td>
+
+                            <!-- Columna Acciones -->
+                            <td class="pe-4 text-end">
+                                <div class="btn-group">
+                                    <!-- Botón Gestionar (Ver activos) -->
+                                    <a href="{% url 'gestion_mantenimiento:ruta_gestionar_plan' plan.pk %}" 
+                                       class="btn btn-sm btn-outline-primary" 
+                                       data-bs-toggle="tooltip" title="Gestionar Activos">
+                                        <i class="fas fa-cogs"></i>
+                                    </a>
+                                    
+                                    <!-- Botón Editar -->
+                                    <a href="{% url 'gestion_mantenimiento:ruta_editar_plan' plan.pk %}" 
+                                       class="btn btn-sm btn-outline-secondary"
+                                       data-bs-toggle="tooltip" title="Editar Configuración">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+
+                                    <!-- Botón Eliminar -->
+                                    <a href="{% url 'gestion_mantenimiento:ruta_eliminar_plan' plan.pk %}" 
+                                       class="btn btn-sm btn-outline-danger"
+                                       data-bs-toggle="tooltip" title="Eliminar Plan">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="fas fa-clipboard-list fa-3x mb-3 opacity-50"></i>
+                                    <h5>No se encontraron planes de mantenimiento</h5>
+                                    <p class="small">Utiliza el botón "Nuevo Plan" para comenzar.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginación -->
+        {% if is_paginated %}
+        <div class="card-footer bg-white border-top-0 py-3">
+            <nav aria-label="Navegación de páginas">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link border-0 text-secondary" href="?page={{ page_obj.previous_page_number }}&q={{ busqueda }}">
+                                <i class="fas fa-chevron-left"></i> Anterior
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link border-0 text-muted"><i class="fas fa-chevron-left"></i> Anterior</span>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item disabled">
+                        <span class="page-link border-0 fw-bold text-dark">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link border-0 text-primary" href="?page={{ page_obj.next_page_number }}&q={{ busqueda }}">
+                                Siguiente <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link border-0 text-muted">Siguiente <i class="fas fa-chevron-right"></i></span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Inicializar Tooltips de Bootstrap (necesario para que funcionen los títulos flotantes)
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+</script>
+{% endblock %}
