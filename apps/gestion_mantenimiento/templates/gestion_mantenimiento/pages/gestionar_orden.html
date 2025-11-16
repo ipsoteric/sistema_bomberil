@@ -1,0 +1,308 @@
+{% extends 'gestion_mantenimiento/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Orden #{{ orden.id }} | Ejecución{% endblock %}
+
+{% block titulo_pagina %}
+    <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+            <a href="{% url 'gestion_mantenimiento:ruta_lista_ordenes' %}" class="btn btn-outline-light text-dark border-0 me-3">
+                <i class="fas fa-arrow-left fa-lg"></i>
+            </a>
+            <div>
+                <span class="d-block">Ejecución de Orden <span class="text-muted">#{{ orden.id }}</span></span>
+                <small class="fs-6 text-muted fw-normal">
+                    {% if orden.plan_origen %}
+                        {{ orden.plan_origen.nombre }}
+                    {% else %}
+                        Mantenimiento Correctivo
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+        
+        {# Badge de Estado Grande #}
+        <div>
+            {% if orden.estado == 'PENDIENTE' %}
+                <span class="badge bg-secondary fs-6 px-3 py-2">PENDIENTE</span>
+            {% elif orden.estado == 'EN_CURSO' %}
+                <span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="fas fa-spinner fa-spin me-2"></i>EN CURSO</span>
+            {% elif orden.estado == 'REALIZADA' %}
+                <span class="badge bg-success fs-6 px-3 py-2">REALIZADA</span>
+            {% else %}
+                <span class="badge bg-dark fs-6 px-3 py-2">CANCELADA</span>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid px-0">
+
+    {# --- 1. Barra de Progreso y Resumen --- #}
+    <div class="row mb-4 g-4">
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <h6 class="text-muted text-uppercase small fw-bold mb-0">Progreso de Tareas</h6>
+                        <span class="fw-bold text-primary">{{ progreso.completados }} / {{ progreso.total }} Equipos</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ progreso.porcentaje }}%"></div>
+                    </div>
+                    
+                    <div class="mt-3 d-flex gap-4 text-small text-muted small">
+                        <div><i class="far fa-calendar me-1"></i> Programada: <strong>{{ orden.fecha_programada|date:"d M, Y" }}</strong></div>
+                        <div><i class="far fa-user me-1"></i> Responsable: <strong>{{ orden.responsable.get_full_name|default:orden.responsable.email }}</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {# --- 2. Botonera de Acciones Globales --- #}
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-sm border-0 h-100 bg-light">
+                <div class="card-body d-flex flex-column justify-content-center align-items-stretch gap-2">
+                    {% if orden.estado == 'PENDIENTE' %}
+                        <button onclick="cambiarEstadoOrden('iniciar')" class="btn btn-primary btn-lg w-100 shadow-sm">
+                            <i class="fas fa-play me-2"></i> Iniciar Trabajo
+                        </button>
+                        <button onclick="cambiarEstadoOrden('cancelar')" class="btn btn-outline-danger w-100">
+                            Cancelar Orden
+                        </button>
+                    {% elif orden.estado == 'EN_CURSO' %}
+                        {% if progreso.porcentaje == 100 %}
+                            <button onclick="cambiarEstadoOrden('finalizar')" class="btn btn-success btn-lg w-100 shadow-sm pulse-animation">
+                                <i class="fas fa-check-circle me-2"></i> Finalizar Orden
+                            </button>
+                        {% else %}
+                            <button disabled class="btn btn-secondary w-100" title="Complete todas las tareas primero">
+                                Finalizar Orden (Incompleta)
+                            </button>
+                        {% endif %}
+                        <div class="text-center small text-muted mt-1">La orden está activa. Registre las tareas abajo.</div>
+                    {% elif orden.estado == 'REALIZADA' %}
+                        <div class="alert alert-success mb-0 text-center py-2">
+                            <i class="fas fa-check-double me-2"></i> Orden cerrada el {{ orden.fecha_cierre|date:"d/m/Y" }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# --- 3. Lista de Tareas (Activos) --- #}
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <h6 class="card-title mb-0 fw-bold text-secondary">Checklist de Equipos</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light small text-uppercase">
+                    <tr>
+                        <th class="ps-4">Equipo / Activo</th>
+                        <th>Ubicación</th>
+                        <th>Estado Actual</th>
+                        <th>Resultado</th>
+                        <th class="text-end pe-4">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in lista_activos_trabajo %}
+                    <tr class="{% if item.registro %}bg-light{% endif %}">
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3 text-center" style="width: 40px;">
+                                    {% if item.activo.producto.producto_global.imagen_thumb_small %}
+                                        <img src="{{ item.activo.producto.producto_global.imagen_thumb_small.url }}" class="rounded" width="40">
+                                    {% else %}
+                                        <i class="fas fa-tools fa-lg text-muted opacity-50"></i>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark">{{ item.activo.producto.producto_global.nombre_oficial }}</div>
+                                    <div class="small text-muted font-monospace">{{ item.activo.codigo_activo }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-muted small">
+                            {{ item.activo.compartimento.ubicacion.nombre|default:"--" }} > {{ item.activo.compartimento.nombre|default:"--" }}
+                        </td>
+                        <td>
+                            {# Estado del Activo en Inventario #}
+                            <span class="badge border text-dark fw-normal bg-white">{{ item.activo.estado.nombre }}</span>
+                        </td>
+                        <td>
+                            {% if item.registro %}
+                                {% if item.registro.fue_exitoso %}
+                                    <span class="text-success fw-bold small"><i class="fas fa-check me-1"></i> OK</span>
+                                {% else %}
+                                    <span class="text-danger fw-bold small"><i class="fas fa-times me-1"></i> Falló</span>
+                                {% endif %}
+                                {% if item.registro.notas %}
+                                    <i class="fas fa-comment-alt ms-2 text-muted" data-bs-toggle="tooltip" title="{{ item.registro.notas }}"></i>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted small">--</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            {% if orden.estado == 'EN_CURSO' %}
+                                {% if item.registro %}
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalRegistro('{{ item.activo.id }}', '{{ item.activo.producto.producto_global.nombre_oficial }}', '{{ item.registro.notas|escapejs }}', '{{ item.registro.fue_exitoso|yesno:"true,false" }}')">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-sm btn-primary px-3" onclick="abrirModalRegistro('{{ item.activo.id }}', '{{ item.activo.producto.producto_global.nombre_oficial }}')">
+                                        Registrar <i class="fas fa-chevron-right ms-1"></i>
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <button disabled class="btn btn-sm btn-light text-muted border">Espera inicio</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# --- MODAL: Registrar Tarea --- #}
+<div class="modal fade" id="modalRegistro" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title fw-bold"><i class="fas fa-clipboard-check me-2"></i>Registrar Mantenimiento</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="modalActivoId">
+                <h5 id="modalActivoNombre" class="fw-bold mb-3 text-dark"></h5>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase text-secondary">Resultado</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check card-radio-select flex-fill">
+                            <input class="form-check-input d-none" type="radio" name="resultadoMantencion" id="resExito" value="true" checked>
+                            <label class="card p-3 text-center border cursor-pointer transition-all" for="resExito">
+                                <i class="fas fa-check-circle fs-4 text-success mb-2"></i>
+                                <div class="fw-bold small">Exitoso</div>
+                            </label>
+                        </div>
+                        <div class="form-check card-radio-select flex-fill">
+                            <input class="form-check-input d-none" type="radio" name="resultadoMantencion" id="resFallo" value="false">
+                            <label class="card p-3 text-center border cursor-pointer transition-all" for="resFallo">
+                                <i class="fas fa-times-circle fs-4 text-danger mb-2"></i>
+                                <div class="fw-bold small">Fallido</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="modalNotas" class="form-label fw-bold small text-uppercase text-secondary">Notas / Observaciones</label>
+                    <textarea class="form-control" id="modalNotas" rows="3" placeholder="Detalle lo realizado (ej: Cambio de bujía, limpieza, pruebas OK)..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary px-4" onclick="guardarRegistro()">Guardar Registro</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# --- Estilos CSS Adicionales para el Radio Button Card --- #}
+<style>
+    .card-radio-select input:checked + label {
+        border-color: var(--bs-primary) !important;
+        background-color: rgba(var(--bs-primary-rgb), 0.05);
+        box-shadow: 0 0 0 2px var(--bs-primary) inset;
+    }
+    .cursor-pointer { cursor: pointer; }
+    .pulse-animation { animation: pulse 2s infinite; }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+    }
+</style>
+
+{# --- SCRIPTS --- #}
+<script>
+    const csrfToken = "{{ csrf_token }}";
+    const ordenId = "{{ orden.id }}";
+    let modalRegistro;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        modalRegistro = new bootstrap.Modal(document.getElementById('modalRegistro'));
+        // Tooltips
+        [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]')).map(el => new bootstrap.Tooltip(el));
+    });
+
+    // --- 1. Gestión Global de Estado ---
+    function cambiarEstadoOrden(accion) {
+        const verbos = { 'iniciar': 'Iniciar', 'finalizar': 'Finalizar', 'cancelar': 'Cancelar' };
+        if (!confirm(`¿Seguro que desea ${verbos[accion]} esta orden?`)) return;
+
+        fetch(`{% url 'gestion_mantenimiento:api_cambiar_estado_orden' orden.id %}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ accion: accion })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                location.reload();
+            } else {
+                alert("Error: " + data.message);
+            }
+        });
+    }
+
+    // --- 2. Modal y Registro Individual ---
+    function abrirModalRegistro(activoId, nombre, notas = '', exitoso = 'true') {
+        document.getElementById('modalActivoId').value = activoId;
+        document.getElementById('modalActivoNombre').innerText = nombre;
+        document.getElementById('modalNotas').value = notas;
+        
+        // Set radio
+        if (exitoso === 'true') document.getElementById('resExito').checked = true;
+        else document.getElementById('resFallo').checked = true;
+
+        modalRegistro.show();
+    }
+
+    function guardarRegistro() {
+        const activoId = document.getElementById('modalActivoId').value;
+        const notas = document.getElementById('modalNotas').value;
+        const exitoso = document.getElementById('resExito').checked;
+
+        if(!notas.trim()) {
+            alert("Por favor ingrese una nota o detalle del trabajo.");
+            return;
+        }
+
+        fetch(`{% url 'gestion_mantenimiento:api_registrar_tarea_orden' orden.id %}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ 
+                activo_id: activoId, 
+                notas: notas, 
+                exitoso: exitoso 
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                location.reload();
+            } else {
+                alert("Error: " + data.message);
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -8,10 +8,10 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
 
-from .models import PlanMantenimiento, PlanActivoConfig, OrdenMantenimiento
+from .models import PlanMantenimiento, PlanActivoConfig, OrdenMantenimiento, RegistroMantenimiento
 from .forms import PlanMantenimientoForm, OrdenCorrectivaForm
 from apps.common.mixins import BaseEstacionMixin, ObjectInStationRequiredMixin
-from apps.gestion_inventario.models import Activo
+from apps.gestion_inventario.models import Activo, Estado
 
 
 class MantenimientoInicioView(View):
@@ -406,11 +406,181 @@ class OrdenCorrectivaCreateView(BaseEstacionMixin, CreateView):
         # NOTA: Asumimos que la ruta 'ruta_gestionar_orden' existe y espera un <pk>
         return redirect(reverse('gestion_mantenimiento:ruta_gestionar_orden', kwargs={'pk': orden.pk}))
 
-class OrdenMantenimientoDetalleView(View):
-    pass
 
-class ApiCambiarEstadoOrdenView(View):
-    pass
 
-class ApiRegistrarTareaMantenimientoView(View):
-    pass
+
+class OrdenMantenimientoDetalleView(BaseEstacionMixin, ObjectInStationRequiredMixin, DetailView):
+    """
+    Panel de control para ejecutar una orden de trabajo específica.
+    Muestra los activos involucrados y permite registrar tareas.
+    """
+    model = OrdenMantenimiento
+    template_name = 'gestion_mantenimiento/pages/gestionar_orden.html'
+    context_object_name = 'orden'
+    station_lookup = 'estacion'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = f'Orden #{self.object.id}'
+        
+        # Obtenemos los activos afectados
+        # Optimizamos consulta trayendo datos del producto
+        activos = self.object.activos_afectados.select_related(
+            'producto__producto_global', 
+            'compartimento__ubicacion'
+        ).all()
+
+        # Estructuramos los datos para la plantilla:
+        # Necesitamos saber para cada activo si YA TIENE un registro en esta orden.
+        lista_activos = []
+        registros_existentes = {
+            reg.activo_id: reg for reg in self.object.registros.all()
+        }
+
+        for activo in activos:
+            registro = registros_existentes.get(activo.id)
+            lista_activos.append({
+                'activo': activo,
+                'registro': registro, # Será None si no se ha trabajado aún
+                'estado_trabajo': 'COMPLETADO' if registro else 'PENDIENTE'
+            })
+        
+        context['lista_activos_trabajo'] = lista_activos
+        
+        # Progreso
+        total = len(activos)
+        completados = len(registros_existentes)
+        context['progreso'] = {
+            'total': total,
+            'completados': completados,
+            'porcentaje': int((completados / total) * 100) if total > 0 else 0
+        }
+
+        return context
+
+
+
+
+# --- APIs DE FLUJO DE TRABAJO ---
+
+class ApiCambiarEstadoOrdenView(BaseEstacionMixin, View):
+    """
+    API: Cambia el estado global de la orden (INICIAR / FINALIZAR / CANCELAR).
+    POST: { accion: 'iniciar' | 'finalizar' | 'cancelar' }
+    """
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=self.estacion_activa)
+            data = json.loads(request.body)
+            accion = data.get('accion')
+
+            if accion == 'iniciar':
+                if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
+                    return JsonResponse({'status': 'error', 'message': 'La orden no está pendiente.'}, status=400)
+                
+                orden.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
+                orden.save()
+
+                # INTEGRACIÓN: Poner activos en "EN REPARACIÓN"
+                # Buscamos el estado en la DB (asumiendo que existen esos nombres según tu contexto)
+                try:
+                    estado_reparacion = Estado.objects.get(nombre__iexact="EN REPARACIÓN")
+                    orden.activos_afectados.update(estado=estado_reparacion)
+                except Estado.DoesNotExist:
+                    pass # Si no existe el estado, ignoramos (o logueamos warning)
+
+                messages.success(request, "Orden iniciada. Los activos pasaron a estado 'En Reparación'.")
+
+            elif accion == 'finalizar':
+                # Validar que todos tengan registro? Opcional. Por ahora permitimos cierre flexible.
+                orden.estado = OrdenMantenimiento.EstadoOrden.REALIZADA
+                orden.fecha_cierre = timezone.now()
+                orden.save()
+                messages.success(request, "Orden finalizada exitosamente.")
+
+            elif accion == 'cancelar':
+                orden.estado = OrdenMantenimiento.EstadoOrden.CANCELADA
+                orden.fecha_cierre = timezone.now()
+                orden.save()
+                # INTEGRACIÓN: Devolver activos a "DISPONIBLE" si se cancela
+                try:
+                    estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
+                    orden.activos_afectados.update(estado=estado_disponible)
+                except Estado.DoesNotExist:
+                    pass
+                messages.info(request, "Orden cancelada.")
+
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Acción no válida.'}, status=400)
+
+            return JsonResponse({'status': 'ok'})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+
+
+class ApiRegistrarTareaMantenimientoView(BaseEstacionMixin, View):
+    """
+    API: Crea un RegistroMantenimiento para un activo específico dentro de la orden.
+    POST: { activo_id, notas, exitoso (bool) }
+    """
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=self.estacion_activa)
+            
+            if orden.estado != OrdenMantenimiento.EstadoOrden.EN_CURSO:
+                return JsonResponse({'status': 'error', 'message': 'Debe INICIAR la orden antes de registrar tareas.'}, status=400)
+
+            data = json.loads(request.body)
+            activo_id = data.get('activo_id')
+            notas = data.get('notas')
+            fue_exitoso = data.get('exitoso', True)
+
+            activo = get_object_or_404(Activo, pk=activo_id, estacion=self.estacion_activa)
+
+            # 1. Crear el Registro (Bitácora)
+            # Usamos update_or_create para permitir editar la nota si vuelven a guardar
+            registro, created = RegistroMantenimiento.objects.update_or_create(
+                orden_mantenimiento=orden,
+                activo=activo,
+                defaults={
+                    'usuario_ejecutor': request.user,
+                    'fecha_ejecucion': timezone.now(),
+                    'notas': notas,
+                    'fue_exitoso': fue_exitoso
+                }
+            )
+
+            # 2. INTEGRACIÓN: Actualizar estado del Activo Físico
+            if fue_exitoso:
+                # Si la mantención fue buena, el activo vuelve a estar operativo
+                try:
+                    nuevo_estado = Estado.objects.get(nombre__iexact="DISPONIBLE")
+                    activo.estado = nuevo_estado
+                except Estado.DoesNotExist:
+                    pass
+            else:
+                # Si falló, queda No Operativo o En Reparación
+                try:
+                    nuevo_estado = Estado.objects.get(nombre__iexact="NO OPERATIVO") # O 'PENDIENTE REVISIÓN'
+                    activo.estado = nuevo_estado
+                except Estado.DoesNotExist:
+                    pass
+            
+            activo.save()
+            
+            # 3. Actualizar configuración del Plan (si aplica) para resetear contadores
+            # Solo si es exitoso y viene de un plan
+            if fue_exitoso and orden.plan_origen:
+                plan_config = PlanActivoConfig.objects.filter(plan=orden.plan_origen, activo=activo).first()
+                if plan_config:
+                    plan_config.fecha_ultima_mantencion = timezone.now()
+                    plan_config.horas_uso_en_ultima_mantencion = activo.horas_uso_totales
+                    plan_config.save()
+
+            return JsonResponse({'status': 'ok', 'mensaje': 'Registro guardado.'})
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
