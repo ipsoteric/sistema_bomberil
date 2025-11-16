@@ -1,6 +1,7 @@
 from django import forms
+from django.utils import timezone
 from django.core.exceptions import ValidationError
-from .models import PlanMantenimiento
+from .models import PlanMantenimiento, OrdenMantenimiento
 
 class PlanMantenimientoForm(forms.ModelForm):
     """
@@ -96,3 +97,33 @@ class PlanMantenimientoForm(forms.ModelForm):
             cleaned_data['dia_semana'] = None
 
         return cleaned_data
+
+
+
+
+class OrdenCorrectivaForm(forms.ModelForm):
+    """
+    Formulario simplificado para crear órdenes de mantenimiento correctivo (manuales).
+    """
+    class Meta:
+        model = OrdenMantenimiento
+        fields = ['fecha_programada', 'responsable']
+        widgets = {
+            'fecha_programada': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'responsable': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Valor por defecto para la fecha: Hoy
+        if not self.initial.get('fecha_programada'):
+            self.initial['fecha_programada'] = timezone.now().date()
+        
+        # Mejora Visual: Etiqueta más clara
+        self.fields['fecha_programada'].label = "Fecha de Ejecución"
+        self.fields['fecha_programada'].help_text = "Fecha estimada para realizar la reparación."

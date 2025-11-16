@@ -1,0 +1,78 @@
+{% extends 'gestion_mantenimiento/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Nueva Orden Correctiva | Bomberos{% endblock %}
+
+{% block titulo_pagina %}
+    <div class="d-flex align-items-center text-danger">
+        <i class="fas fa-wrench me-3"></i>
+        <span>Nueva Orden Correctiva</span>
+    </div>
+{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid px-0">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            
+            {# Tarjeta Informativa #}
+            <div class="alert alert-light border shadow-sm mb-4 d-flex">
+                <div class="me-3">
+                    <span class="fa-stack fa-lg text-primary">
+                        <i class="fas fa-circle fa-stack-2x"></i>
+                        <i class="fas fa-info fa-stack-1x fa-inverse"></i>
+                    </span>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-1">¿Qué es una Orden Correctiva?</h6>
+                    <p class="small text-muted mb-0">
+                        Úsala para reparaciones no planificadas (ej: una herramienta se rompió hoy).
+                        <br>
+                        <strong>Paso 1:</strong> Define la fecha y el responsable.
+                        <br>
+                        <strong>Paso 2:</strong> Serás redirigido para seleccionar los equipos dañados.
+                    </p>
+                </div>
+            </div>
+
+            <div class="card shadow border-0">
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.fecha_programada.id_for_label }}" class="form-label fw-bold">
+                                {{ form.fecha_programada.label }}
+                            </label>
+                            {{ form.fecha_programada }}
+                            {% if form.fecha_programada.help_text %}
+                                <div class="form-text">{{ form.fecha_programada.help_text }}</div>
+                            {% endif %}
+                            {{ form.fecha_programada.errors }}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.responsable.id_for_label }}" class="form-label fw-bold">
+                                Responsable / Mecánico
+                            </label>
+                            {{ form.responsable }}
+                            <div class="form-text">Persona a cargo de ejecutar o supervisar la reparación.</div>
+                            {{ form.responsable.errors }}
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
+                            <a href="{% url 'gestion_mantenimiento:ruta_lista_ordenes' %}" class="btn btn-outline-secondary px-4">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger px-4 fw-bold">
+                                Crear y Añadir Activos <i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -3,13 +3,13 @@ from django.views import View
 from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
 
 from .models import PlanMantenimiento, PlanActivoConfig, OrdenMantenimiento
-from .forms import PlanMantenimientoForm
+from .forms import PlanMantenimientoForm, OrdenCorrectivaForm
 from apps.common.mixins import BaseEstacionMixin, ObjectInStationRequiredMixin
 from apps.gestion_inventario.models import Activo
 
@@ -375,8 +375,36 @@ class OrdenMantenimientoListView(BaseEstacionMixin, ListView):
         context['hoy'] = timezone.now() # Para lógica visual de "Vencido" en template
         return context
 
-class OrdenCorrectivaCreateView(View):
-    pass
+
+
+
+class OrdenCorrectivaCreateView(BaseEstacionMixin, CreateView):
+    """
+    Vista para crear una Orden de Mantenimiento Correctiva (sin plan).
+    """
+    model = OrdenMantenimiento
+    form_class = OrdenCorrectivaForm
+    template_name = 'gestion_mantenimiento/pages/crear_orden_correctiva.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = 'Nueva Orden Correctiva'
+        return context
+
+    def form_valid(self, form):
+        orden = form.save(commit=False)
+        # Asignamos datos automáticos
+        orden.estacion = self.estacion_activa
+        orden.tipo_orden = OrdenMantenimiento.TipoOrden.CORRECTIVA
+        orden.estado = OrdenMantenimiento.EstadoOrden.PENDIENTE
+        orden.save()
+        
+        # Mensaje de éxito
+        messages.success(self.request, f"Orden Correctiva #{orden.id} creada. Ahora añade los activos afectados.")
+        
+        # Redirección: Al detalle de la orden (Espacio de Trabajo) para añadir los activos
+        # NOTA: Asumimos que la ruta 'ruta_gestionar_orden' existe y espera un <pk>
+        return redirect(reverse('gestion_mantenimiento:ruta_gestionar_orden', kwargs={'pk': orden.pk}))
 
 class OrdenMantenimientoDetalleView(View):
     pass

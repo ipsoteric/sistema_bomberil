@@ -136,6 +136,10 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const selectTrigger = document.getElementById('id_tipo_trigger');
@@ -189,4 +193,5 @@
         }
     });
 </script>
-{% endblock %}
+
+{% endblock scripts %}
