@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from apps.gestion_inventario.models import Activo, Estacion
 
 
@@ -17,6 +18,15 @@ class PlanMantenimiento(models.Model):
         SEMANAL = 'SEMANAL', 'Semanal'
         MENSUAL = 'MENSUAL', 'Mensual'
         ANUAL = 'ANUAL', 'Anual'
+
+    class DiaSemana(models.IntegerChoices):
+        LUNES = 0, 'Lunes'
+        MARTES = 1, 'Martes'
+        MIERCOLES = 2, 'Miércoles'
+        JUEVES = 3, 'Jueves'
+        VIERNES = 4, 'Viernes'
+        SABADO = 5, 'Sábado'
+        DOMINGO = 6, 'Domingo'
 
     nombre = models.CharField(
         max_length=255,
@@ -55,7 +65,7 @@ class PlanMantenimiento(models.Model):
     activos = models.ManyToManyField(
         Activo,
         through='PlanActivoConfig',
-        related_name='planes_mantenimiento',
+        related_name='planes_asignados',
         verbose_name="Activos Incluidos"
     )
     activo_en_sistema = models.BooleanField(
@@ -63,6 +73,21 @@ class PlanMantenimiento(models.Model):
         verbose_name="Plan Activo",
         help_text="Desmarque para desactivar este plan sin borrarlo."
     )
+
+    # --- CAMPOS DE CALENDARIZACIÓN ---
+    fecha_inicio = models.DateField(
+        verbose_name="Fecha de Inicio",
+        help_text="Fecha a partir de la cual comenzará a ejecutarse el plan.",
+        default=timezone.now
+    )
+    dia_semana = models.IntegerField(
+        choices=DiaSemana.choices,
+        null=True,
+        blank=True,
+        verbose_name="Día preferido de la semana",
+        help_text="Si la frecuencia es SEMANAL, especifique el día exacto."
+    )
+
     # --- VINCULACIÓN A ESTACIÓN ---
     estacion = models.ForeignKey(
         Estacion,
@@ -176,6 +201,12 @@ class OrdenMantenimiento(models.Model):
         max_length=20,
         choices=TipoOrden.choices,
         verbose_name="Tipo de Orden"
+    )
+    estacion = models.ForeignKey(
+        Estacion,
+        on_delete=models.CASCADE,
+        related_name='ordenes_mantenimiento',
+        verbose_name="Estación"
     )
     responsable = models.ForeignKey(
         settings.AUTH_USER_MODEL,

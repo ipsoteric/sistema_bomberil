@@ -1,0 +1,192 @@
+{% extends 'gestion_mantenimiento/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Crear Plan | Bomberos{% endblock %}
+
+{% block titulo_pagina %}
+    <i class="fas fa-plus-circle me-2"></i>Nuevo Plan de Mantenimiento
+{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid px-0">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="card-title mb-0 text-primary fw-bold">Configuración del Plan</h5>
+                </div>
+                <div class="card-body p-4">
+                    
+                    <form method="post" novalidate id="form-crear-plan">
+                        {% csrf_token %}
+
+                        {# --- 1. Información Básica --- #}
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label for="{{ form.nombre.id_for_label }}" class="form-label fw-bold">Nombre del Plan</label>
+                                {{ form.nombre }}
+                                {% if form.nombre.errors %}
+                                    <div class="text-danger fs_pequena mt-1">{{ form.nombre.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">Ej: "Revisión de Mangueras - Martes"</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ form.fecha_inicio.id_for_label }}" class="form-label fw-bold">Fecha Inicio</label>
+                                {{ form.fecha_inicio }}
+                                {% if form.fecha_inicio.errors %}
+                                    <div class="text-danger fs_pequena mt-1">{{ form.fecha_inicio.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-4 align-items-end">
+                            <div class="col-md-6">
+                                <label for="{{ form.tipo_trigger.id_for_label }}" class="form-label fw-bold">Disparador (Trigger)</label>
+                                {{ form.tipo_trigger }}
+                                {% if form.tipo_trigger.errors %}
+                                    <div class="text-danger fs_pequena mt-1">{{ form.tipo_trigger.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mb-2">
+                                    {{ form.activo_en_sistema }}
+                                    <label class="form-check-label" for="{{ form.activo_en_sistema.id_for_label }}">
+                                        Plan Activo (Genera órdenes automáticas)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="text-muted my-4">
+
+                        {# --- 2. Configuración Dinámica (JS) --- #}
+                        
+                        {# SECCIÓN A: Configuración por TIEMPO #}
+                        <div id="seccion-tiempo" class="config-section">
+                            <h6 class="text-secondary text-uppercase fs_pequena fw-bold mb-3">
+                                <i class="far fa-clock me-1"></i> Configuración de Tiempo
+                            </h6>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="{{ form.intervalo.id_for_label }}" class="form-label">Cada cuánto (Intervalo)</label>
+                                    {{ form.intervalo }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.frecuencia.id_for_label }}" class="form-label">Unidad de Tiempo</label>
+                                    {{ form.frecuencia }}
+                                </div>
+                                
+                                {# CAMPO EXTRA: Día de la semana (Solo visible si es SEMANAL) #}
+                                <div class="col-md-4 d-none" id="col-dia-semana">
+                                    <label for="{{ form.dia_semana.id_for_label }}" class="form-label text-primary fw-bold">
+                                        ¿Qué día?
+                                    </label>
+                                    {{ form.dia_semana }}
+                                    <div class="form-text fs_pequena">Opcional. Prioriza este día.</div>
+                                </div>
+                            </div>
+
+                            {% if form.intervalo.errors or form.frecuencia.errors %}
+                                <div class="alert alert-danger mt-2 py-1 fs_pequena">
+                                    {{ form.intervalo.errors }} {{ form.frecuencia.errors }}
+                                </div>
+                            {% endif %}
+
+                            <div class="alert alert-info mt-3 py-2 fs_pequena color_blanco">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span id="texto-ayuda-tiempo">Configure la frecuencia. Ej: Intervalo 1 + Semanal = Todas las semanas.</span>
+                            </div>
+                        </div>
+
+                        {# SECCIÓN B: Configuración por USO #}
+                        <div id="seccion-uso" class="config-section d-none">
+                            <h6 class="text-secondary text-uppercase fs_pequena fw-bold mb-3">
+                                <i class="fas fa-tachometer-alt me-1"></i> Configuración de Uso
+                            </h6>
+                            <div class="mb-3">
+                                <label for="{{ form.horas_uso_trigger.id_for_label }}" class="form-label">Disparar cada (Horas de Uso)</label>
+                                <div class="input-group">
+                                    {{ form.horas_uso_trigger }}
+                                    <span class="input-group-text">Hrs</span>
+                                </div>
+                                {% if form.horas_uso_trigger.errors %}
+                                    <div class="text-danger fs_pequena mt-1">{{ form.horas_uso_trigger.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="alert alert-warning mt-3 py-2 fs_pequena">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                El sistema monitoreará las horas acumuladas de cada activo y generará una orden cuando se cumpla el ciclo.
+                            </div>
+                        </div>
+
+                        {# Botones de Acción #}
+                        <div class="d-flex justify-content-end mt-5 gap-2">
+                            <a href="{% url 'gestion_mantenimiento:ruta_lista_planes' %}" class="btn btn-outline-secondary">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="fas fa-save me-1"></i> Guardar Plan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectTrigger = document.getElementById('id_tipo_trigger');
+        const selectFrecuencia = document.getElementById('id_frecuencia');
+        const colDiaSemana = document.getElementById('col-dia-semana');
+        
+        const seccionTiempo = document.getElementById('seccion-tiempo');
+        const seccionUso = document.getElementById('seccion-uso');
+
+        function toggleLogic() {
+            const triggerVal = selectTrigger.value;
+            
+            // 1. Toggle entre Tiempo y Uso
+            if (triggerVal === 'TIEMPO') {
+                seccionTiempo.classList.remove('d-none');
+                seccionUso.classList.add('d-none');
+                
+                // Campos requeridos lógica visual
+                document.getElementById('id_intervalo').required = true;
+                document.getElementById('id_frecuencia').required = true;
+                document.getElementById('id_horas_uso_trigger').required = false;
+
+                // 2. Toggle Día de la Semana (Sub-lógica)
+                const frecVal = selectFrecuencia.value;
+                if (frecVal === 'SEMANAL') {
+                    colDiaSemana.classList.remove('d-none');
+                } else {
+                    colDiaSemana.classList.add('d-none');
+                    // Limpiar selección si se oculta (opcional, pero buena práctica UX)
+                    // document.getElementById('id_dia_semana').value = ''; 
+                }
+
+            } else if (triggerVal === 'USO') {
+                seccionTiempo.classList.add('d-none');
+                seccionUso.classList.remove('d-none');
+                
+                document.getElementById('id_intervalo').required = false;
+                document.getElementById('id_frecuencia').required = false;
+                document.getElementById('id_horas_uso_trigger').required = true;
+            }
+        }
+
+        // Event Listeners
+        if(selectTrigger) {
+            toggleLogic(); // Ejecutar al inicio
+            selectTrigger.addEventListener('change', toggleLogic);
+        }
+        
+        if(selectFrecuencia) {
+            selectFrecuencia.addEventListener('change', toggleLogic);
+        }
+    });
+</script>
+{% endblock %}
