@@ -1,5 +1,4 @@
-{% load static %}
-<nav id="barra_lateral" class="barra_lateral fondo_barra_lateral">
+<nav id="barra_lateral" class="barra_lateral fondo_barra_lateral {% if request.session.is_impersonating %}barra_lateral_impersonacion{% endif %}">
     {# Botón para cerrar el menú en diseño móvil (una X) #}
     {% include 'layouts/boton_cerrar_sidebar.html' %}
 

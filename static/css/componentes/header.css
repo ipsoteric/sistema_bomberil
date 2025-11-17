@@ -1,3 +1,10 @@
+.impersonacion_banner {
+    position: relative;
+    width: 100%;
+}
+
+
+
 .header {
     grid-area: header;
 
@@ -5,15 +12,23 @@
     top: 0;
     z-index: var(--header-z-index);
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
     justify-content: space-between;
     height: 100%;
     width: 100%;
-    padding: 0 15px;
     border-bottom: 1.5px solid var(--color-header-border);
 }
 
+.header__secciones {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--header-height);
+    width: 100%;
+    padding: 0 15px;
+}
 
 
 /* Header: Sección izquierda */

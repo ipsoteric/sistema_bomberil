@@ -52,6 +52,7 @@
     
     
     /* Dimensiones para estandarización */
+    --banner-height: 48px;
     --header-height: 80px;
     --user-avatar-width: 40px;
     --company-logo-width: 20px;
@@ -83,6 +84,7 @@
     --panel-z-index: 3;
     --navbar-z-index: 4;
     --header-z-index: 5;
+    --banner-z-index: 9999;
     --dropdown-user-menu-z-index: 6;
     --flash-message-z-index: 200;
 }
@@ -149,6 +151,7 @@
         --fs-nav-option: 1.7rem;
         /* Dimensiones para estandarización */
         --header-height: 70px;
+        --banner-height: 69px;
         --user-avatar-width: 35px;
     }
 }

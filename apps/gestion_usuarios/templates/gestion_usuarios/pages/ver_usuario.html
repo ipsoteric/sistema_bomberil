@@ -71,6 +71,15 @@
                             <i class="fas fa-power-off me-2 text-warning"></i> Forzar Cierre de Sesión
                         </a>
                     {% endif %}
+
+                    {% if request.user.is_superuser and membresia.usuario != request.user %}
+                        <form action="{% url 'gestion_usuarios:ruta_impersonar_usuario' id=membresia.usuario.id %}" method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="list-group-item list-group-item-action fs_normal list-group-item-dark">
+                                <i class="fas fa-mask me-2"></i> Iniciar sesión como este usuario
+                            </button>
+                        </form>
+                    {% endif %}
                     
                     {% if membresia.estado == 'ACTIVO' %}
                         <a href="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal list-group-item-warning ">

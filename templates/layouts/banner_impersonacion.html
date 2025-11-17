@@ -1,0 +1,15 @@
+{# --- Banner de Impersonación --- #}
+{# Se coloca ANTES del header para que aparezca como una barra superior de aviso #}
+{% if request.session.impersonator_id %}
+    <div class="impersonacion_banner alert alert-warning text-center m-0 rounded-0 fs_normal shadow sticky-top" 
+         style="z-index: 9999; border-bottom: 2px solid #d39e00;">
+        
+        <i class="fas fa-user-secret me-2"></i>
+        Estás navegando como <strong>{{ request.user.get_full_name|title }}</strong>.
+        
+        <a href="{% url 'gestion_usuarios:ruta_detener_impersonacion' %}" 
+           class="btn btn-sm btn-dark ms-3 fs_pequena">
+            <i class="fas fa-undo me-1"></i> Volver a mi cuenta
+        </a>
+    </div>
+{% endif %}

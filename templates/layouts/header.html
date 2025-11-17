@@ -1,63 +1,68 @@
 {# Header/Encabezado #}
 {% load static %}
 <header class="header fondo_header">
+    {# --- Banner de Impersonación --- #}
+    {% include 'layouts/banner_impersonacion.html' %}
+
+    <div class="header__secciones">
+
+        {# Sección para nombre del módulo, sistema y compañía #}
+        <section class="header__seccion_compania">
+            {# Importar ícono de menú hamburguesa para mostrar/ocultar la barra lateral en resolución móvil #}
+            {% include 'layouts/boton_toggle_sidebar.html' %}
+            {# Logo/Ícono de la compañía #}
+            <img class="header__logo" src="{% static 'imagenes/bomberil_logo_circle_white(100x100).png' %}" alt="">
+
+            {# Nombre de la compañía #}
+            <div class="header__titulo">
+
+            <h3 class="header__compania fs_pequena color_primario_variante">
+            {% if user.is_authenticated %}
+                {% if request.session.active_estacion_nombre %}
+                    {{request.session.active_estacion_nombre|title}}
+                {% else %}
+                    Sin compañía asignada
+                {% endif %}
+            {% endif %}
+            </h3>
+
+                {# Nombre del módulo #}
+                <h2 class="header__modulo fs_header_titulo color_primario">{{nombre_modulo}}</h2>
+            </div>
+        </section>
 
 
-    {# Sección para nombre del módulo, sistema y compañía #}
-    <section class="header__seccion_compania">
-        {# Importar ícono de menú hamburguesa para mostrar/ocultar la barra lateral en resolución móvil #}
-        {% include 'layouts/boton_toggle_sidebar.html' %}
-        {# Logo/Ícono de la compañía #}
-        <img class="header__logo" src="{% static 'imagenes/bomberil_logo_circle_white(100x100).png' %}" alt="">
-
-        {# Nombre de la compañía #}
-        <div class="header__titulo">
-
-        <h3 class="header__compania fs_pequena color_primario_variante">
         {% if user.is_authenticated %}
-            {% if request.session.active_estacion_nombre %}
-                {{request.session.active_estacion_nombre|title}}
-            {% else %}
-                Sin compañía asignada
-            {% endif %}
+        {# Sección para opciones de usuario #}
+        <section class="header__seccion_menu_usuario">
+            <div id="MenuUsuarioPerfil" class="menu_usuario__usuario">
+
+                <div class="menu_usuario__nombre_usuario fs_normal color_primario">
+                    <div class="menu_usuario__nombre_email">
+                        <span class="menu_usuario__nombre">
+                            {{user.get_full_name|title}}
+                        </span>
+                        <span class="menu_usuario__email fs_pequena color_primario_variante">
+                            {{user.email}}
+                        </span>
+                    </div>
+                    <div class="menu_usuario__flecha">
+                        <i class="fa-solid fa-chevron-down color_primario"></i>
+                    </div>
+                </div>
+
+                <div class="menu_usuario__avatar_usuario">
+                {% if user.avatar %}
+                    <img src="{{ user.avatar.url|default_if_none:'imagenes/default_avatar.png' }}" alt="">
+                {% else %}
+                    <img src="{% static 'imagenes/default_avatar.png' %}" alt="">
+                {% endif %}
+                </div>
+            </div>
+        </section>
         {% endif %}
-        </h3>
 
-            {# Nombre del módulo #}
-            <h2 class="header__modulo fs_header_titulo color_primario">{{nombre_modulo}}</h2>
-        </div>
-    </section>
-
-
-    {% if user.is_authenticated %}
-    {# Sección para opciones de usuario #}
-    <section class="header__seccion_menu_usuario">
-        <div id="MenuUsuarioPerfil" class="menu_usuario__usuario">
-
-            <div class="menu_usuario__nombre_usuario fs_normal color_primario">
-                <div class="menu_usuario__nombre_email">
-                    <span class="menu_usuario__nombre">
-                        {{user.get_full_name|title}}
-                    </span>
-                    <span class="menu_usuario__email fs_pequena color_primario_variante">
-                        {{user.email}}
-                    </span>
-                </div>
-                <div class="menu_usuario__flecha">
-                    <i class="fa-solid fa-chevron-down color_primario"></i>
-                </div>
-            </div>
-
-            <div class="menu_usuario__avatar_usuario">
-            {% if user.avatar %}
-                <img src="{{ user.avatar.url|default_if_none:'imagenes/default_avatar.png' }}" alt="">
-            {% else %}
-                <img src="{% static 'imagenes/default_avatar.png' %}" alt="">
-            {% endif %}
-            </div>
-        </div>
-    </section>
-    {% endif %}
+    </div>
 
     
 </header>
