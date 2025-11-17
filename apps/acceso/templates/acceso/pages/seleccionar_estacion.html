@@ -1,0 +1,211 @@
+{% extends 'portal/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Seleccionar Estación{% endblock %}
+{% block titulo_pagina %}{% endblock %}
+
+{% block contenido %}
+
+<div class="selection-container d-flex flex-column justify-content-center align-items-center min-vh-75 py-5">
+    
+    {# --- ENCABEZADO (igual que antes) --- #}
+    <div class="text-center mb-5 animate-fade-in">
+        <div class="mb-3">
+            <i class="fas fa-fire-extinguisher fs_x_grande color_rojo opacity-75"></i>
+        </div>
+        <h1 class="fw-bold color_blanco mb-2">Bienvenido, {{ user.first_name|title }}</h1>
+        <p class="fs_normal color_blanco_variante">
+            {% if user.is_superuser %}
+                <span class="badge bg-dark text-white mb-2">MODO ADMINISTRADOR</span><br>
+                Selecciona la unidad que deseas gestionar hoy.
+            {% else %}
+                Selecciona tu cuartel para ingresar al sistema.
+            {% endif %}
+        </p>
+    </div>
+
+    {# --- GRILLA DE ESTACIONES --- #}
+    <div class="container">
+        {% if estaciones %}
+            <div class="row justify-content-center g-4">
+                {% for estacion in estaciones %}
+                <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                    
+                    {# Formulario invisible que envuelve la tarjeta #}
+                    <form method="post" action="{% url 'acceso:ruta_seleccionar_estacion' %}" class="h-100">
+                        {% csrf_token %}
+                        <input type="hidden" name="estacion_id" value="{{ estacion.id }}">
+                        
+                        {# --- INICIO: CAMBIOS EN LA TARJETA DE ESTACIÓN --- #}
+                        <button type="submit" class="card station-card h-100 w-100 text-start border-0 shadow-sm p-0">
+                            <div class="card-img-wrapper position-relative">
+                                {# Imagen de Fondo: Usar la de la estación o una de stock por defecto #}
+                                {% if estacion.imagen %}
+                                <img src="{{ estacion.imagen.url }}" class="card-img-top" alt="Imagen de {{ estacion.nombre }}">
+                                {% else %}
+                                <img src="{% static 'portal/imagenes/default-station-cover.jpg' %}" class="card-img-top" alt="Imagen de cuartel de bomberos por defecto">
+                                {% endif %}
+                                
+                                {# Overlay para mejorar contraste del texto #}
+                                <div class="card-img-overlay-dark"></div>
+
+                                {# Logo de la Estación: Centrado y ligeramente más grande #}
+                                <div class="station-logo-overlay">
+                                    {% if estacion.logo %}
+                                    <img src="{{ estacion.logo.url }}" class="station-logo" alt="Logo de {{ estacion.nombre }}">
+                                    {% else %}
+                                    {# Logo de stock por defecto, ejemplo: un escudo genérico #}
+                                    <img src="{% static 'portal/imagenes/default-station-logo.png' %}" class="station-logo" alt="Logo de bomberos por defecto">
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="card-body d-flex flex-column p-4">
+                                
+                                {# Contenido de texto #}
+                                <div class="z-index-1">
+                                    <h5 class="card-title fw-bold color_primario mb-1">
+                                        {{ estacion.nombre|title }}
+                                    </h5>
+                                    <p class="card-text fs_pequena text-muted">
+                                        Acceso a funcionalidades.
+                                    </p>
+                                </div>
+
+                                {# Flecha de acción #}
+                                <div class="mt-auto pt-3 text-end z-index-1">
+                                    <span class="btn-circle">
+                                        <i class="fas fa-arrow-right"></i>
+                                    </span>
+                                </div>
+                                
+                                {# Barra de acento (hover) #}
+                                <div class="hover-accent"></div>
+                            </div>
+                        </button>
+                        {# --- FIN: CAMBIOS EN LA TARJETA DE ESTACIÓN --- #}
+                    </form>
+
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if user.is_superuser %}
+            <div class="text-center mt-5 opacity-50 fs_pequena animate-fade-in">
+                <i class="fas fa-eye me-1"></i> Visualizando todas las estaciones del sistema.
+            </div>
+            {% endif %}
+
+        {% else %}
+            {# --- ESTADO VACÍO (igual que antes) --- #}
+            <div class="card border-danger shadow-sm mw-500 mx-auto animate-fade-in">
+                <div class="card-body text-center p-5">
+                    <div class="mb-3 text-danger">
+                        <i class="fas fa-user-lock fa-3x"></i>
+                    </div>
+                    <h4 class="fw-bold text-danger">Sin Acceso Asignado</h4>
+                    <p class="fs_normal text-muted">
+                        No tienes membresías activas en ninguna estación registrada.
+                    </p>
+                    <a href="{% url 'acceso:ruta_logout' %}" class="btn btn-outline-danger mt-3">
+                        <i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{# --- ESTILOS PERSONALIZADOS PARA ESTA PÁGINA --- #}
+<style>
+    /* ... (estilos de animate-fade-in, min-vh-75, mw-500, z-index-1, btn-circle, hover-accent, etc. IGUAL que antes) ... */
+
+    /* Card General */
+    .station-card {
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        border-radius: 16px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        display: flex; /* Para controlar el layout interno con flex */
+        flex-direction: column;
+    }
+
+    .station-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Contenedor de Imagen y Logo */
+    .card-img-wrapper {
+        height: 150px; /* Altura fija para la sección de imagen */
+        overflow: hidden;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+    }
+
+    .card-img-top {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Recorta la imagen para cubrir el área */
+        transition: transform 0.4s ease;
+    }
+
+    .station-card:hover .card-img-top {
+        transform: scale(1.05); /* Zoom suave en la imagen */
+    }
+
+    /* Overlay oscuro sobre la imagen */
+    .card-img-overlay-dark {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0) 100%);
+        z-index: 1;
+    }
+
+    /* Logo de la Estación */
+    .station-logo-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%); /* Centra el logo */
+        z-index: 2;
+        width: 80px; /* Tamaño del logo */
+        height: 80px;
+        border-radius: 50%; /* Si el logo es circular */
+        background-color: rgba(255, 255, 255, 0.9); /* Fondo blanco semitransparente para el logo */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .station-card:hover .station-logo-overlay {
+        transform: translate(-50%, -50%) scale(1.08); /* Ligero crecimiento en hover */
+        box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+    }
+
+    .station-logo {
+        max-width: 60px; /* Ajusta el tamaño máximo del logo dentro del círculo */
+        max-height: 60px;
+        object-fit: contain;
+    }
+
+    /* Ajuste para modo oscuro */
+    .dark-mode .station-card {
+        background-color: #2c2c2c;
+        border: 1px solid #444;
+    }
+    .dark-mode .card-img-overlay-dark {
+        background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%);
+    }
+    .dark-mode .station-logo-overlay {
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+</style>
+
+{% endblock %}

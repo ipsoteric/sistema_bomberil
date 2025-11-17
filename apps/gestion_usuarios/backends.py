@@ -29,7 +29,6 @@ class RolBackend(ModelBackend):
         if not user_obj.is_active:
             return set()
         
-        # --- LÍNEA CORREGIDA ---
         # Construimos el string 'app_label.codename' manualmente
         user_perms = {
             f"{p.content_type.app_label}.{p.codename}" 
@@ -39,7 +38,6 @@ class RolBackend(ModelBackend):
         roles = self._get_roles_for_user(user_obj)
         role_perms = set()
         for rol in roles:
-            # --- LÍNEA CORREGIDA ---
             # Hacemos lo mismo para los permisos que vienen de los roles
             role_perms.update({
                 f"{p.content_type.app_label}.{p.codename}" 
@@ -56,6 +54,12 @@ class RolBackend(ModelBackend):
         """
         if not user_obj.is_active:
             return False
+        
+        # --- LA LLAVE MAESTRA ---
+        # Si es superusuario, tiene TODOS los permisos automáticamente.
+        # No consultamos roles ni membresías.
+        if user_obj.is_superuser:
+            return True
 
         # Si el permiso está directamente en el usuario, se concede globalmente.
         if perm in self.get_user_permissions(user_obj):
