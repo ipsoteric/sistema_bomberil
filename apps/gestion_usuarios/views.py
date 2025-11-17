@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.db.models import Q, Count
 from collections import defaultdict
 from django.apps import apps
+from django.contrib.sessions.models import Session
 
 # Clases para paginación manual
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -1350,3 +1351,47 @@ class RegistroActividadView(BaseEstacionMixin, PermissionRequiredMixin, View):
         
         context = self.get_context_data()
         return render(request, self.template_name, context)
+
+
+
+
+class UsuarioForzarCierreSesionView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
+    """
+    Elimina todas las sesiones activas de un usuario específico,
+    forzando su desconexión en todos los dispositivos.
+    """
+    # Reutilizamos el permiso de desactivar, ya que es una acción de seguridad similar
+    permission_required = 'gestion_usuarios.accion_gestion_usuarios_forzar_logout'
+    
+    def post(self, request, id, *args, **kwargs):
+        usuario_objetivo = get_object_or_404(Usuario, id=id)
+        
+        # 1. Obtener todas las sesiones no expiradas
+        sesiones_activas = Session.objects.filter(expire_date__gte=timezone.now())
+        
+        sesiones_eliminadas = 0
+
+        # 2. Iterar y encontrar las que pertenecen al usuario
+        # (Django no guarda el user_id en columnas directas por defecto, hay que decodificar)
+        for session in sesiones_activas:
+            data = session.get_decoded()
+            # El ID en la sesión se guarda como string en '_auth_user_id'
+            if str(data.get('_auth_user_id')) == str(usuario_objetivo.id):
+                session.delete()
+                sesiones_eliminadas += 1
+        
+        # 3. Registrar auditoría
+        if sesiones_eliminadas > 0:
+            registrar_actividad(
+                actor=request.user,
+                verbo=f"forzó el cierre de {sesiones_eliminadas} sesión(es) de",
+                objetivo=usuario_objetivo,
+                estacion=request.session.get('active_estacion_id') # Pasamos el ID, la función lo maneja
+                # Nota: Si tu registrar_actividad pide objeto Estacion, usa: 
+                # Estacion.objects.get(id=request.session.get('active_estacion_id'))
+            )
+            messages.success(request, f"Se han cerrado exitosamente {sesiones_eliminadas} sesiones activas de {usuario_objetivo.get_full_name}.")
+        else:
+            messages.info(request, f"El usuario {usuario_objetivo.get_full_name} no tenía sesiones activas en este momento.")
+
+        return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))

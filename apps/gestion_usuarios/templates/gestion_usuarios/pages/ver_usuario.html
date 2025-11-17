@@ -61,9 +61,19 @@
                             <i class="fas fa-key me-2 text-muted"></i> Restablecer Contraseña
                         </a>
                     {% endif %}
+
+                    {% if perms.gestion_usuarios.accion_gestion_usuarios_forzar_logout %}
+                        <a href="#" 
+                           class="list-group-item list-group-item-action fs_normal boton-forzar-logout"
+                           data-bs-toggle="modal" 
+                           data-bs-target="#ModalForzarLogout"
+                           data-form-action="{% url 'gestion_usuarios:ruta_forzar_logout' id=membresia.usuario.id %}">
+                            <i class="fas fa-power-off me-2 text-warning"></i> Forzar Cierre de Sesión
+                        </a>
+                    {% endif %}
                     
                     {% if membresia.estado == 'ACTIVO' %}
-                        <a href="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal list-group-item-warning">
+                        <a href="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal list-group-item-warning ">
                             <i class="fa-solid fa-ban me-2"></i> Desactivar Membresía
                         </a>
                     {% elif membresia.estado == 'INACTIVO' %}
@@ -185,6 +195,9 @@
 </div>
 
 {% include "gestion_usuarios/partials/_modal_restablecer_contrasena.html" %}
+{% include "gestion_usuarios/partials/_modal_activar_usuario.html" %}
+{% include "gestion_usuarios/partials/_modal_desactivar_usuario.html" %}
+{% include "gestion_usuarios/partials/_modal_forzar_logout.html" %}
 
 {# Token CSRF, necesario para el script de avatar #}
 {% csrf_token %} 

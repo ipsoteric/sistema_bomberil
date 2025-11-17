@@ -19,7 +19,8 @@ from .views import (
     RolEditarView,
     RolAsignarPermisosView,
     RolEliminarView,
-    RegistroActividadView
+    RegistroActividadView,
+    UsuarioForzarCierreSesionView
 )
 
 app_name = "gestion_usuarios"
@@ -66,6 +67,9 @@ urlpatterns = [
 
     # Registro de Actividad (Auditoría)
     path('auditoria/actividad/', RegistroActividadView.as_view(), name="ruta_registro_actividad"),
+
+    # Forzar cierre de sesión de usuario
+    path('usuarios/<int:id>/forzar-logout/', UsuarioForzarCierreSesionView.as_view(), name="ruta_forzar_logout"),
 
 
 

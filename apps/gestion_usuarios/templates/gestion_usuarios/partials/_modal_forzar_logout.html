@@ -1,0 +1,30 @@
+<div id="ModalForzarLogout" class="modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content shadow-sm">
+            <div class="modal-header bg-warning bg-opacity-10">
+                <h5 class="modal-title fs_normal fw-bold text-dark">
+                    <i class="fas fa-sign-out-alt me-1"></i> Forzar Cierre de Sesión
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body fs_normal">
+                <p>
+                    ¿Estás seguro de que deseas cerrar la sesión de este usuario en <strong>todos</strong> sus dispositivos?
+                </p>
+                <p class="text-muted fs_pequena mb-0">
+                    El usuario será desconectado inmediatamente y tendrá que volver a ingresar su contraseña para acceder.
+                </p>
+            </div>
+            <div class="modal-footer">
+                {# El formulario se llenará dinámicamente con JS #}
+                <form id="formForzarLogout" method="post" action="">
+                    {% csrf_token %}
+                    <button type="button" class="btn btn-outline-secondary btn-sm fs_normal" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning btn-sm fs_normal text-dark">
+                        Sí, Cerrar Sesiones
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

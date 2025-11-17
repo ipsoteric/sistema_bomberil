@@ -44,6 +44,17 @@
     </button>
     {% endif %}
 
+    {# Forzar cierre de sesiones del usuario #}
+    {% if perms.gestion_usuarios.accion_gestion_usuarios_forzar_logout %} {# Usamos el mismo permiso que definimos en la vista #}
+        <button type="button"  
+           class="menu-acciones-usuarios__accion fs_normal boton-forzar-logout fondo_transparente"
+           data-bs-toggle="modal" 
+           data-bs-target="#ModalForzarLogout"
+           data-form-action="{% url 'gestion_usuarios:ruta_forzar_logout' id=membresia.usuario.id %}">
+            <i class="fas fa-power-off me-2 text-warning"></i> Forzar Cierre de Sesión
+        </button>
+    {% endif %}
+
     {# Desactivar usuario #}
     {% if perms.gestion_usuarios.accion_gestion_usuarios_desactivar_cuenta and membresia.estado == 'ACTIVO' %}
     <button type="button" 

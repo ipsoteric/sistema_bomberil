@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
 
+
     // --- LÓGICA PARA EL MODAL DE DESACTIVAR USUARIO ---
     const modalDesactivarUsuarioEl = document.getElementById('ModalDesactivarUsuario');
     
@@ -25,6 +26,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Este console.log es útil para depurar si el modal no estuviera en la página
         console.log("El modal #ModalDesactivarUsuario no se encuentra en esta página.");
     }
+
+
 
     // --- LÓGICA PARA EL MODAL DE ACTIVAR USUARIO ---
     const modalActivarUsuarioEl = document.getElementById('ModalActivarUsuario');
@@ -52,6 +55,26 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     } else {
         console.log("El modal #ModalActivarUsuario no se encuentra en esta página.");
+    }
+
+
+    
+    // --- LÓGICA PARA EL MODAL DE FORZAR LOGOUT ---
+    const modalLogoutEl = document.getElementById('ModalForzarLogout');
+    
+    if (modalLogoutEl) {
+        // Nota: Bootstrap 5 usa new bootstrap.Modal(elemento)
+        // Si ya usas data-bs-toggle en el HTML, solo necesitamos manejar el action del form
+        const formLogout = document.getElementById('formForzarLogout');
+
+        document.querySelectorAll('.boton-forzar-logout').forEach(boton => {
+            boton.addEventListener('click', function () {
+                const urlAccion = this.dataset.formAction;
+                if (formLogout && urlAccion) {
+                    formLogout.action = urlAccion;
+                }
+            });
+        });
     }
 
 });
