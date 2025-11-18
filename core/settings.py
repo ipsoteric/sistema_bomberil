@@ -41,6 +41,7 @@ PROJECT_APPS = [
     'apps.acceso',
     'apps.api',
     'apps.perfil',
+    'apps.core_admin',
 ]
 # Aplicaciones de terceros
 THIRD_PARTY_APPS = [
@@ -168,6 +169,7 @@ MODULOS = {
     'portal': 'Bomberil',
     'acceso': 'Acceso',
     'api': 'api',
+    'core_admin': 'Administración del sistema',
 }
 
 

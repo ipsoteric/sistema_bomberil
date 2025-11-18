@@ -18,6 +18,7 @@ urlpatterns = [
     path('acceso/', include("apps.acceso.urls")),
     path('api/v1/', include("apps.api.urls")),
     path('perfil/', include("apps.perfil.urls")),
+    path('sistema/', include("apps.core_admin.urls")),
     path('', RedirectView.as_view(pattern_name='portal:ruta_inicio', permanent=False), name='ruta_redireccion_portal_inicio'),
 ]
 
