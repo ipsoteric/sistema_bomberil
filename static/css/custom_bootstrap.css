@@ -10,16 +10,22 @@ ESTILOS DE MODO OSCURO
     color: #e6edf3; /* Color de texto base */
 }
 
+
+
 /* 1.1. Corrige bordes de header/footer de card */
 .dark-mode .card-header,
 .dark-mode .card-footer {
     border-color: #2d3238;
 }
 
+
+
 /* 2. Corrige fondos claros forzados (como el panel de filtro) */
 .dark-mode .card-body.bg-light {
     background-color: #1a1d21 !important;
 }
+
+
 
 /* 3. Corrige los Formularios */
 .dark-mode .form-control,
@@ -42,6 +48,8 @@ ESTILOS DE MODO OSCURO
     color: #8b949e;
 }
 
+
+
 /* 3.1 Corrige Checkbox */
 .dark-mode .form-check-input {
     background-color: #111318;
@@ -51,6 +59,13 @@ ESTILOS DE MODO OSCURO
     background-color: #0d6efd;
     border-color: #0d6efd;
 }
+
+/* 3.2 Corrige textos de ayuda en formularios (.form-text) */
+.dark-mode .form-text {
+    color: #b0b3b8; /* Un gris claro para que sea legible pero se diferencie del input principal */
+}
+
+
 
 /* 4. Corrige Tablas (.table) */
 .dark-mode .table {
@@ -71,6 +86,8 @@ ESTILOS DE MODO OSCURO
     background-color: rgba(255, 255, 255, 0.05);
 }
 
+
+
 /* 5. Corrige Grupos de Listas (.list-group) -- CORREGIDO */
 .dark-mode .list-group-item {
     background-color: #1a1d21; 
@@ -78,10 +95,13 @@ ESTILOS DE MODO OSCURO
     color: inherit; /* Hereda el color del .card */
 }
 
+
+
 /* 6. Corrige Modales (.modal) */
 .dark-mode .modal-content {
     background-color: #1a1d21;
     border-color: #2d3238;
+    color: #e6edf3;
 }
 .dark-mode .modal-header {
     border-bottom-color: var(--color-borde);
@@ -92,6 +112,8 @@ ESTILOS DE MODO OSCURO
 .dark-mode .btn-close {
     filter: invert(1) grayscale(100%) brightness(200%);
 }
+
+
 
 /* 7. Corrige Alertas (.alert) */
 .dark-mode .alert-warning {
@@ -108,6 +130,8 @@ ESTILOS DE MODO OSCURO
     color: #FFFFFF; /* O un color de enlace más brillante */
     font-weight: bold;
 }
+
+
 
 /* 8. Corrige Badges de colores (.badge) */
 .dark-mode .badge.bg-warning {
@@ -135,6 +159,7 @@ ESTILOS DE MODO OSCURO
     background-color: #2c0b0e;
     border: 1px solid #842029;
 }
+
 
 
 /* 9. Corrige Paginación (.pagination) */
@@ -177,6 +202,8 @@ ESTILOS DE MODO OSCURO
     border-color: #5a6066;
 }
 
+
+
 /* 11. Corrige Spinners (.spinner-border) */
 .dark-mode .spinner-border {
     border-right-color: transparent;
@@ -184,6 +211,8 @@ ESTILOS DE MODO OSCURO
 .dark-mode .spinner-border.text-primary {
     border-right-color: transparent;
 }
+
+
 
 /* 12. Corrige Placeholders y fondos .bg-light */
 .dark-mode .bg-light {
@@ -203,6 +232,8 @@ ESTILOS DE MODO OSCURO
   color: #555 !important;
 }
 
+
+
 /* 13. (NUEVA REGLA) Corrige .text-muted */
 .dark-mode .text-muted {
     color: #8b949e !important; /* Un gris claro legible */
@@ -214,4 +245,66 @@ ESTILOS DE MODO OSCURO
 
 .dark-mode .ts-control, .ts-wrapper.single.input-active .ts-control {
     background-color: var(--secondary-color);
+}
+
+
+
+/* 14. Corrige fondos forzados con bg-white en headers/footers */
+/* Esto fuerza a que, en modo oscuro, ignore el bg-white y use el fondo de la tarjeta */
+.dark-mode .card-header.bg-white,
+.dark-mode .card-footer.bg-white {
+    background-color: transparent !important; 
+    border-color: #2d3238; /* Mantiene la coherencia del borde */
+}
+
+
+
+/* 15. (NUEVO) Corrige utilidades de texto y fondos en Modo Oscuro */
+
+/* Fuerza el texto .text-dark a ser claro en modo oscuro... */
+.dark-mode .text-dark {
+    color: #e6edf3 !important;
+}
+
+/* ...PERO mantiene el texto negro en botones amarillos/claros para mantener el contraste */
+.dark-mode .btn-warning.text-dark,
+.dark-mode .btn-info.text-dark,
+.dark-mode .btn-light.text-dark {
+    color: #212529 !important;
+}
+
+/* Corrige fondos de opacidad (como el amarillo claro del header) para que no brillen tanto */
+.dark-mode .bg-warning.bg-opacity-10 {
+    background-color: rgba(255, 193, 7, 0.15) !important; /* Amarillo muy sutil y transparente */
+    border-bottom: 1px solid #2d3238; /* Añade un borde sutil para separar */
+}
+
+
+
+/* 16. (NUEVO) Corrige Acordeones (.accordion) */
+
+/* Fondo y texto del botón en reposo */
+.dark-mode .accordion-button {
+    background-color: #1a1d21; /* Coincide con tu fondo de cards */
+    color: #e6edf3;
+    box-shadow: none; /* Quita el resplandor azul excesivo al hacer foco */
+}
+
+/* Estado EXPANDIDO: Fondo sutil y texto destacado */
+.dark-mode .accordion-button:not(.collapsed) {
+    background-color: rgba(13, 110, 253, 0.15); /* Un azul muy transparente y elegante */
+    color: #6ea8fe; /* Azul claro para el texto */
+    box-shadow: inset 0 -1px 0 #2d3238; /* Borde inferior sutil */
+}
+
+/* LA FLECHA (Chevron): Invertimos el color para que sea blanca */
+.dark-mode .accordion-button::after {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* El contenedor del item (bordes y fondo base) */
+.dark-mode .accordion-item {
+    background-color: transparent; /* Para que tome el fondo del padre o card */
+    border-color: #2d3238;
+    color: #e6edf3;
 }
