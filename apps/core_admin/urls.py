@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import AdministracionInicioView, EstacionListaView, EstacionDetalleView, EstacionEditarView
+from .views import AdministracionInicioView, EstacionListaView, EstacionDetalleView, EstacionEditarView, EstacionCrearView
 
 app_name = 'core_admin'
 
@@ -13,7 +13,10 @@ urlpatterns = [
     # Ver detalle de estación
     path('estaciones/<int:pk>/', EstacionDetalleView.as_view(), name='ruta_ver_estacion'),
 
-    # Editar usuario
+    # Editar estación
     path('estaciones/<int:pk>/editar/', EstacionEditarView.as_view(), name='ruta_editar_estacion'),
+
+    # Crear estación
+    path('estaciones/crear/', EstacionCrearView.as_view(), name='ruta_crear_estacion'),
 
 ]

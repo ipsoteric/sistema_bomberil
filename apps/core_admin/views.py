@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.views import View
-from django.views.generic import ListView, DetailView, UpdateView
+from django.views.generic import ListView, DetailView, UpdateView, CreateView
 from django.db.models import Count, Q
 from django.urls import reverse_lazy
 
@@ -106,4 +106,22 @@ class EstacionEditarView(SuperuserRequiredMixin, UpdateView):
         # Título dinámico para reutilizar template si decides hacer el CreateView después
         context['titulo_pagina'] = f"Editar: {self.object.nombre}"
         context['accion'] = "Guardar Cambios"
+        return context
+    
+
+
+
+class EstacionCrearView(SuperuserRequiredMixin, CreateView):
+    model = Estacion
+    form_class = EstacionForm
+    template_name = 'core_admin/pages/estacion_form.html'
+    
+    def get_success_url(self):
+        # Al crear, redirigimos al detalle de la nueva estación para confirmar los datos
+        return reverse_lazy('core_admin:ruta_ver_estacion', kwargs={'pk': self.object.pk})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = "Registrar Nueva Estación"
+        context['accion'] = "Crear Estación" # Texto del botón de submit
         return context
