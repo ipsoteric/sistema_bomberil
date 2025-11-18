@@ -750,38 +750,88 @@ class RolListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixi
 
 
 class RolObtenerView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacionMixin, PermissionRequiredMixin, View):
-    '''Vista para obtener el detalle de un rol'''
+    '''Vista para obtener el detalle de un rol (Lógica de agrupación corregida)'''
 
     template_name = "gestion_usuarios/pages/ver_rol.html"
     permission_required = 'gestion_usuarios.accion_usuarios_ver_roles'
     
     def get(self, request, id):
-        # Usamos get_object_or_404 para manejar automáticamente el error si el rol no existe.
-        # prefetch_related('permisos__content_type') optimiza la consulta.
+        # 1. Obtener el rol
         rol = get_object_or_404(
             Rol.objects.prefetch_related('permisos__content_type'), 
             id=id
         )
 
-        # Usamos defaultdict para agrupar los permisos del rol por módulo.
-        permisos_por_modulo = defaultdict(list)
-
-        # Obtenemos los permisos del rol, EXCLUYENDO los de las apps nativas de Django
-        permisos_del_rol = rol.permisos.exclude(
-            content_type__app_label__in=['admin', 'auth', 'contenttypes', 'sessions']
-        ).select_related('content_type').exclude(
-            codename__startswith='sys_'
+        # 2. Obtener solo los permisos de negocio que ESTE rol tiene
+        permisos_del_rol = rol.permisos.filter(
+            Q(codename__startswith='acceso_') | Q(codename__startswith='accion_')
         ).select_related('content_type')
 
-        for permiso in permisos_del_rol:
-            # Obtenemos el nombre legible del módulo (app_config.verbose_name)
-            nombre_modulo = permiso.content_type.model_class()._meta.app_config.verbose_name
-            permisos_por_modulo[nombre_modulo].append(permiso.name)
+        # 3. Diccionario final
+        grouped_perms = {} 
 
+        # 4. PRIMERA PASADA: PADRES (acceso_)
+        # Buscamos los permisos de 'acceso_' que tiene el rol
+        parent_perms = permisos_del_rol.filter(codename__startswith='acceso_')
+        
+        # Guardamos los app_labels que encontramos (ej: 'gestion_inventario')
+        app_labels_found = []
+        
+        for perm in parent_perms:
+            app_label = None
+            try:
+                # 'acceso_gestion_inventario' -> 'gestion_inventario'
+                app_label = perm.codename.split('_', 1)[1]
+                config = apps.get_app_config(app_label)
+                
+                grouped_perms[app_label] = {
+                    'verbose_name': config.verbose_name, # ej: "Gestión de Inventario"
+                    'main_perm': perm, # El permiso 'acceso_'
+                    'children': []     # Lista para los permisos 'accion_'
+                }
+                app_labels_found.append(app_label)
+            except (LookupError, IndexError):
+                continue 
+
+        # 5. SEGUNDA PASADA: HIJOS (accion_)
+        # Buscamos los permisos de 'accion_' que tiene el rol
+        child_perms = permisos_del_rol.filter(codename__startswith='accion_')
+
+        for perm in child_perms:
+            found_parent = False
+            try:
+                # Vemos si este permiso 'hijo' pertenece a alguno de los 'padres' que encontramos
+                for app_label in app_labels_found:
+                    expected_prefix = f"accion_{app_label}_"
+                    
+                    if perm.codename.startswith(expected_prefix):
+                        grouped_perms[app_label]['children'].append(perm)
+                        found_parent = True
+                        break
+                
+                if not found_parent:
+                    # Es un permiso 'accion_' pero su 'acceso_' no está en el rol.
+                    # Lo agrupamos en "Varios".
+                    if 'misc' not in grouped_perms:
+                        grouped_perms['misc'] = {
+                            'verbose_name': 'Permisos Varios (Sin módulo principal)',
+                            'main_perm': None,
+                            'children': []
+                        }
+                    grouped_perms['misc']['children'].append(perm)
+            
+            except Exception as e:
+                print(f"Error procesando permiso {perm.codename}: {e}")
+                continue 
+
+        # 6. Ordenar los permisos hijos alfabéticamente dentro de cada grupo
+        for app_label in grouped_perms:
+            grouped_perms[app_label]['children'].sort(key=lambda x: x.name)
+    
         context = {
             'rol': rol,
-            # Pasamos el diccionario ordenado al contexto.
-            'permisos_por_modulo': dict(sorted(permisos_por_modulo.items()))
+            # Pasamos el diccionario ordenado por nombre de módulo
+            'permisos_por_modulo': dict(sorted(grouped_perms.items(), key=lambda item: item[1]['verbose_name']))
         }
 
         return render(request, self.template_name, context)
