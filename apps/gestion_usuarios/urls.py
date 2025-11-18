@@ -32,7 +32,7 @@ urlpatterns = [
     path('', UsuarioInicioView.as_view(), name="ruta_inicio"),
 
     # Lista de usuarios
-    path('usuarios/lista/', UsuarioListaView.as_view(), name="ruta_lista_usuarios"),
+    path('usuarios/', UsuarioListaView.as_view(), name="ruta_lista_usuarios"),
 
     # Ver detalle de usuario
     path('usuarios/<int:id>/', UsuarioObtenerView.as_view(), name="ruta_ver_usuario"),

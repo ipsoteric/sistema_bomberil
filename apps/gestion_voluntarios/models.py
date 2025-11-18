@@ -170,7 +170,7 @@ class Voluntario(models.Model):
         verbose_name_plural = "Voluntarios"
 
     def __str__(self):
-        return self.usuario.get_full_name() or self.usuario.rut
+        return self.usuario.get_full_name or self.usuario.rut
 
 
 

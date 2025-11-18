@@ -148,7 +148,7 @@ class FichaMedica(models.Model):
 
     def __str__(self):
         # Accedemos al nombre a través de la relación anidada
-        return f"Ficha Médica de: {self.voluntario.usuario.get_full_name()}"
+        return f"Ficha Médica de: {self.voluntario.usuario.get_full_name}"
 
 
 

@@ -2,12 +2,12 @@ import json
 from datetime import datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
+from django.views.generic import ListView
 from django.contrib import messages
 from django.contrib.auth import login, get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.forms import PasswordResetForm
-from django.contrib.sessions.models import Session
 from django.db import IntegrityError, transaction
 from django.db.models import Q, Count
 from django.urls import reverse, reverse_lazy
@@ -16,6 +16,7 @@ from django.utils import timezone
 from collections import defaultdict
 from django.apps import apps
 from django.core.exceptions import PermissionDenied
+from user_sessions.models import Session
 
 # Clases para paginación manual
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -334,7 +335,7 @@ class UsuarioAgregarView(BaseEstacionMixin, PermissionRequiredMixin, View):
                 usuario=usuario, 
                 estado__in=estados_restringidos
             ).exists():
-                messages.warning(request, f'El usuario {usuario.get_full_name().title()} ya se encuentra activo o inactivo en otra estación.')
+                messages.warning(request, f'El usuario {usuario.get_full_name.title()} ya se encuentra activo o inactivo en otra estación.')
                 return redirect(self.fail_redirect_url)
 
             # 5. CREAR LA MEMBRESÍA (envuelta en transacción)
@@ -346,7 +347,7 @@ class UsuarioAgregarView(BaseEstacionMixin, PermissionRequiredMixin, View):
                     fecha_inicio=timezone.now().date()
                 )
 
-            messages.success(request, f'¡{usuario.get_full_name().title()} ha sido agregado a la estación exitosamente!')
+            messages.success(request, f'¡{usuario.get_full_name.title()} ha sido agregado a la estación exitosamente!')
             return redirect(self.success_redirect_url)
 
         except Usuario.DoesNotExist:
@@ -425,7 +426,7 @@ class UsuarioCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
                 )
 
             print(f"Contraseña para {nuevo_usuario.email}: {contrasena_plana}")
-            messages.success(self.request, f"Usuario {nuevo_usuario.get_full_name().title()} creado y asignado a la estación exitosamente.")
+            messages.success(self.request, f"Usuario {nuevo_usuario.get_full_name.title()} creado y asignado a la estación exitosamente.")
             return redirect(self.success_url)
 
         except IntegrityError:
@@ -545,7 +546,7 @@ class UsuarioEditarView(BaseEstacionMixin, PermissionRequiredMixin, MembresiaGes
     # --- 6. Lógica de Formulario ---
     def form_valid(self, form):
         usuario = form.save()
-        messages.success(self.request, f"Usuario {usuario.get_full_name().title()} actualizado exitosamente.")
+        messages.success(self.request, f"Usuario {usuario.get_full_name.title()} actualizado exitosamente.")
         return redirect(self.get_success_url())
     
     def form_invalid(self, form):
@@ -607,7 +608,7 @@ class UsuarioDesactivarView(BaseEstacionMixin, PermissionRequiredMixin, View):
             membresia.estado = Membresia.Estado.INACTIVO
             membresia.save()
 
-            messages.success(request, f"El usuario '{membresia.usuario.get_full_name().title()}' ha sido desactivado correctamente.")
+            messages.success(request, f"El usuario '{membresia.usuario.get_full_name.title()}' ha sido desactivado correctamente.")
 
         except Http404 as e:
             # 3. Si get_object falló, mostramos el error
@@ -673,7 +674,7 @@ class UsuarioActivarView(BaseEstacionMixin, PermissionRequiredMixin, View):
             membresia.estado = self.model.Estado.ACTIVO # <-- Usando Enum
             membresia.save()
 
-            messages.success(request, f"El usuario '{membresia.usuario.get_full_name().title()}' ha sido activado correctamente.")
+            messages.success(request, f"El usuario '{membresia.usuario.get_full_name.title()}' ha sido activado correctamente.")
 
         except Http404 as e:
             # 3. Si get_object falló, mostramos el error
@@ -689,118 +690,148 @@ class UsuarioActivarView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
 
 
-class RolListaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class RolListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
     """
     Muestra una lista de roles (globales y de la estación)
     con filtros de búsqueda y tipo.
     """
-
+    
+    # --- 1. Atributos de Configuración ---
     template_name = "gestion_usuarios/pages/lista_roles.html"
     permission_required = 'gestion_usuarios.accion_usuarios_ver_roles'
 
-    def get(self, request, *args, **kwargs):
+    # --- 2. Método de Consulta (El corazón de la vista) ---
+    def get_queryset(self):
+        """
+        Construye la consulta filtrada de Roles.
+        Accede directamente a self.request.GET para los filtros.
+        """
+        # a. Obtener parámetros de la URL
+        search_q = self.request.GET.get('q', '')
+        filter_tipo = self.request.GET.get('tipo', '')
 
-        # 1. Obtener el ID de la estación activa
-        estacion_id = request.session.get('active_estacion_id')
+        # b. Consulta base: 
+        # Roles globales (estacion es Null) O Roles de ESTA estación.
+        # Usamos self.estacion_activa (provisto por el Mixin)
+        query = Q(estacion__isnull=True) | Q(estacion=self.estacion_activa)
+        qs = Rol.objects.filter(query)
 
-        if not estacion_id:
-            messages.error(request, "No se pudo determinar la estación activa. Por favor, inicie sesión de nuevo.")
-            # Redirige a una ruta segura, por ejemplo el dashboard
-            return redirect('portal:ruta_portal') 
-        
-        estacion = get_object_or_404(Estacion, id=estacion_id)
+        # c. Aplicar filtro de búsqueda (Nombre)
+        if search_q:
+            qs = qs.filter(nombre__icontains=search_q)
 
-        # 2. Obtener parámetros de filtro de la URL
-        self.search_q = request.GET.get('q', '')
-        self.filter_tipo = request.GET.get('tipo', '')
+        # d. Aplicar filtro de Tipo (Global vs Personalizado)
+        if filter_tipo == 'global':
+            qs = qs.filter(estacion__isnull=True)
+        elif filter_tipo == 'personalizado':
+            qs = qs.filter(estacion__isnull=False)
 
-        # 3. Consulta base: roles globales (isnull=True) Y de esta estación
-        query = Q(estacion__isnull=True) | Q(estacion=estacion)
-        roles_queryset = Rol.objects.filter(query)
-
-        # 4. Aplicar filtros de búsqueda
-        if self.search_q:
-            roles_queryset = roles_queryset.filter(nombre__icontains=self.search_q)
-
-        if self.filter_tipo == 'global':
-            roles_queryset = roles_queryset.filter(estacion__isnull=True)
-        elif self.filter_tipo == 'personalizado':
-            roles_queryset = roles_queryset.filter(estacion__isnull=False) # Solo de la estación
-
-        # 5. Anotar el conteo de permisos y ordenar
-        # .annotate() es la forma eficiente de obtener el conteo
-        roles_filtrados = roles_queryset.annotate(
-            permisos_count=Count('permisos')
+        # e. Optimización: Anotar conteo y ordenar
+        # Usamos distinct=True por seguridad al hacer joins (aunque con Count a veces no es estricto, es buena práctica)
+        qs = qs.annotate(
+            permisos_count=Count('permisos', distinct=True)
         ).order_by('nombre')
 
+        return qs
 
-        # 6. Preparar contexto
+    # --- 3. Método de Contexto ---
+    def get_context_data(self, **kwargs):
+        """Prepara el contexto para el template."""
         context = {
-            'estacion': estacion,
-            'roles': roles_filtrados, # El queryset filtrado y anotado
+            'estacion': self.estacion_activa, # Del mixin
+            'roles': self.get_queryset(),     # Ejecutamos la consulta aquí
             
-            # Devolvemos los filtros para repoblar el formulario
-            'current_q': self.search_q,
-            'current_tipo': self.filter_tipo,
+            # Devolvemos los filtros para mantener el estado en el input/select
+            'current_q': self.request.GET.get('q', ''),
+            'current_tipo': self.request.GET.get('tipo', ''),
         }
+        return context
 
+    # --- 4. Manejador GET ---
+    def get(self, request, *args, **kwargs):
+        """
+        Maneja GET: Solo orquesta la obtención de datos y renderizado.
+        """
+        context = self.get_context_data()
         return render(request, self.template_name, context)
 
 
 
 
-class RolObtenerView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacionMixin, PermissionRequiredMixin, View):
-    '''Vista para obtener el detalle de un rol (Lógica de agrupación corregida)'''
-
+class RolObtenerView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para obtener el detalle de un rol.
+    
+    SEGURIDAD:
+    - BaseEstacionMixin: Garantiza sesión y estación activa.
+    - get_object: Garantiza que solo se vean roles Globales 
+      o de la Estación Activa.
+    """
+    
     template_name = "gestion_usuarios/pages/ver_rol.html"
     permission_required = 'gestion_usuarios.accion_usuarios_ver_roles'
-    
-    def get(self, request, id):
-        # 1. Obtener el rol
-        rol = get_object_or_404(
-            Rol.objects.prefetch_related('permisos__content_type'), 
-            id=id
-        )
 
-        # 2. Obtener solo los permisos de negocio que ESTE rol tiene
+
+    # --- 1. Método de Obtención (SEGURIDAD CRÍTICA) ---
+    def get_object(self):
+        """
+        Obtiene el rol asegurando que el usuario tenga permiso de verlo.
+        Reglas:
+        1. El ID debe coincidir.
+        2. El rol debe ser GLOBAL (estacion IS NULL) 
+           O pertenecer a la estación activa (self.estacion_activa).
+        """
+        rol_id = self.kwargs.get('id')
+        
+        # Construimos la query de seguridad
+        # Usamos self.estacion_activa (gracias a BaseEstacionMixin)
+        filtro_seguridad = Q(estacion__isnull=True) | Q(estacion=self.estacion_activa)
+        
+        # Optimizamos la consulta con prefetch
+        queryset = Rol.objects.filter(filtro_seguridad).prefetch_related('permisos__content_type')
+        
+        return get_object_or_404(queryset, id=rol_id)
+
+
+    # --- 2. Lógica de Negocio (Agrupación) ---
+    def _agrupar_permisos(self, rol):
+        """
+        Helper privado que contiene la lógica compleja de agrupación
+        de permisos (Padres 'acceso_' e Hijos 'accion_').
+        """
+        # A. Obtener permisos relevantes del rol
         permisos_del_rol = rol.permisos.filter(
             Q(codename__startswith='acceso_') | Q(codename__startswith='accion_')
         ).select_related('content_type')
 
-        # 3. Diccionario final
         grouped_perms = {} 
+        app_labels_found = []
 
-        # 4. PRIMERA PASADA: PADRES (acceso_)
-        # Buscamos los permisos de 'acceso_' que tiene el rol
+        # B. PRIMERA PASADA: PADRES (acceso_)
         parent_perms = permisos_del_rol.filter(codename__startswith='acceso_')
         
-        # Guardamos los app_labels que encontramos (ej: 'gestion_inventario')
-        app_labels_found = []
-        
         for perm in parent_perms:
-            app_label = None
             try:
                 # 'acceso_gestion_inventario' -> 'gestion_inventario'
                 app_label = perm.codename.split('_', 1)[1]
                 config = apps.get_app_config(app_label)
                 
                 grouped_perms[app_label] = {
-                    'verbose_name': config.verbose_name, # ej: "Gestión de Inventario"
-                    'main_perm': perm, # El permiso 'acceso_'
-                    'children': []     # Lista para los permisos 'accion_'
+                    'verbose_name': config.verbose_name,
+                    'main_perm': perm,
+                    'children': []
                 }
                 app_labels_found.append(app_label)
             except (LookupError, IndexError):
                 continue 
 
-        # 5. SEGUNDA PASADA: HIJOS (accion_)
-        # Buscamos los permisos de 'accion_' que tiene el rol
+        # C. SEGUNDA PASADA: HIJOS (accion_)
         child_perms = permisos_del_rol.filter(codename__startswith='accion_')
 
         for perm in child_perms:
             found_parent = False
             try:
-                # Vemos si este permiso 'hijo' pertenece a alguno de los 'padres' que encontramos
+                # Intentamos emparejar el hijo con un padre encontrado
                 for app_label in app_labels_found:
                     expected_prefix = f"accion_{app_label}_"
                     
@@ -809,12 +840,11 @@ class RolObtenerView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacio
                         found_parent = True
                         break
                 
+                # Si no tiene padre (huérfano), va a "Varios"
                 if not found_parent:
-                    # Es un permiso 'accion_' pero su 'acceso_' no está en el rol.
-                    # Lo agrupamos en "Varios".
                     if 'misc' not in grouped_perms:
                         grouped_perms['misc'] = {
-                            'verbose_name': 'Permisos Varios (Sin módulo principal)',
+                            'verbose_name': 'Permisos Varios',
                             'main_perm': None,
                             'children': []
                         }
@@ -824,271 +854,368 @@ class RolObtenerView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacio
                 print(f"Error procesando permiso {perm.codename}: {e}")
                 continue 
 
-        # 6. Ordenar los permisos hijos alfabéticamente dentro de cada grupo
+        # D. Ordenar hijos alfabéticamente
         for app_label in grouped_perms:
             grouped_perms[app_label]['children'].sort(key=lambda x: x.name)
-    
+            
+        return grouped_perms
+
+
+    # --- 3. Método de Contexto ---
+    def get_context_data(self, **kwargs):
+        """Arma el contexto final."""
+        
+        # Ejecutamos la lógica de agrupación
+        grouped_perms = self._agrupar_permisos(self.object)
+        
+        # Ordenamos los módulos alfabéticamente para la vista
+        permisos_ordenados = dict(
+            sorted(grouped_perms.items(), key=lambda item: item[1]['verbose_name'])
+        )
+
         context = {
-            'rol': rol,
-            # Pasamos el diccionario ordenado por nombre de módulo
-            'permisos_por_modulo': dict(sorted(grouped_perms.items(), key=lambda item: item[1]['verbose_name']))
+            'rol': self.object,
+            'permisos_por_modulo': permisos_ordenados
         }
-
-        return render(request, self.template_name, context)
-
+        return context
 
 
-
-class RolEditarView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacionMixin, PermissionRequiredMixin, View):
-    '''Vista para editar roles. Sólo el nombre y la descripción. El usuario sólo puede editar roles asociados a su estación'''
-
-    form_class = FormularioRol
-    template_name = "gestion_usuarios/pages/editar_rol.html"
-    success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
-    permission_required = 'gestion_usuarios.accion_usuarios_gestionar_roles'
-
-
-    def dispatch(self, request, *args, **kwargs):
-        """
-        Se ejecuta antes que get() o post()
-        """
-        # Obtener la estación activa de la sesión.
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            # Si no hay estación, no se puede continuar.
-            messages.error(request, f"No se encontró una estación asociada a tu sesión")
-            return redirect(self.success_url) 
-
-        # Obtener ID del rol de la URL.
-        rol_id = kwargs.get('id')
-        
-        # La consulta de seguridad: Busca un Rol que tenga el 'id' de la URL Y cuyo 'estacion_id' coincida con el de la sesión. Si no lo encuentra, lanza un error 404. Esto previene editar roles universales (estacion=None) o de otras estaciones.
-        self.rol = get_object_or_404(Rol, id=rol_id, estacion__id=estacion_id)
-        
-        return super().dispatch(request, *args, **kwargs)
-
-
+    # --- 4. Manejador GET ---
     def get(self, request, *args, **kwargs):
         """
-        Maneja GET. Muestra el formulario con los datos del rol.
-        El rol ya fue obtenido y validado en dispatch().
+        Orquestador principal.
         """
-        formulario = self.form_class(instance=self.rol)
-        context = {
-            'formulario': formulario, 
-            'rol': self.rol
-        }
+        self.object = self.get_object() # Valida seguridad y obtiene rol
+        context = self.get_context_data() # Procesa la agrupación
         return render(request, self.template_name, context)
 
 
+
+
+class RolEditarView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para editar roles (nombre y descripción).
+    
+    SEGURIDAD: 
+    Sólo permite editar roles que pertenecen explícitamente 
+    a la estación activa. Bloquea roles globales y de otras estaciones.
+    """
+    
+    # --- 1. Atributos de Configuración ---
+    template_name = "gestion_usuarios/pages/editar_rol.html"
+    form_class = FormularioRol
+    permission_required = 'gestion_usuarios.accion_usuarios_gestionar_roles'
+    success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
+
+
+    # --- 2. Método de Obtención (SEGURIDAD) ---
+    def get_object(self):
+        """
+        Obtiene el rol a editar.
+        Filtra estrictamente por el ID de la estación activa.
+        """
+        rol_id = self.kwargs.get('id')
+        
+        # BaseEstacionMixin nos da 'self.estacion_activa_id'
+        # Al filtrar por estacion_id, excluimos automáticamente:
+        # 1. Roles Globales (su estacion_id es None)
+        # 2. Roles de otras estaciones (su ID es diferente)
+        return get_object_or_404(
+            Rol, 
+            id=rol_id, 
+            estacion_id=self.estacion_activa_id
+        )
+
+
+    # --- 3. Métodos Helper ---
+    def get_form(self, data=None, instance=None):
+        return self.form_class(data, instance=instance)
+
+    def get_context_data(self, **kwargs):
+        context = {
+            'formulario': kwargs.get('form'),
+            'rol': self.object # Pasamos el objeto validado
+        }
+        return context
+
+    def get_success_url(self):
+        return self.success_url
+
+
+    # --- 4. Manejador GET ---
+    def get(self, request, *args, **kwargs):
+        """
+        Maneja GET: Muestra el formulario pre-llenado.
+        """
+        self.object = self.get_object()
+        form = self.get_form(instance=self.object)
+        
+        context = self.get_context_data(form=form)
+        return render(request, self.template_name, context)
+
+
+    # --- 5. Manejador POST ---
     def post(self, request, *args, **kwargs):
         """
-        Maneja POST. Procesa y guarda los datos del formulario.
+        Maneja POST: Valida y guarda.
         """
-        formulario = self.form_class(request.POST, instance=self.rol)
+        self.object = self.get_object()
+        form = self.get_form(request.POST, instance=self.object)
 
-        if formulario.is_valid():
-            formulario.save()
-            messages.success(request, f"Rol '{self.rol.nombre}' actualizado exitosamente.")
-            return redirect(self.success_url)
+        if form.is_valid():
+            return self.form_valid(form)
         else:
-            messages.error(request, "Formulario no válido. Por favor, revisa los datos.")
-            context = {
-                'formulario': formulario, 
-                'rol': self.rol
-            }
-            return render(request, self.template_name, context)
+            return self.form_invalid(form)
+
+
+    # --- 6. Lógica de Formulario ---
+    def form_valid(self, form):
+        """Guarda el rol y redirige."""
+        rol = form.save()
+        messages.success(self.request, f"Rol '{rol.nombre}' actualizado exitosamente.")
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        """Muestra errores de validación."""
+        messages.error(self.request, "Formulario no válido. Por favor, revisa los datos.")
+        context = self.get_context_data(form=form)
+        return render(self.request, self.template_name, context)
 
 
 
 
-class RolCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    '''Vista para crear roles personalizados. Los roles se asocian a la estación del usuario'''
-
+class RolCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para crear roles personalizados.
+    Los roles se asocian automáticamente a la estación activa del usuario.
+    """
+    
+    # --- 1. Atributos de Configuración ---
     form_class = FormularioRol
     template_name = 'gestion_usuarios/pages/crear_rol.html'
     success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
     permission_required = 'gestion_usuarios.accion_usuarios_gestionar_roles'
 
+    # --- 2. Métodos Helper (Formulario y Contexto) ---
+    def get_form(self, data=None):
+        """
+        Helper para instanciar el formulario.
+        INYECCIÓN DE DEPENDENCIA: Pasamos 'self.estacion_activa' al form.
+        """
+        # BaseEstacionMixin ya obtuvo la estación por nosotros
+        return self.form_class(data, estacion=self.estacion_activa)
 
-    def get(self, request, *args, **kwargs):
-        # 1. Obtiene la estación activa de la sesión para pasarla al contexto.
-        estacion_id = request.session.get('active_estacion_id')
-        estacion = get_object_or_404(Estacion, id=estacion_id)
-
-        # 2. Pasa la estación al formulario para que la use en su lógica interna.
-        form = self.form_class(estacion=estacion)
-        
-        # 3. Renderiza la plantilla con el formulario y la estación.
+    def get_context_data(self, **kwargs):
+        """Helper para poblar el contexto."""
         context = {
-            'formulario': form,
-            'estacion': estacion
+            'formulario': kwargs.get('form'),
+            'estacion': self.estacion_activa # Disponible en el template si se requiere
         }
+        return context
+
+    # --- 3. Manejador GET ---
+    def get(self, request, *args, **kwargs):
+        """Maneja GET: Muestra formulario vacío."""
+        form = self.get_form()
+        context = self.get_context_data(form=form)
         return render(request, self.template_name, context)
 
-
+    # --- 4. Manejador POST ---
     def post(self, request, *args, **kwargs):
-        # 1. Obtiene la estación activa de la sesión.
-        estacion_id = request.session.get('active_estacion_id')
-        estacion = get_object_or_404(Estacion, id=estacion_id)
+        """Maneja POST: Procesa el formulario."""
+        form = self.get_form(request.POST)
 
-        # 2. Crea una instancia del formulario con los datos de la petición (request.POST)
-        #    y la estación para la lógica de guardado.
-        form = self.form_class(request.POST, estacion=estacion)
-
-        # 3. Valida el formulario.
         if form.is_valid():
-            form.save()
-            messages.success(request, f"Rol creado correctamente.")
-            return redirect(self.success_url)
-        
-        # 4. Si el formulario no es válido, vuelve a mostrar la página
-        #    con el formulario que incluye los errores de validación.
-        context = {
-            'form': form,
-            'estacion': estacion
-        }
-        return render(request, self.template_name, context)
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+
+    # --- 5. Lógica de Validación ---
+    def form_valid(self, form):
+        """
+        Guarda el rol.
+        El formulario se encarga de asignar la estación internamente
+        porque se la pasamos en el __init__ (ver get_form).
+        """
+        form.save()
+        messages.success(self.request, "Rol creado correctamente.")
+        return redirect(self.success_url)
+
+    def form_invalid(self, form):
+        """Muestra errores."""
+        messages.error(self.request, "Formulario no válido. Revisa los campos.")
+        context = self.get_context_data(form=form)
+        return render(self.request, self.template_name, context)
 
 
 
 
-class RolAsignarPermisosView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacionMixin, PermissionRequiredMixin, View):
-
+class RolAsignarPermisosView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para asignar permisos a un rol.
+    Muestra una lista de TODOS los permisos del sistema agrupados por módulo.
+    """
+    
+    # --- 1. Configuración ---
     template_name = 'gestion_usuarios/pages/asignar_permisos.html'
-    success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
     permission_required = 'gestion_usuarios.accion_usuarios_gestionar_roles'
+    success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
 
-    def dispatch(self, request, *args, **kwargs):
-        """Valida que el rol sea editable y pertenece a la estación activa."""
-        estacion_id = request.session.get('active_estacion_id')
-        rol_id = kwargs.get('id')
-        
-        # Un rol editable debe tener el 'id' correcto y pertenecer a la estación activa.
-        self.rol = get_object_or_404(Rol, id=rol_id, estacion__id=estacion_id)
-        
-        return super().dispatch(request, *args, **kwargs)
-
-
-    def get(self, request, *args, **kwargs):
-        """Muestra el formulario con los permisos agrupados y los checkboxes."""
-
-        # 1. Obtener todos los permisos de negocio
-        permissions = Permission.objects.filter(
-            Q(codename__startswith='acceso_') | Q(codename__startswith='accion_')
+    # --- 2. Método de Obtención (Seguridad Idéntica a RolEditarView) ---
+    def get_object(self):
+        """
+        Obtiene el rol a editar.
+        Filtra estrictamente por el ID de la estación activa.
+        Bloquea roles globales y de otras estaciones.
+        """
+        rol_id = self.kwargs.get('id')
+        return get_object_or_404(
+            Rol, 
+            id=rol_id, 
+            estacion_id=self.estacion_activa_id # Del Mixin
         )
 
-        # 2. Diccionario final
-        grouped_perms = {} 
-
-        # 3. PRIMERA PASADA: PADRES (acceso_)
-        parent_perms = permissions.filter(codename__startswith='acceso_')
+    # --- 3. Helper de Negocio (Agrupación de TODOS los permisos) ---
+    def _agrupar_todos_los_permisos(self):
+        """
+        Obtiene y agrupa TODOS los permisos de negocio del sistema.
+        (Lógica similar a RolObtenerView, pero sobre Permission.objects.all)
+        """
+        # A. Obtener TODOS los permisos relevantes
+        all_perms = Permission.objects.filter(
+            Q(codename__startswith='acceso_') | Q(codename__startswith='accion_')
+        )
         
+        grouped_perms = {}
+        app_labels_found = []
+
+        # B. PRIMERA PASADA: PADRES (acceso_)
+        parent_perms = all_perms.filter(codename__startswith='acceso_')
         for perm in parent_perms:
-            app_label = None
             try:
-                # 'acceso_gestion_inventario' -> app_label = 'gestion_inventario'
                 app_label = perm.codename.split('_', 1)[1]
                 config = apps.get_app_config(app_label)
-                
                 grouped_perms[app_label] = {
                     'verbose_name': config.verbose_name,
                     'main_perm': perm,
                     'children': []
                 }
+                app_labels_found.append(app_label)
             except (LookupError, IndexError):
-                continue 
+                continue
 
-        # 4. SEGUNDA PASADA: HIJOS (accion_)
-        child_perms = permissions.filter(codename__startswith='accion_')
-        # Obtenemos los app_labels que SÍ existen (ej: 'gestion_inventario', 'gestion_usuarios')
-        app_labels_from_parents = grouped_perms.keys() 
-
+        # C. SEGUNDA PASADA: HIJOS (accion_)
+        child_perms = all_perms.filter(codename__startswith='accion_')
         for perm in child_perms:
-            found_parent = False
             try:
-                # Iterar sobre los app_labels que SÍ encontramos en la PASADA 1
-                for app_label in app_labels_from_parents:
-                    
-                    # Construir el prefijo que este permiso 'hijo' debería tener
-                    # ej. "accion_gestion_inventario_"
-                    expected_prefix = f"accion_{app_label}_"
-                    
-                    if perm.codename.startswith(expected_prefix):
+                for app_label in app_labels_found:
+                    if perm.codename.startswith(f"accion_{app_label}_"):
                         grouped_perms[app_label]['children'].append(perm)
-                        found_parent = True
-                        break # Encontró su padre, pasar al siguiente permiso
-                
-                if not found_parent:
-                    print(f"[DEBUG] -> ADVERTENCIA: No coincide con ningún prefijo de app_label conocido. Omitiendo.")
-            
-            except Exception as e:
-                print(f"[DEBUG] -> ERROR Inesperado procesando '{perm.codename}': {e}. Omitiendo.")
-                continue 
+                        break
+            except Exception:
+                continue
 
-        # 5. Ordenar los permisos hijos alfabéticamente
+        # D. Ordenar
         for app_label in grouped_perms:
             grouped_perms[app_label]['children'].sort(key=lambda x: x.name)
-    
-        context = {
-            'rol': self.rol,
-            'permissions_by_app': dict(sorted(grouped_perms.items(), key=lambda item: item[1]['verbose_name'])),
-            'rol_permissions_ids': set(self.rol.permisos.values_list('id', flat=True))
-        }
+            
+        return grouped_perms
+
+    # --- 4. Método de Contexto ---
+    def get_context_data(self, **kwargs):
+        """Arma el contexto para la matriz de permisos."""
         
+        # 1. Obtenemos el diccionario agrupado
+        grouped_perms = self._agrupar_todos_los_permisos()
+        
+        # 2. Ordenamos los grupos por nombre del módulo
+        permissions_by_app = dict(
+            sorted(grouped_perms.items(), key=lambda item: item[1]['verbose_name'])
+        )
+        
+        # 3. IDs actuales (para marcar los checkboxes)
+        current_ids = set(self.object.permisos.values_list('id', flat=True))
+
+        context = {
+            'rol': self.object,
+            'permissions_by_app': permissions_by_app,
+            'rol_permissions_ids': current_ids
+        }
+        return context
+
+    # --- 5. Manejador GET ---
+    def get(self, request, *args, **kwargs):
+        """Maneja GET: Muestra la matriz de selección."""
+        self.object = self.get_object() # Valida y obtiene el rol
+        context = self.get_context_data()
         return render(request, self.template_name, context)
 
-
+    # --- 6. Manejador POST ---
     def post(self, request, *args, **kwargs):
-        """Guarda los permisos seleccionados para el rol."""
+        """
+        Maneja POST: Guarda la selección de permisos.
+        """
+        self.object = self.get_object() # Valida y obtiene el rol
         
-        # Obtiene una lista con los IDs de todos los checkboxes marcados.
-        selected_permissions_ids = request.POST.getlist('permisos') 
+        # Obtiene la lista de IDs seleccionados
+        selected_ids = request.POST.getlist('permisos')
         
-        # El método set() es ideal: añade los nuevos, quita los desmarcados y deja los que no cambiaron.
-        self.rol.permisos.set(selected_permissions_ids)
+        # Actualiza la relación ManyToMany
+        self.object.permisos.set(selected_ids)
         
-        messages.success(request, f"Permisos del rol '{self.rol.nombre}' actualizados correctamente.")
+        messages.success(request, f"Permisos del rol '{self.object.nombre}' actualizados correctamente.")
         return redirect(self.success_url)
 
 
 
 
-class RolEliminarView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstacionMixin, PermissionRequiredMixin, View):
-    '''Vista para eliminar un rol personalizado.'''
+class RolEliminarView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para eliminar un rol personalizado.
+    
+    SEGURIDAD:
+    Sólo permite eliminar roles que pertenecen explícitamente 
+    a la estación activa. Bloquea la eliminación de roles globales 
+    y de roles pertenecientes a otras estaciones.
+    """
 
-    # --- Atributos de Configuración ---
+    # --- 1. Atributos de Configuración ---
     template_name = 'gestion_usuarios/pages/eliminar_rol.html'
     permission_required = 'gestion_usuarios.accion_usuarios_gestionar_roles'
     success_url = reverse_lazy('gestion_usuarios:ruta_lista_roles')
 
-
-    def dispatch(self, request, *args, **kwargs):
+    # --- 2. Método de Obtención (SEGURIDAD) ---
+    def get_object(self):
         """
-        Valida que el rol a eliminar exista y pertenezca a la estación activa del usuario.
-        Se ejecuta antes que get() o post().
+        Obtiene el rol a eliminar.
+        Filtra estrictamente por el ID de la estación activa.
         """
-        estacion_id = request.session.get('active_estacion_id')
-        rol_id = kwargs.get('id')
-
-        # La consulta de seguridad: encuentra el rol solo si su ID y el ID de su estación
-        # coinciden con los datos de la URL y la sesión. Si no, 404.
-        self.rol = get_object_or_404(Rol, id=rol_id, estacion__id=estacion_id)
+        rol_id = self.kwargs.get('id')
         
-        return super().dispatch(request, *args, **kwargs)
+        # BaseEstacionMixin nos da 'self.estacion_activa_id'
+        # Al filtrar por estacion_id, garantizamos que solo se toque
+        # lo que pertenece a esta estación.
+        return get_object_or_404(
+            Rol, 
+            id=rol_id, 
+            estacion_id=self.estacion_activa_id
+        )
 
-
+    # --- 3. Manejador GET ---
     def get(self, request, *args, **kwargs):
         """Muestra la página de confirmación de eliminación."""
-        # El objeto 'self.rol' ya fue obtenido y validado en dispatch().
-        return render(request, self.template_name, {'rol': self.rol})
+        self.object = self.get_object()
+        return render(request, self.template_name, {'rol': self.object})
 
-
+    # --- 4. Manejador POST ---
     def post(self, request, *args, **kwargs):
         """Ejecuta la eliminación del rol."""
-        # El objeto 'self.rol' ya fue obtenido y validado.
-        rol_nombre = self.rol.nombre
-        self.rol.delete()
+        
+        # Volvemos a obtener y validar el objeto antes de borrar
+        self.object = self.get_object()
+        
+        rol_nombre = self.object.nombre
+        self.object.delete()
         
         messages.success(request, f"El rol '{rol_nombre.title()}' ha sido eliminado exitosamente.")
         return redirect(self.success_url)
@@ -1096,184 +1223,266 @@ class RolEliminarView(LoginRequiredMixin, ModuleAccessMixin, RolValidoParaEstaci
 
 
 
-class UsuarioAsignarRolesView(LoginRequiredMixin, ModuleAccessMixin, UsuarioDeMiEstacionMixin, PermissionRequiredMixin, View):
-    permission_required = 'gestion_usuarios.accion_usuarios_asignar_roles_usuario'
+class UsuarioAsignarRolesView(BaseEstacionMixin, PermissionRequiredMixin, MembresiaGestionableMixin, View):
+    """
+    Vista para gestionar los ROLES de un usuario dentro de la estación activa.
+    
+    FUNCIONAMIENTO:
+    1. Obtiene la Membresía del usuario (validada por Mixins).
+    2. Muestra una lista de roles disponibles (Globales + De la Estación).
+    3. Permite marcar/desmarcar roles y guardar los cambios.
+    
+    SEGURIDAD:
+    - Solo permite ver usuarios de la propia estación (via get_object).
+    - Solo permite asignar roles que pertenezcan a la estación o sean globales (via POST validation).
+    """
+    
     template_name = 'gestion_usuarios/pages/asignar_roles.html'
-    success_url = reverse_lazy('gestion_usuarios:ruta_lista_usuarios')
+    permission_required = 'gestion_usuarios.accion_usuarios_asignar_roles_usuario'
+    
+    # Mensaje específico si el mixin bloquea el acceso
+    mensaje_no_gestiona = "No se pueden asignar roles porque la membresía del usuario no está vigente."
 
 
-    def get(self, request, *args, **kwargs):
+    # --- 1. Método de Obtención (El corazón de la seguridad) ---
+    def get_object(self):
         """
-        Muestra los checkboxes con los roles disponibles agrupados.
+        Obtiene la *última* membresía del usuario en la estación activa.
+        El mixin 'MembresiaGestionableMixin' usará esto para validar 
+        que sea ACTIVA o INACTIVA.
         """
-        usuario_id = kwargs.get('id')
-        estacion_id = request.session.get('active_estacion_id')
+        usuario_id = self.kwargs.get('id')
+        try:
+            return Membresia.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id # Del BaseEstacionMixin
+            ).latest('fecha_inicio')
+        except Membresia.DoesNotExist:
+            raise Http404("El usuario no pertenece a esta estación.")
 
-        usuario = get_object_or_404(Usuario, id=usuario_id)
-        estacion = get_object_or_404(Estacion, id=estacion_id)
-        membresia = get_object_or_404(
-            Membresia, 
-            usuario=usuario, 
-            estacion=estacion, 
-            estado__in=[Membresia.Estado.ACTIVO, Membresia.Estado.INACTIVO]
-        )
 
-        # Obtenemos todos los roles que están disponibles para esta estación:
-        # Aquellos donde la estación es nula (universales) O cuya estación es la activa.
-        roles_disponibles = Rol.objects.filter(
-            Q(estacion__isnull=True) | Q(estacion=estacion)
+    def get_success_url(self):
+        """Redirige al perfil del usuario."""
+        return reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': self.object.usuario.id})
+
+
+    # --- 2. Helper de Roles Disponibles ---
+    def get_roles_queryset(self):
+        """
+        Retorna el QuerySet de todos los roles que esta estación PUEDE usar.
+        (Roles Globales + Roles creados en esta estación).
+        """
+        return Rol.objects.filter(
+            Q(estacion__isnull=True) | Q(estacion=self.estacion_activa_id)
         ).order_by('nombre')
-        
-        # Separamos los roles en dos grupos para mostrarlos en la plantilla.
-        roles_universales = roles_disponibles.filter(estacion__isnull=True)
-        roles_de_estacion = roles_disponibles.filter(estacion=estacion)
 
+
+    # --- 3. Contexto ---
+    def get_context_data(self, **kwargs):
+        roles_disponibles = self.get_roles_queryset()
+        
         context = {
-            'usuario': usuario,
-            'estacion': estacion,
-            'roles_universales': roles_universales,
-            'roles_de_estacion': roles_de_estacion,
-            'usuario_roles_ids': set(membresia.roles.values_list('id', flat=True))
+            'membresia': self.object, # La membresía validada
+            'usuario': self.object.usuario,
+            'estacion': self.object.estacion,
+            
+            # Agrupación para la vista
+            'roles_universales': roles_disponibles.filter(estacion__isnull=True),
+            'roles_de_estacion': roles_disponibles.filter(estacion__isnull=False),
+            
+            # IDs actuales para marcar los checkboxes
+            'usuario_roles_ids': set(self.object.roles.values_list('id', flat=True))
         }
+        return context
+
+
+    # --- 4. Manejador GET ---
+    def get(self, request, *args, **kwargs):
+        # El mixin ya llamó a get_object, validó el estado y guardó en self.object
+        context = self.get_context_data()
         return render(request, self.template_name, context)
 
 
+    # --- 5. Manejador POST (Validación de Seguridad) ---
     def post(self, request, *args, **kwargs):
-        """
-        Guarda los roles seleccionados en la membresía del usuario.
-        """
-
-        usuario_id = kwargs.get('id')
-        estacion_id = request.session.get('active_estacion_id')
-
-        usuario = get_object_or_404(Usuario, id=usuario_id)
-        estacion = get_object_or_404(Estacion, id=estacion_id)
-        membresia = get_object_or_404(
-            Membresia, 
-            usuario=usuario, 
-            estacion=estacion, 
-            estado__in=[Membresia.Estado.ACTIVO, Membresia.Estado.INACTIVO]
-        )
-
-        # VALIDAR ROLES
-        # 1. Obtenemos la lista de IDs que el usuario envió desde el formulario.
-        selected_roles_ids_str = request.POST.getlist('roles')
-
-        # 2. Obtenemos el CONJUNTO de IDs de roles que son REALMENTE VÁLIDOS para esta estación.
-        #    (Los universales + los de la estación). Usar un set() es muy eficiente.
-        roles_validos_ids = set(Rol.objects.filter(
-            Q(estacion__isnull=True) | Q(estacion=estacion)
-        ).values_list('id', flat=True))
-
-        # 3. Validamos la lista del usuario.
-        #    Convertimos los IDs de string a int y nos quedamos SOLO con los que
-        #    están presentes en nuestro conjunto de roles válidos.
-        roles_finales_para_guardar = []
-        for role_id_str in selected_roles_ids_str:
+        # El mixin valida nuevamente la membresía
+        self.object = self.get_object() 
+        
+        # --- VALIDACIÓN DE ROLES (CRÍTICO) ---
+        # El usuario envía una lista de IDs. Debemos asegurarnos de que NO 
+        # esté intentando inyectar un ID de un rol que no le pertenece (de otra estación).
+        
+        # 1. IDs enviados por el usuario
+        selected_roles_ids = request.POST.getlist('roles')
+        
+        # 2. IDs válidos (Trusted Source)
+        # Usamos values_list para obtener solo los IDs de la query segura
+        valid_roles_ids = set(self.get_roles_queryset().values_list('id', flat=True))
+        
+        # 3. Filtrado Seguro
+        # Convertimos a int y filtramos. Solo pasan los que existen en valid_roles_ids.
+        roles_para_guardar = []
+        for role_id in selected_roles_ids:
             try:
-                role_id = int(role_id_str)
-                if role_id in roles_validos_ids:
-                    roles_finales_para_guardar.append(role_id)
+                rid = int(role_id)
+                if rid in valid_roles_ids:
+                    roles_para_guardar.append(rid)
                 else:
-                    print(f"ALERTA DE SEGURIDAD: El usuario {request.user.id} intentó asignar el rol no válido {role_id} al usuario {usuario_id}.")
+                    # Opcional: Loguear intento de hacking
+                    print(f"SECURITY WARNING: Intento de asignar rol inválido {rid}")
             except (ValueError, TypeError):
-                # Ignorar si el dato enviado no es un número válido.
                 continue
 
+        # --- GUARDADO ---
+        # .set() reemplaza los roles anteriores con la nueva lista limpia
+        self.object.roles.set(roles_para_guardar)
         
-        # Usamos set() para actualizar la relación ManyToMany de forma eficiente.
-        membresia.roles.set(roles_finales_para_guardar)
-        
-        messages.success(request, f"Roles de '{usuario.get_full_name.title()}' actualizados correctamente.")
-        return redirect('gestion_usuarios:ruta_ver_usuario', id=usuario.id) # Ajusta la URL de redirección
+        messages.success(request, f"Roles de '{self.object.usuario.get_full_name.title()}' actualizados correctamente.")
+        return redirect(self.get_success_url())
 
 
 
 
-class UsuarioRestablecerContrasena(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
+class UsuarioRestablecerContrasena(
+    BaseEstacionMixin, 
+    PermissionRequiredMixin, 
+    MembresiaGestionableMixin, 
+    View
+):
     """
     Vista para que un administrador inicie el proceso de restablecimiento
-    de contraseña para otro usuario.
+    de contraseña para otro usuario de su estación.
+    
+    SEGURIDAD:
+    - Solo funciona vía POST.
+    - Verifica que el usuario tenga una membresía ACTIVA/INACTIVA en la estación.
     """
+    
     permission_required = 'gestion_usuarios.accion_usuarios_restablecer_contrasena'
     
-    def post(self, request, id, *args, **kwargs):
-        # El mixin UsuarioDeMiEstacionMixin ya ha verificado que el admin
-        # tiene derecho a gestionar a este usuario.
+    # --- 1. Configuración ---
+    def get(self, request, *args, **kwargs):
+        return HttpResponseNotAllowed(['POST'])
 
-        usuario_a_resetear = get_object_or_404(Usuario, id=id)
+    # --- 2. Método de Obtención (Requerido por el Mixin) ---
+    def get_object(self):
+        """
+        Obtiene la última membresía válida del usuario en la estación.
+        El mixin validará si su estado permite la gestión.
+        """
+        usuario_id = self.kwargs.get('id')
+        try:
+            return Membresia.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id
+            ).latest('fecha_inicio')
+        except Membresia.DoesNotExist:
+            raise Http404("El usuario no pertenece a esta estación.")
 
+    # --- 3. Manejador POST ---
+    def post(self, request, *args, **kwargs):
+        # El mixin ya validó la membresía y la guardó en self.object
+        membresia = self.object
+        usuario_a_resetear = membresia.usuario
+
+        # Validación: Email existente
         if not usuario_a_resetear.email:
-            messages.error(request, f"El usuario {usuario_a_resetear.get_full_name()} no tiene un correo electrónico registrado para enviarle el enlace.")
-            return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))
+            messages.error(request, f"El usuario {usuario_a_resetear.get_full_name} no tiene un correo electrónico registrado.")
+            return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': usuario_a_resetear.id}))
 
-        # Usamos el formulario de reseteo de Django, pasándole el email del usuario.
+        # Instanciamos el formulario estándar de Django
         form = PasswordResetForm({'email': usuario_a_resetear.email})
 
         if form.is_valid():
-            # El método save() se encarga de todo.
+            # Enviamos el correo
+            # NOTA: domain_override usualmente espera un dominio (ej: 'bomberil.cl').
+            # 'acceso' funciona porque hay una config muy específica,
             form.save(
                 request=request,
                 from_email='noreply@bomberil.cl',
                 email_template_name='acceso/emails/password_reset_email.txt',
                 html_email_template_name='acceso/emails/password_reset_email.html',
                 subject_template_name='acceso/emails/password_reset_subject.txt',
-                
-                # --- LÍNEA CLAVE AÑADIDA ---
-                # Le decimos a Django que busque las URLs de reseteo
-                # en el namespace 'acceso'.
-                domain_override='acceso'
+                # extra_email_context={'nombre_usuario': usuario_a_resetear.first_name}, # Útil si quieres personalizar el email
             )
             messages.success(request, f"Se ha enviado un correo para restablecer la contraseña a {usuario_a_resetear.email}.")
 
-        return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))
+        return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': usuario_a_resetear.id}))
 
 
 
 
-class UsuarioVerPermisos(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin,UsuarioDeMiEstacionMixin, View):
+class UsuarioVerPermisos(BaseEstacionMixin, PermissionRequiredMixin, MembresiaGestionableMixin, View):
     """
-    Muestra una lista de solo lectura de todos los permisos que un usuario
-    posee en la estación activa, consolidados de todos sus roles.
+    Muestra una lista consolidada de solo lectura de todos los permisos 
+    que un usuario posee en la estación activa (suma de sus roles).
     """
     permission_required = 'gestion_usuarios.accion_usuarios_ver_permisos_usuario'
     template_name = 'gestion_usuarios/pages/ver_permisos_usuario.html'
 
-    def get(self, request, id, *args, **kwargs):
-        # El mixin UsuarioDeMiEstacionMixin ya ha verificado que podemos ver a este usuario.
-        usuario = get_object_or_404(Usuario, id=id)
-        active_station_id = request.session.get('active_estacion_id')
-        
-        # Obtenemos la membresía del usuario en la estación actual.
-        membresia = get_object_or_404(
-            Membresia, 
-            usuario=usuario, 
-            estacion_id=active_station_id,
-            estado__in=[Membresia.Estado.ACTIVO, Membresia.Estado.INACTIVO]
-        )
+    # --- 1. Método de Obtención ---
+    def get_object(self):
+        """
+        Obtiene la membresía válida (Activa/Inactiva) del usuario.
+        El mixin se encargará de validarla.
+        """
+        usuario_id = self.kwargs.get('id')
+        try:
+            return Membresia.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id
+            ).latest('fecha_inicio')
+        except Membresia.DoesNotExist:
+            raise Http404("El usuario no pertenece a esta estación.")
 
-        # Recopilamos todos los permisos de todos los roles del usuario.
-        # Usamos un conjunto (set) para evitar duplicados si dos roles
-        # tuvieran el mismo permiso.
-        permisos_del_usuario = set()
-        for rol in membresia.roles.prefetch_related('permisos__content_type'):
-            permisos_del_usuario.update(rol.permisos.all())
+    # --- 2. Lógica de Agrupación ---
+    def _agrupar_permisos(self, queryset_permisos):
+        """
+        Agrupa los permisos por el nombre verbose de su aplicación.
+        """
+        agrupados = defaultdict(list)
         
-        # Agrupamos los permisos por módulo/app para una mejor visualización.
-        permisos_agrupados = defaultdict(list)
-        for perm in sorted(list(permisos_del_usuario), key=lambda p: p.name):
-            # Usamos el verbose_name de la app del modelo al que pertenece el permiso
-            if perm.content_type.model_class():
-                app_config = perm.content_type.model_class()._meta.app_config
+        for perm in queryset_permisos:
+            try:
+                # Obtenemos la configuración de la app (ej: 'gestion_usuarios')
+                app_label = perm.content_type.app_label
+                app_config = apps.get_app_config(app_label)
                 module_name = app_config.verbose_name
-            else: # Para permisos anclados a 'common'
+            except (LookupError, AttributeError):
+                # Si algo falla (permisos huérfanos o apps borradas)
                 module_name = "Permisos Generales"
-                
-            permisos_agrupados[module_name].append(perm)
+
+            agrupados[module_name].append(perm)
+        
+        # Ordenamos el diccionario por nombre de módulo
+        return dict(sorted(agrupados.items()))
+
+    # --- 3. Manejador GET ---
+    def get(self, request, *args, **kwargs):
+        # El mixin obtiene y valida la membresía en self.object
+        membresia = self.object
+        
+        # 1. Obtenemos los IDs de todos los permisos vinculados a los roles de esta membresía.
+        #    'roles' es la relación M2M en Membresia.
+        #    'permisos' es la relación M2M en Rol.
+        permission_ids = membresia.roles.values_list('permisos', flat=True)
+        
+        # 2. Buscamos los objetos Permission usando esos IDs.
+        #    Esto es 100% seguro y eficiente.
+        permisos_del_usuario = Permission.objects.filter(
+            id__in=permission_ids
+        ).distinct().select_related('content_type').order_by('codename')
+        
+        # Agrupamos usando el helper (asegúrate de tener el método _agrupar_permisos en tu clase)
+        permisos_agrupados = self._agrupar_permisos(permisos_del_usuario)
+        
+        # Obtenemos los roles para el listado lateral
+        roles_asignados = membresia.roles.all()
 
         context = {
             'membresia': membresia,
-            'permisos_agrupados': dict(sorted(permisos_agrupados.items())),
+            'roles_asignados': roles_asignados, 
+            'permisos_agrupados': permisos_agrupados,
             'total_permisos': len(permisos_del_usuario)
         }
         
@@ -1282,50 +1491,63 @@ class UsuarioVerPermisos(LoginRequiredMixin, ModuleAccessMixin, PermissionRequir
 
 
 
-class UsuarioFinalizarMembresiaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
+class UsuarioFinalizarMembresiaView(BaseEstacionMixin, PermissionRequiredMixin, MembresiaGestionableMixin, View):
     """
     Muestra una página de confirmación y gestiona la finalización
     de la membresía de un usuario en la estación activa.
+    
+    SEGURIDAD:
+    - MembresiaGestionableMixin asegura que solo entremos aquí si la 
+      membresía está ACTIVA o INACTIVA. Si ya está FINALIZADA, bloquea el acceso.
     """
+    
+    # --- 1. Configuración ---
     template_name = 'gestion_usuarios/pages/finalizar_membresia.html'
     permission_required = 'gestion_usuarios.accion_gestion_usuarios_finalizar_membresia'
     success_url = reverse_lazy('gestion_usuarios:ruta_lista_usuarios')
+    
+    # Opcional: Personalizar el mensaje si intentan entrar a una ya finalizada
+    mensaje_no_gestiona = "Este usuario ya se encuentra desvinculado (Finalizado), no se puede volver a finalizar."
 
-    def dispatch(self, request, *args, **kwargs):
+    # --- 2. Método de Obtención ---
+    def get_object(self):
         """
-        Obtiene y almacena la membresía a finalizar.
-        El mixin UsuarioDeMiEstacionMixin ya validó que el usuario
-        pertenece a nuestra estación.
+        Obtiene la última membresía del usuario en la estación actual.
+        El Mixin la validará (debe ser ACTIVA o INACTIVA).
         """
-        usuario_id = kwargs.get('id')
-        estacion_id = request.session.get('active_estacion_id')
+        usuario_id = self.kwargs.get('id')
         
-        # Obtenemos la membresía activa o inactiva del usuario
-        self.membresia = get_object_or_404(
-            Membresia,
-            usuario_id=usuario_id,
-            estacion_id=estacion_id,
-            estado__in=[Membresia.Estado.ACTIVO, Membresia.Estado.INACTIVO]
-        )
-        return super().dispatch(request, *args, **kwargs)
+        try:
+            # Buscamos la última membresía (por si hubiera historial)
+            return Membresia.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id # De BaseEstacionMixin
+            ).latest('fecha_inicio')
+            
+        except Membresia.DoesNotExist:
+            raise Http404("El usuario no pertenece a esta estación.")
 
+    # --- 3. Manejador GET ---
     def get(self, request, *args, **kwargs):
         """Muestra la página de confirmación."""
+        # self.object ya está cargado y validado por el mixin
         context = {
-            'membresia': self.membresia
+            'membresia': self.object
         }
         return render(request, self.template_name, context)
 
+    # --- 4. Manejador POST ---
     def post(self, request, *args, **kwargs):
-        """
-        Ejecuta la finalización de la membresía.
-        """
-        usuario_nombre = self.membresia.usuario.get_full_name
+        """Ejecuta la finalización."""
+        
+        # El mixin asegura que self.object es la membresía vigente
+        membresia = self.object
+        usuario_nombre = membresia.usuario.get_full_name
         
         # Actualizamos el estado y la fecha de fin
-        self.membresia.estado = Membresia.Estado.FINALIZADO
-        self.membresia.fecha_fin = timezone.now().date()
-        self.membresia.save()
+        membresia.estado = Membresia.Estado.FINALIZADO
+        membresia.fecha_fin = timezone.now().date()
+        membresia.save()
         
         messages.success(request, f"La membresía de '{usuario_nombre}' ha sido finalizada correctamente.")
         return redirect(self.success_url)
@@ -1333,88 +1555,80 @@ class UsuarioFinalizarMembresiaView(LoginRequiredMixin, ModuleAccessMixin, Permi
 
 
 
-class HistorialMembresiasView(BaseEstacionMixin, PermissionRequiredMixin, View):
+class HistorialMembresiasView(BaseEstacionMixin, PermissionRequiredMixin, ListView):
     """
     Muestra un historial paginado de todas las membresías FINALIZADAS
-    de la estación activa, con filtros de búsqueda y fecha.
+    de la estación activa.
+    
+    OPTIMIZACIÓN: 
+    - Se usa ListView para manejar la paginación automáticamente.
+    - Se mantiene la seguridad y las consultas optimizadas (select_related).
     """
+    
+    # --- 1. Configuración ---
+    model = Membresia
     template_name = 'gestion_usuarios/pages/historial_membresias.html'
     permission_required = 'gestion_usuarios.accion_usuarios_ver_usuarios_compania'
-    model = Membresia
     paginate_by = 20
+    
+    # Nombre de la variable en el template (ListView usa 'page_obj' para paginación 
+    # y 'object_list' para la lista, pero podemos definir uno principal)
+    context_object_name = 'membresias' 
 
+    # --- 2. Consulta (Filtros y Seguridad) ---
     def get_queryset(self):
         """
-        Obtiene el queryset base (solo membresías finalizadas)
-        y aplica los filtros de búsqueda y fecha.
+        Construye la consulta aplicando seguridad, optimización y filtros.
         """
-        
-        # 1. Queryset Base: Solo membresías FINALIZADAS de la estación activa.
-        # (self.estacion_activa viene del BaseEstacionMixin)
+        # A. Obtener parámetros GET directamente de self.request
+        search_q = self.request.GET.get('q', '')
+        fecha_desde = self.request.GET.get('fecha_desde', '')
+        fecha_hasta = self.request.GET.get('fecha_hasta', '')
+
+        # B. Queryset Base (Seguridad + Optimización)
+        # BaseEstacionMixin nos da self.estacion_activa
         queryset = (
             self.model.objects
             .filter(
-                estacion_id=self.estacion_activa,
+                estacion=self.estacion_activa, 
                 estado=Membresia.Estado.FINALIZADO
             )
             .select_related('usuario')
             .prefetch_related('roles')
-            .order_by('-fecha_fin') # Ordenar por fecha de fin (más reciente primero)
+            .order_by('-fecha_fin')
         )
 
-        # 2. Aplicar filtro de Búsqueda (q)
-        if hasattr(self, 'search_q') and self.search_q:
+        # C. Filtros Dinámicos
+        if search_q:
             queryset = queryset.filter(
-                Q(usuario__first_name__icontains=self.search_q) |
-                Q(usuario__last_name__icontains=self.search_q) |
-                Q(usuario__email__icontains=self.search_q) |
-                Q(usuario__rut__icontains=self.search_q)
+                Q(usuario__first_name__icontains=search_q) |
+                Q(usuario__last_name__icontains=search_q) |
+                Q(usuario__email__icontains=search_q) |
+                Q(usuario__rut__icontains=search_q)
             )
 
-        # 3. Aplicar filtros de Fecha (sobre fecha_fin)
-        if hasattr(self, 'fecha_desde') and self.fecha_desde:
-            queryset = queryset.filter(fecha_fin__gte=self.fecha_desde)
-        if hasattr(self, 'fecha_hasta') and self.fecha_hasta:
-            queryset = queryset.filter(fecha_fin__lte=self.fecha_hasta)
+        if fecha_desde:
+            queryset = queryset.filter(fecha_fin__gte=fecha_desde)
+        
+        if fecha_hasta:
+            queryset = queryset.filter(fecha_fin__lte=fecha_hasta)
             
         return queryset.distinct()
 
-    def get_context_data(self):
+    # --- 3. Contexto Adicional ---
+    def get_context_data(self, **kwargs):
         """
-        Prepara el contexto para la plantilla, incluyendo la paginación
-        y los valores de los filtros.
+        Añadimos los filtros actuales al contexto para mantener
+        el estado de la barra de búsqueda en la plantilla.
         """
-        membresias_filtradas = self.get_queryset()
-
-        paginator = Paginator(membresias_filtradas, self.paginate_by)
-        page_number = self.request.GET.get('page')
-
-        try:
-            page_obj = paginator.get_page(page_number)
-        except PageNotAnInteger:
-            page_obj = paginator.get_page(1)
-        except EmptyPage:
-            page_obj = paginator.get_page(paginator.num_pages)
-
-        context = {
-            'page_obj': page_obj,
-            'current_q': getattr(self, 'search_q', ''),
-            'current_fecha_desde': getattr(self, 'fecha_desde', ''),
-            'current_fecha_hasta': getattr(self, 'fecha_hasta', ''),
-        }
-        return context
-
-    def get(self, request, *args, **kwargs):
-        """
-        Maneja la solicitud GET.
-        Captura los filtros de la URL antes de llamar a get_context_data.
-        """
-        self.search_q = request.GET.get('q', '')
-        self.fecha_desde = request.GET.get('fecha_desde', '')
-        self.fecha_hasta = request.GET.get('fecha_hasta', '')
+        # ListView ya añade 'page_obj', 'paginator', 'is_paginated' automáticamente.
+        context = super().get_context_data(**kwargs)
         
-        context = self.get_context_data()
-        return render(request, self.template_name, context)
+        context['current_q'] = self.request.GET.get('q', '')
+        context['current_fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        context['current_fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
+        
+        return context
 
 
 
@@ -1512,111 +1726,126 @@ class RegistroActividadView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
 
 
-class UsuarioForzarCierreSesionView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, UsuarioDeMiEstacionMixin, View):
+class UsuarioForzarCierreSesionView(BaseEstacionMixin, PermissionRequiredMixin, MembresiaGestionableMixin, View):
     """
-    Elimina todas las sesiones activas de un usuario específico,
-    forzando su desconexión en todos los dispositivos.
+    Elimina todas las sesiones activas de un usuario específico
+    usando 'django-user-sessions' para un rendimiento óptimo (O(1)).
     """
-    # Reutilizamos el permiso de desactivar, ya que es una acción de seguridad similar
     permission_required = 'gestion_usuarios.accion_gestion_usuarios_forzar_logout'
     
-    def post(self, request, id, *args, **kwargs):
-        usuario_objetivo = get_object_or_404(Usuario, id=id)
-        
-        # 1. Obtener todas las sesiones no expiradas
-        sesiones_activas = Session.objects.filter(expire_date__gte=timezone.now())
-        
-        sesiones_eliminadas = 0
+    def get(self, request, *args, **kwargs):
+        return HttpResponseNotAllowed(['POST'])
 
-        # 2. Iterar y encontrar las que pertenecen al usuario
-        # (Django no guarda el user_id en columnas directas por defecto, hay que decodificar)
-        for session in sesiones_activas:
-            data = session.get_decoded()
-            # El ID en la sesión se guarda como string en '_auth_user_id'
-            if str(data.get('_auth_user_id')) == str(usuario_objetivo.id):
-                session.delete()
-                sesiones_eliminadas += 1
+    def get_object(self):
+        """Obtiene la membresía válida (validada por el Mixin)."""
+        usuario_id = self.kwargs.get('id')
+        try:
+            return Membresia.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id
+            ).latest('fecha_inicio')
+        except Membresia.DoesNotExist:
+            raise Http404("El usuario no pertenece a esta estación.")
+
+    def post(self, request, *args, **kwargs):
+        # 1. Validación de seguridad (Mixin)
+        membresia = self.object 
+        usuario_objetivo = membresia.usuario
         
-        # 3. Registrar auditoría
-        if sesiones_eliminadas > 0:
+        # Ya no hay bucles for. La base de datos hace el trabajo duro.
+        # .delete() retorna una tupla: (total_eliminados, diccionario_tipos)
+        deleted_count, _ = Session.objects.filter(user=usuario_objetivo).delete()
+        
+        # --- AUDITORÍA Y MENSAJES ---
+        if deleted_count > 0:
             registrar_actividad(
                 actor=request.user,
-                verbo=f"forzó el cierre de {sesiones_eliminadas} sesión(es) de",
+                verbo=f"forzó el cierre de {deleted_count} sesión(es) de",
                 objetivo=usuario_objetivo,
-                estacion=request.session.get('active_estacion_id') # Pasamos el ID, la función lo maneja
-                # Nota: Si tu registrar_actividad pide objeto Estacion, usa: 
-                # Estacion.objects.get(id=request.session.get('active_estacion_id'))
+                estacion=self.estacion_activa 
             )
-            messages.success(request, f"Se han cerrado exitosamente {sesiones_eliminadas} sesiones activas de {usuario_objetivo.get_full_name}.")
+            messages.success(request, f"Se han cerrado exitosamente {deleted_count} sesiones activas de {usuario_objetivo.get_full_name}.")
         else:
-            messages.info(request, f"El usuario {usuario_objetivo.get_full_name} no tenía sesiones activas en este momento.")
+            messages.info(request, f"El usuario {usuario_objetivo.get_full_name} no tenía sesiones activas.")
 
-        return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))
-
-
+        return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': usuario_objetivo.id}))
 
 
-class UsuarioImpersonarView(LoginRequiredMixin, UserPassesTestMixin, View):
+
+
+class UsuarioImpersonarView(BaseEstacionMixin, UserPassesTestMixin, MembresiaGestionableMixin, View):
     """
-    Inicia la suplantación. Valida estrictamente que el objetivo
-    pertenezca a la estación activa del administrador.
+    Inicia la suplantación de identidad.
+    
+    OPTIMIZACIÓN:
+    - Usa MembresiaGestionableMixin para asegurar que el objetivo 
+      pertenece a la estación activa y su membresía es válida.
     """
+    
+    # --- 1. Configuración ---
+    
+    # Mensaje si el objetivo no es válido (no es miembro o está finalizado)
+    mensaje_no_gestiona = "No puedes impersonar a este usuario porque no pertenece activamente a esta estación."
+    
     def test_func(self):
+        """Solo superusuarios pueden impersonar."""
         return self.request.user.is_superuser
 
+    # --- 2. Obtención del Objetivo (Para el Mixin) ---
+    def get_object(self):
+        """
+        El mixin llama a esto para validar la membresía.
+        Buscamos la última membresía del usuario en la estación actual.
+        """
+        usuario_id = self.kwargs.get('id')
+        
+        # Validación extra: Auto-impersonación
+        if str(usuario_id) == str(self.request.user.id):
+            # Lanzamos 404 o manejamos aquí. El mixin capturará errores.
+            raise Http404("Auto-impersonación no permitida.")
+
+        try:
+            return Membresia.objects.filter(
+                usuario_id=usuario_id,
+                estacion_id=self.estacion_activa_id
+            ).latest('fecha_inicio')
+        except Membresia.DoesNotExist:
+            raise Http404("El usuario no pertenece a esta estación.")
+
+    # --- 3. Manejador POST ---
     def post(self, request, id):
-        usuario_objetivo = get_object_or_404(Usuario, id=id)
+        # El mixin ya validó la membresía y la guardó en self.object
+        membresia_objetivo = self.object
+        usuario_objetivo = membresia_objetivo.usuario
         usuario_original = request.user
         
-        # 1. Obtener la estación actual desde la sesión del admin
-        estacion_id = request.session.get('active_estacion_id')
-        estacion_nombre = request.session.get('active_estacion_nombre')
-
-        # 2. Validación de Seguridad: Auto-impersonación
-        if usuario_objetivo == usuario_original:
-            messages.warning(request, "No puedes impersonarte a ti mismo.")
-            return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))
-
-        # 3. Validación de Negocio: Pertenencia a la Estación [cite: 12, 13]
-        # El usuario objetivo DEBE tener una membresía en la estación actual.
-        # Si no hay estación activa, no se puede navegar, así que bloqueamos la acción.
-        if not estacion_id:
-            messages.error(request, "Debes tener una estación activa para impersonar a un usuario.")
-            return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))
-
-        pertenece_a_estacion = Membresia.objects.filter(
-            usuario=usuario_objetivo,
-            estacion_id=estacion_id,
-            estado__in=['ACTIVO', 'INACTIVO'] # Permitimos inactivos para ver qué ven
-        ).exists()
-
-        if not pertenece_a_estacion:
-            messages.error(request, f"El usuario {usuario_objetivo.get_full_name} no pertenece a la estación actual. Cambia de estación para impersonarlo.")
-            return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': id}))
-
-        # 4. Auditoría (Antes de cambiar de usuario)
+        # --- AUDITORÍA ---
         registrar_actividad(
             actor=usuario_original,
             verbo="inició sesión como",
             objetivo=usuario_objetivo,
-            estacion=Estacion.objects.get(id=estacion_id)
+            estacion=self.estacion_activa
         )
 
-        # 5. Configurar backend y hacer Login
-        # (Esto destruye la sesión del admin y crea la del usuario objetivo)
+        # --- IMPERSONACIÓN ---
+        # 1. Guardamos datos clave antes de destruir la sesión
+        estacion_id = self.estacion_activa_id
+        estacion_nombre = self.estacion_activa.nombre
+        impersonator_id = usuario_original.id
+
+        # 2. Login del objetivo (Destruye sesión anterior)
         usuario_objetivo.backend = 'apps.gestion_usuarios.backends.RolBackend'
         login(request, usuario_objetivo)
 
-        # 6. Reconstruir el contexto en la NUEVA sesión
-        # Como validamos que pertenece, es seguro inyectar la estación.
+        # 3. Reconstruir contexto en la NUEVA sesión
         request.session['active_estacion_id'] = estacion_id
         request.session['active_estacion_nombre'] = estacion_nombre
         
-        # La "nota adhesiva" para poder volver
-        request.session['impersonator_id'] = usuario_original.id
+        # 4. La marca de impersonación
+        request.session['impersonator_id'] = impersonator_id
         request.session['is_impersonating'] = True
         
-        messages.info(request, f"Estás navegando como {usuario_objetivo.get_full_name} en {estacion_nombre}.")
+        messages.info(request, f"Estás navegando como {usuario_objetivo.get_full_name()} en {estacion_nombre}.")
         return redirect('portal:ruta_inicio')
 
 
@@ -1627,32 +1856,29 @@ class UsuarioDetenerImpersonacionView(LoginRequiredMixin, View):
     Restaura la sesión del administrador original.
     """
     def get(self, request):
-        # 1. Verificar si existe la marca de impersonación
+        # 1. Obtener ID del impersonador
         impersonator_id = request.session.get('impersonator_id')
         
-        # Recuperamos la estación donde estaba el usuario suplantado para intentar volver ahí
+        if not impersonator_id:
+            return redirect('portal:ruta_inicio')
+
+        # Guardamos el contexto de salida para intentar volver ahí
         estacion_id_salida = request.session.get('active_estacion_id')
         estacion_nombre_salida = request.session.get('active_estacion_nombre')
-
-        if not impersonator_id:
-            # Si no hay ID, es un usuario normal intentando acceder a la URL.
-            return redirect('portal:ruta_inicio')
 
         try:
             # 2. Recuperar al admin original
             admin_original = Usuario.objects.get(id=impersonator_id)
 
-            # 3. Validación de Seguridad Extra:
-            # Asegurarnos de que quien vuelve a tomar el control es realmente un superuser.
+            # 3. Validación de Seguridad: ¿Sigue siendo superusuario?
             if not admin_original.is_superuser:
-                raise PermissionDenied("El usuario original no tiene privilegios de administrador.")
+                raise PermissionDenied("El usuario original perdió sus privilegios.")
             
-            # 4. Asignar backend y Loguear (Destruye sesión del usuario suplantado)
+            # 4. Restaurar sesión (Login destruye la sesión impersonada)
             admin_original.backend = 'apps.gestion_usuarios.backends.RolBackend'
             login(request, admin_original)
             
-            # 5. Restaurar contexto de estación
-            # (El admin tiene acceso global o se validará en BaseEstacionMixin luego)
+            # 5. Restaurar contexto de estación (si existía)
             if estacion_id_salida:
                 request.session['active_estacion_id'] = estacion_id_salida
                 request.session['active_estacion_nombre'] = estacion_nombre_salida
@@ -1660,8 +1886,8 @@ class UsuarioDetenerImpersonacionView(LoginRequiredMixin, View):
             messages.success(request, "Has vuelto a tu identidad original.")
             
         except Usuario.DoesNotExist:
-            # Caso extremo: El admin fue borrado de la BD mientras impersonaba.
-            messages.error(request, "Error crítico: La cuenta original ya no existe.")
+            # Caso borde crítico
+            messages.error(request, "Error crítico: La cuenta original no existe.")
             return redirect('acceso:ruta_login')
         
         return redirect('portal:ruta_inicio')

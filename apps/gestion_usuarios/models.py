@@ -183,7 +183,7 @@ class Membresia(models.Model):
             ("accion_gestion_usuarios_asignar_roles", "Puede asignar y cambiar roles a un usuario"),
             ("accion_gestion_usuarios_desactivar_cuenta", "Puede desactivar o reactivar la cuenta de un usuario"),
             ("accion_gestion_usuarios_finalizar_membresia", "Puede finalizar la membresía de un usuario"),
-            ("accion_gestion_usuarios_ver_auditoria", "Puede ver el registro de actividad (auditoría)"),
+            ("accion_gestion_usuarios_ver_auditoria", "Puede ver el registro de actividad (auditoría) y el historial de membresías"),
             ("accion_gestion_usuarios_forzar_logout", "Puede forzar el cierre de sesión de los usuarios"),
 
             # === GESTIÓN DE INVENTARIO: CONFIGURACIÓN ===
