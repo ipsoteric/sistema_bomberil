@@ -15,6 +15,21 @@
 
     <div class="panel-body">
         
+        <div class="filter-bar" style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; background-color: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e3e6f0;">
+            <div class="filter-group" style="display: flex; align-items: center; gap: 10px;">
+                <label for="filtro-tipo" style="font-weight: 600; color: #4e73df;">Filtrar por Tipo:</label>
+                <select id="filtro-tipo" class="form-control" style="min-width: 200px;">
+                    <option value="todos">Todos los Documentos</option>
+                    {% for tipo in tipos_documento %}
+                    <option value="{{ tipo.id }}" {% if filtro_actual == tipo.id|stringformat:"s" %}selected{% endif %}>
+                        {{ tipo.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            </div>
+        
         <table class="data-table styled-table">
             <thead>
                 <tr>
@@ -34,7 +49,11 @@
                             {{ doc.descripcion|truncatewords:20|default:"Sin descripción" }}
                         </p>
                     </td>
-                    <td>{{ doc.tipo_documento.nombre }}</td>
+                    <td>
+                        <span style="background-color: #eef2f7; color: #333; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600; border: 1px solid #ddd;">
+                            {{ doc.tipo_documento.nombre }}
+                        </span>
+                    </td>
                     <td>{{ doc.fecha_documento | date:"d/m/Y" }}</td>
                     <td>{{ doc.usuario_registra.get_full_name | default:"Usuario eliminado" }}</td>
                     <td class="actions">
@@ -45,7 +64,10 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 20px;">No hay documentos históricos registrados.</td>
+                    <td colspan="5" style="text-align: center; padding: 30px; color: #666;">
+                        <i class="fas fa-folder-open" style="font-size: 2em; margin-bottom: 10px; display: block; color: #ccc;"></i>
+                        No se encontraron documentos con los filtros seleccionados.
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -53,4 +75,26 @@
     </div>
 </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filtroTipo = document.getElementById('filtro-tipo');
+
+        // Cuando cambia el select, recargamos la página con el parámetro GET
+        filtroTipo.addEventListener('change', function() {
+            const tipoSeleccionado = this.value;
+            const url = new URL(window.location.href);
+            
+            if (tipoSeleccionado === 'todos') {
+                url.searchParams.delete('tipo');
+            } else {
+                url.searchParams.set('tipo', tipoSeleccionado);
+            }
+            
+            window.location.href = url.toString();
+        });
+    });
+</script>
 {% endblock %}

@@ -14,8 +14,6 @@
         
         <div class="card-reporte">
             <h2 class="card-title-report">Filtros y Formato de Salida</h2>
-            <p class="text-muted-report">Aplique filtros por Estación y Rango para exportar solo un subconjunto de voluntarios y elija el formato de salida.</p>
-
             <form action="{% url 'gestion_voluntarios:ruta_exportar_listado' %}" method="GET" target="_blank">
                 {# Usamos target="_blank" para que la descarga no "congele" la página #}
                 

@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from django.contrib import messages
-from .models import DocumentoHistorico
+# --- ¡IMPORTANTE! Agregamos TipoDocumento a la importación ---
+from .models import DocumentoHistorico, TipoDocumento
 from .forms import DocumentoHistoricoForm
-from apps.gestion_inventario.models import Estacion # Para filtrar por estación
+from apps.gestion_inventario.models import Estacion
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
 
     
 class DocumentoInicioView(View):
@@ -17,24 +20,31 @@ class DocumentoInicioView(View):
         return render(request, self.template_name)
     
 class ListaDocumentoView(View):
-    """
-    (RF10) Muestra el listado consultable de documentos históricos.
-    """
-    def get(self, request):
-        # Asumimos que un usuario solo ve los documentos de su estación
+   def get(self, request):
         try:
-            # Obtenemos la membresía activa del usuario
             membresia_activa = request.user.membresias.get(estado='ACTIVO')
             estacion_usuario = membresia_activa.estacion
             
-            # Filtramos los documentos por la estación del usuario
+            # 1. Capturar el filtro de la URL
+            tipo_filtro = request.GET.get('tipo')
+
+            # 2. Consulta base (filtrada por estación)
             documentos = DocumentoHistorico.objects.filter(estacion=estacion_usuario) \
                          .select_related('tipo_documento', 'usuario_registra') \
                          .order_by('-fecha_documento')
             
+            # 3. Aplicar filtro de Tipo si existe
+            if tipo_filtro and tipo_filtro != 'todos':
+                documentos = documentos.filter(tipo_documento_id=tipo_filtro)
+
+            # 4. Obtener todos los tipos para el <select>
+            tipos_documento = TipoDocumento.objects.all().order_by('nombre')
+            
             context = {
                 'documentos': documentos,
-                'estacion_usuario': estacion_usuario
+                'estacion_usuario': estacion_usuario,
+                'tipos_documento': tipos_documento, # Enviamos la lista al template
+                'filtro_actual': tipo_filtro        # Para mantener la selección
             }
             return render(request, "gestion_documental/pages/lista_documentos.html", context)
 

@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
-from django.db.models import Prefetch, Count
+from django.db.models import Prefetch, Count, Q  # <--- Agregamos Q para búsquedas complejas
 from django.contrib import messages
 # --- ¡IMPORTACIONES DE PDF ACTUALIZADAS! ---
 import csv
@@ -78,35 +78,62 @@ class VoluntariosInicioView(View):
 class VoluntariosListaView(View):
     def get(self, request):
         
-        # 1. Prefetch para la membresía activa (para obtener Estación y Estado)
-        # Buscamos la membresía activa del usuario [cite: 13]
+        # 1. Capturamos los parámetros de la URL (Filtros)
+        estacion_id = request.GET.get('estacion')
+        rango_id = request.GET.get('rango')
+        busqueda = request.GET.get('q') # Para la caja de búsqueda
+
+        # 2. Iniciamos la consulta base
+        voluntarios_qs = Voluntario.objects.select_related('usuario')
+
+        # 3. Aplicamos Filtro de Estación (si existe y no es 'global')
+        if estacion_id and estacion_id != 'global':
+            voluntarios_qs = voluntarios_qs.filter(
+                usuario__membresias__estacion_id=estacion_id,
+                usuario__membresias__estado='ACTIVO'
+            )
+
+        # 4. Aplicamos Filtro de Rango (si existe y no es 'global')
+        if rango_id and rango_id != 'global':
+            voluntarios_qs = voluntarios_qs.filter(
+                historial_cargos__cargo_id=rango_id,
+                historial_cargos__fecha_fin__isnull=True # Solo cargo actual
+            )
+
+        # 5. Aplicamos Búsqueda por Texto (Nombre o RUT)
+        if busqueda:
+            voluntarios_qs = voluntarios_qs.filter(
+                Q(usuario__first_name__icontains=busqueda) | 
+                Q(usuario__last_name__icontains=busqueda) | 
+                Q(usuario__rut__icontains=busqueda)
+            )
+
+        # 6. Prefetches (para optimizar la carga de datos relacionados en la tarjeta)
         active_membresia_prefetch = Prefetch(
             'usuario__membresias',
             queryset=Membresia.objects.filter(estado='ACTIVO').select_related('estacion'),
-            to_attr='membresia_activa_list' # Guardamos en un atributo temporal
+            to_attr='membresia_activa_list'
         )
-
-        # 2. Prefetch para el cargo actual (para obtener el Rango)
-        # Buscamos en el historial el cargo que no tiene fecha de fin 
         current_cargo_prefetch = Prefetch(
             'historial_cargos',
             queryset=HistorialCargo.objects.filter(fecha_fin__isnull=True).select_related('cargo'),
-            to_attr='cargo_actual_list' # Guardamos en un atributo temporal
+            to_attr='cargo_actual_list'
         )
-
-        # 3. Query principal
-        # Obtenemos todos los Voluntarios 
-        # Usamos select_related para el usuario y prefetch_related para los datos complejos
-        voluntarios = Voluntario.objects.select_related('usuario').prefetch_related(
+        
+        # Ejecutamos la consulta final con 'distinct' para evitar duplicados por los joins
+        voluntarios = voluntarios_qs.prefetch_related(
             active_membresia_prefetch,
             current_cargo_prefetch
-        ).all()
+        ).distinct().all()
 
+        # 7. Datos para llenar los selectores de filtro
+        estaciones = Estacion.objects.all().order_by('nombre')
         cargos = Cargo.objects.all().order_by('nombre')
-
+        
         context = {
             'voluntarios': voluntarios,
-            'cargos': cargos,          # <- Nueva data para el filtro
+            'estaciones': estaciones,
+            'cargos': cargos,
         }
         return render(request, "gestion_voluntarios/pages/lista_voluntarios.html", context)
 
@@ -224,12 +251,32 @@ class VoluntariosModificarView(View):
 class CargosListaView(View):
     def get(self, request):
         
+        # 1. Capturar parámetros de búsqueda
+        q_profesion = request.GET.get('q_profesion', '') # Buscador de profesiones
+        q_cargo = request.GET.get('q_cargo', '')         # Buscador de cargos
+        filtro_tipo_cargo = request.GET.get('tipo_cargo', '') # Filtro de categoría
+        
+        # 2. Filtrar Profesiones
         profesiones = Profesion.objects.all().order_by('nombre')
+        if q_profesion:
+            profesiones = profesiones.filter(nombre__icontains=q_profesion)
+
+        # 3. Filtrar Cargos
         cargos = Cargo.objects.select_related('tipo_cargo').all().order_by('nombre')
+        
+        if q_cargo:
+            cargos = cargos.filter(nombre__icontains=q_cargo)
+            
+        if filtro_tipo_cargo and filtro_tipo_cargo != 'global':
+            cargos = cargos.filter(tipo_cargo_id=filtro_tipo_cargo)
+
+        # 4. Obtener Tipos de Cargo para el <select>
+        tipos_cargo = TipoCargo.objects.all().order_by('nombre')
 
         context = {
             'profesiones': profesiones,
             'cargos': cargos,
+            'tipos_cargo': tipos_cargo, # Enviamos las categorías al template
         }
         return render(request, "gestion_voluntarios/pages/lista_cargos_profes.html", context)
 

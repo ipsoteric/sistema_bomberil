@@ -5,31 +5,34 @@
 
 {% block contenido %}
 
-<div class="container-fluid mt-4"> 
     <div class="container">
 
         <div class="filter-bar">
             <div class="search-box">
-                <input type="text" placeholder="Buscar por nombre, RUT, etc.">
+                <input type="text" id="search-input" placeholder="Buscar por nombre, RUT, etc." value="{{ request.GET.q }}">
                 <i class="fas fa-search"></i>
             </div>
             
             <div class="filter-group">
                 <label for="estacion-filter">Estación:</label>
-                <select id="estacion-filter">
+                <select id="estacion-filter" class="form-control">
                     <option value="global">Todas las estaciones</option>
                     {% for estacion in estaciones %}
-                    <option value="{{ estacion.id }}">{{ estacion.nombre }}</option>
+                    <option value="{{ estacion.id }}" {% if request.GET.estacion == estacion.id|stringformat:"s" %}selected{% endif %}>
+                        {{ estacion.nombre }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
             
             <div class="filter-group">
                 <label for="rango-filter">Rango:</label>
-                <select id="rango-filter">
+                <select id="rango-filter" class="form-control">
                     <option value="global">Todos los rangos</option>
                     {% for cargo in cargos %}
-                    <option value="{{ cargo.id }}">{{ cargo.nombre }}</option>
+                    <option value="{{ cargo.id }}" {% if request.GET.rango == cargo.id|stringformat:"s" %}selected{% endif %}>
+                        {{ cargo.nombre }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -39,20 +42,17 @@
 
             {% for voluntario in voluntarios %}
                 
-                {# Usamos |first para evitar errores si la lista de membresía o cargo está vacía #}
+                {# Usamos |first para evitar errores si la lista está vacía #}
                 {% with membresia=voluntario.membresia_activa_list|first cargo_actual=voluntario.cargo_actual_list|first %}
                 
                 <div class="volunteer-card">
                     <div class="profile-header">
-                        
-                        {# Avatar del voluntario (desde el modelo Usuario) #}
                         {% if voluntario.usuario.avatar_thumb_small %}
                             <img src="{{ voluntario.usuario.avatar_thumb_small.url }}" alt="Foto de perfil">
                         {% else %}
                             <img src="https://via.placeholder.com/100" alt="Foto de perfil">
                         {% endif %}
 
-                        {# Estado (desde el modelo Membresia) #}
                         {% if membresia and membresia.estado == 'ACTIVO' %}
                             <span class="status-indicator active" title="Activo"></span>
                         {% else %}
@@ -61,10 +61,8 @@
                     </div>
                     
                     <div class="profile-info">
-                        {# Nombre (desde el modelo Usuario) #}
                         <h3>{{ voluntario.usuario.get_full_name }}</h3>
                         
-                        {# Rango (desde el modelo HistorialCargo) #}
                         <p class="rank">Rango: 
                             {% if cargo_actual %}
                                 {{ cargo_actual.cargo.nombre }}
@@ -73,7 +71,6 @@
                             {% endif %}
                         </p>
                         
-                        {# Estación (desde el modelo Membresia) #}
                         <p class="station">Estación: 
                             {% if membresia %}
                                 {{ membresia.estacion.nombre }}
@@ -84,21 +81,59 @@
                     </div>
                     
                     <div class="card-actions">
-                        {# URLs dinámicas usando el ID del voluntario #}
                         <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.id %}" class="action-btn view-btn" title="Ver Hoja de Vida"><i class="fas fa-eye"></i></a>
                         <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.id %}" class="action-btn edit-btn" title="Editar Voluntario"><i class="fas fa-edit"></i></a>
                         
-                        {# Dejamos el botón de eliminar deshabilitado por ahora, como pediste #}
-                        <a href="#" class="action-btn delete-btn" title="Eliminar Voluntario" style="display: none;"><i class="fas fa-trash-alt"></i></a>
+                        {# --- BOTÓN ELIMINAR ELIMINADO --- #}
+                        {# Se eliminó el enlace a ruta_eliminar_voluntario porque esa ruta ya no existe #}
                     </div>
                 </div>
                 
                 {% endwith %}
             {% empty %}
-                <p>No se encontraron voluntarios registrados en el sistema.</p>
+                <p style="width: 100%; text-align: center; padding: 20px; color: #666;">No se encontraron voluntarios con estos filtros.</p>
             {% endfor %}
             
         </div>
     </div>    
-</div>    
+    
+    {# El modal de eliminación ya no es necesario en esta página #}
+
 {% endblock  %}
+
+{% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const estacionSelect = document.getElementById('estacion-filter');
+            const rangoSelect = document.getElementById('rango-filter');
+            const searchInput = document.getElementById('search-input');
+
+            function aplicarFiltros() {
+                const estacion = estacionSelect.value;
+                const rango = rangoSelect.value;
+                const busqueda = searchInput.value;
+
+                const url = new URL(window.location.href);
+                url.searchParams.set('estacion', estacion);
+                url.searchParams.set('rango', rango);
+                
+                if (busqueda) {
+                    url.searchParams.set('q', busqueda);
+                } else {
+                    url.searchParams.delete('q');
+                }
+
+                window.location.href = url.toString();
+            }
+
+            estacionSelect.addEventListener('change', aplicarFiltros);
+            rangoSelect.addEventListener('change', aplicarFiltros);
+
+            searchInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    aplicarFiltros();
+                }
+            });
+        });
+    </script>
+{% endblock %}

@@ -4,13 +4,13 @@
 {# Título de la página #} {% block titulo_pagina %}Configuración: Cargos y Profesiones{% endblock %}
 
 {% block contenido %}
-<div class="container-fluid mt-4"> 
+
     <div class="container">
         <h1>Configuración del Módulo</h1>
 
         <div class="tabs">
-            <button class="tab-button active" onclick="openTab('profesiones')">Profesiones</button>
-            <button class="tab-button" onclick="openTab('rangos')">Rangos Bomberiles</button>
+            <button class="tab-button active" id="tab-btn-profesiones" onclick="openTab('profesiones')">Profesiones</button>
+            <button class="tab-button" id="tab-btn-rangos" onclick="openTab('rangos')">Rangos Bomberiles</button>
         </div>
 
         <div id="profesiones" class="tab-content active">
@@ -19,18 +19,9 @@
                     <a href="{% url 'gestion_voluntarios:ruta_profesion_crear' %}" class="btn btn-primary">Agregar Profesión</a>
                 </div>
                 <div class="data-table-controls">
-                    <div class="entries-selector">
-                        <span>Mostrar</span>
-                        <select class="form-control-sm">
-                            <option>10</option>
-                            <option>25</option>
-                            <option>50</option>
-                        </select>
-                        <span>registros</span>
-                    </div>
                     <div class="search-box">
                         <span>Buscar:</span>
-                        <input type="text" placeholder="" class="form-control-sm">
+                        <input type="text" id="search-profesion" placeholder="Nombre profesión..." class="form-control-sm" value="{{ request.GET.q_profesion }}">
                     </div>
                 </div>
             </div>
@@ -44,43 +35,44 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {# Bucle para mostrar profesiones reales #}
                     {% for profesion in profesiones %}
                     <tr>
                         <td>{{ profesion.id }}</td>
                         <td>{{ profesion.nombre }}</td>
                         <td class="actions">
                             <a href="{% url 'gestion_voluntarios:ruta_profesion_modificar' id=profesion.id %}" class="btn btn-warning btn-sm">Editar</a>
-                            {# Se elimina el botón de eliminar #}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="3" style="text-align: center;">No hay profesiones registradas.</td>
+                        <td colspan="3" style="text-align: center;">No hay profesiones registradas o que coincidan con la búsqueda.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <div id="rangos" class="tab-content" style="display:none;">
+        <div id="rangos" class="tab-content">
             <div class="filter-controls-area">
                 <div class="add-new-item">
                     <a href="{% url 'gestion_voluntarios:ruta_cargos_crear' %}" class="btn btn-primary">Agregar Rango</a>
                 </div>
                 <div class="data-table-controls">
-                    <div class="entries-selector">
-                        <span>Mostrar</span>
-                        <select class="form-control-sm">
-                            <option>10</option>
-                            <option>25</option>
-                            <option>50</option>
+                    <div class="entries-selector" style="margin-right: 15px;">
+                        <span>Categoría:</span>
+                        <select id="filter-tipo-cargo" class="form-control-sm">
+                            <option value="global">Todas</option>
+                            {% for tipo in tipos_cargo %}
+                            <option value="{{ tipo.id }}" {% if request.GET.tipo_cargo == tipo.id|stringformat:"s" %}selected{% endif %}>
+                                {{ tipo.nombre }}
+                            </option>
+                            {% endfor %}
                         </select>
-                        <span>registros</span>
                     </div>
+                    
                     <div class="search-box">
                         <span>Buscar:</span>
-                        <input type="text" placeholder="" class="form-control-sm">
+                        <input type="text" id="search-cargo" placeholder="Nombre rango..." class="form-control-sm" value="{{ request.GET.q_cargo }}">
                     </div>
                 </div>
             </div>
@@ -95,7 +87,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {# Bucle para mostrar cargos (rangos) reales #}
                     {% for cargo in cargos %}
                     <tr>
                         <td>{{ cargo.id }}</td>
@@ -103,22 +94,20 @@
                         <td>{{ cargo.tipo_cargo.nombre | default:"Sin Categoría" }}</td>
                         <td class="actions">
                             <a href="{% url 'gestion_voluntarios:ruta_cargos_modificar' id=cargo.id %}" class="btn btn-warning btn-sm">Editar</a>
-                             {# Se elimina el botón de eliminar #}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" style="text-align: center;">No hay rangos (cargos) registrados.</td>
+                        <td colspan="4" style="text-align: center;">No hay rangos registrados o que coincidan con la búsqueda.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-</div>
+    
 {% endblock %}
 
-
 {% block scripts %}
-<script src="{% static 'gestion_voluntarios/js/profesion_rango.js' %}"></script>
+<script src="{% static 'gestion_voluntarios/js/ver.js' %}"></script>
 {% endblock  %}
