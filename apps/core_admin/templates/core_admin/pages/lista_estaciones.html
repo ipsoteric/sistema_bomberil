@@ -58,7 +58,10 @@
                         </td>
 
                         <td>
-                            <h6 class="mb-0 fw-bold text-primary">{{ estacion.nombre }}</h6>
+                            <a href="{% url 'core_admin:ruta_ver_estacion' pk=estacion.id %}">
+                                <h6 class="mb-0 fw-bold text-primary">{{ estacion.nombre }}</h6>
+                            </a>
+
                             {% if estacion.descripcion %}
                                 <small class="text-muted d-block text-truncate" style="max-width: 250px;">
                                     {{ estacion.descripcion }}

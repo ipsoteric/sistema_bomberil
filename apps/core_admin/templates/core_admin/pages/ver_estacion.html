@@ -1,0 +1,217 @@
+{% extends 'core_admin/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Detalle de Estación | {{ estacion.nombre }}{% endblock %}
+{% block titulo_pagina %}Panel de Estación{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid mt-4">
+
+<div class="card shadow-sm border-0 mb-4 overflow-hidden">
+    <div class="card-body p-0">
+        <div class="row g-0">
+            <div class="col-md-2 bg-light d-flex align-items-center justify-content-center p-3 border-end">
+                {% if estacion.logo %}
+                    <img src="{{ estacion.logo.url }}" alt="Logo" class="img-fluid rounded" style="max-height: 120px;">
+                {% else %}
+                    <img src="{% static 'portal/imagenes/default-station-cover.jpg' %}" class="img-fluid opacity-50" style="max-height: 100px;">
+                {% endif %}
+            </div>
+            
+            <div class="col-md-10 p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        {% if estacion.es_departamento %}
+                            <span class="badge bg-dark mb-2">Cuerpo de Bomberos</span>
+                        {% else %}
+                            <span class="badge bg-danger mb-2">Compañía</span>
+                        {% endif %}
+                        <h2 class="fw-bold text-primary mb-1">{{ estacion.nombre }}</h2>
+                        <p class="text-muted mb-2">{{ estacion.descripcion|default:"Sin descripción registrada." }}</p>
+                        
+                        <div class="d-flex gap-3 text-secondary small">
+                            <div><i class="fas fa-map-marker-alt me-1"></i> {{ estacion.direccion|default:"Dirección no informada" }}, {{ estacion.comuna.nombre }}</div>
+                            <div><i class="fas fa-calendar me-1"></i> Alta: {{ estacion.created_at|date:"d/m/Y" }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <a href="{% url 'core_admin:ruta_lista_estaciones' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Volver
+                        </a>
+                        <button class="btn btn-primary">
+                            <i class="fas fa-edit me-2"></i>Editar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">Catálogo Local</div>
+                        <div class="h2 mb-0 fw-bold text-dark">{{ kpi_total_productos }}</div>
+                    </div>
+                    <div class="icon-shape bg-primary bg-opacity-10 text-primary rounded p-3">
+                        <i class="fas fa-boxes fa-lg"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">Activos Físicos</div>
+                        <div class="h2 mb-0 fw-bold text-dark">{{ kpi_total_activos }}</div>
+                    </div>
+                    <div class="icon-shape bg-success bg-opacity-10 text-success rounded p-3">
+                        <i class="fas fa-barcode fa-lg"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">Unidades / Flota</div>
+                        <div class="h2 mb-0 fw-bold text-dark">{{ vehiculos|length }}</div>
+                    </div>
+                    <div class="icon-shape bg-warning bg-opacity-10 text-warning rounded p-3">
+                        <i class="fas fa-truck-medical fa-lg"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-bold">Préstamos Pend.</div>
+                        <div class="h2 mb-0 fw-bold text-dark">{{ kpi_prestamos_pendientes }}</div>
+                    </div>
+                    <div class="icon-shape bg-info bg-opacity-10 text-info rounded p-3">
+                        <i class="fas fa-hand-holding-box fa-lg"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-7 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-truck me-2 text-secondary"></i>Flota Vehicular</h5>
+            </div>
+            <div class="card-body bg-light">
+                <div class="row">
+                    {% for vehiculo in vehiculos %}
+                    <div class="col-12 mb-3">
+                        <div class="card border-0 shadow-sm">
+                            <div class="row g-0 align-items-center">
+                                <div class="col-md-3">
+                                    {% if vehiculo.ubicacion.imagen %}
+                                        <img src="{{ vehiculo.ubicacion.imagen.url }}" class="img-fluid rounded-start h-100 object-fit-cover" style="min-height: 100px;" alt="Foto">
+                                    {% else %}
+                                        <div class="bg-secondary bg-opacity-25 h-100 d-flex align-items-center justify-content-center text-muted" style="min-height: 100px;">
+                                            <i class="fas fa-truck-monster fa-2x"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-9">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex justify-content-between">
+                                            <h5 class="card-title fw-bold mb-1">{{ vehiculo.ubicacion.nombre }}</h5>
+                                            <span class="badge bg-dark">{{ vehiculo.tipo_vehiculo.nombre }}</span>
+                                        </div>
+                                        <div class="small text-muted mb-2">
+                                            {{ vehiculo.marca.nombre|default:"Marca desconocida" }} {{ vehiculo.modelo|default:"" }}
+                                        </div>
+                                        <div class="d-flex gap-3 small">
+                                            <span class="bg-light border px-2 rounded text-dark font-monospace">
+                                                <i class="fas fa-hashtag me-1 text-muted"></i>{{ vehiculo.patente|default:"S/P" }}
+                                            </span>
+                                            <span class="bg-light border px-2 rounded text-dark font-monospace">
+                                                <i class="fas fa-barcode me-1 text-muted"></i>{{ vehiculo.chasis|default:"S/Chasis" }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center py-4 text-muted">
+                        <i class="fas fa-truck-loading fa-2x mb-2 opacity-50"></i>
+                        <p>Esta estación no tiene vehículos registrados.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-warehouse me-2 text-secondary"></i>Infraestructura</h5>
+                <span class="badge bg-light text-dark border">{{ ubicaciones_fisicas|length }} Áreas</span>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for ubicacion in ubicaciones_fisicas %}
+                <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center px-4 py-3">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3 text-center" style="width: 40px;">
+                            {% if ubicacion.imagen %}
+                                <img src="{{ ubicacion.imagen.url }}" class="rounded-circle shadow-sm" style="width: 40px; height: 40px; object-fit: cover;">
+                            {% else %}
+                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;">
+                                    <i class="fas fa-door-closed text-secondary"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">{{ ubicacion.nombre }}</div>
+                            <div class="small text-muted">{{ ubicacion.tipo_ubicacion.nombre }}</div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        {% if ubicacion.total_compartimentos > 0 %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill">
+                                {{ ubicacion.total_compartimentos }} Comp.
+                            </span>
+                        {% else %}
+                            <span class="badge bg-light text-muted rounded-pill">Vacío</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5 text-muted">
+                    <p>No hay bodegas u oficinas registradas.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}
