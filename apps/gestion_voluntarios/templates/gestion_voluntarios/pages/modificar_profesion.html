@@ -4,7 +4,7 @@
 {# Título de la página #} {% block titulo_pagina %}Modificar Profesión{% endblock %}
 
 {% block contenido %}
-<div class="container-fluid mt-4"> 
+
     <div class="container">
         <h1>Modificar Profesión: {{ profesion.nombre }}</h1>
         
@@ -12,12 +12,14 @@
             {% csrf_token %}
             
             <div class="form-section">
+                <h2>Datos de la Profesión</h2>
+                
                 {% for field in form %}
                     <div class="form-group">
                         {{ field.label_tag }}
                         {{ field }}
                         {% if field.errors %}
-                            <div class="error-message" style="color: red;">{{ field.errors|first }}</div>
+                            <div class="error-message" style="color: red; font-size: 0.9em; margin-top: 5px;">{{ field.errors|first }}</div>
                         {% endif %}
                     </div>
                 {% endfor %}
@@ -29,5 +31,5 @@
             </div>
         </form>
     </div>
-</div>
-{% endblock  %}
+    
+{% endblock %}
