@@ -15,8 +15,10 @@
 <div class="container-fluid mt-4">
     <div class="row">
 
+        <!-- ============================================= -->
+        <!-- COLUMNA IZQUIERDA (Perfil y Acciones)         -->
+        <!-- ============================================= -->
         <div class="col-lg-4">
-            
             {# --- Tarjeta del Avatar --- #}
             {# Mantenemos toda la estructura de IDs y clases JS para tu script #}
             <div id="avatar-container-admin" 
@@ -46,13 +48,18 @@
                     <i class="fas fa-cogs me-1"></i> Acciones de Membresía
                 </div>
                 <div class="list-group list-group-flush">
+
+                    {# Modificar información personal del usuario #}
                     <a href="{% url 'gestion_usuarios:ruta_editar_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal">
                         <i class="fas fa-edit me-2 text-muted"></i> Modificar Información
                     </a>
+
+                    {# Asignar roles al usuario #}
                     <a href="{% url 'gestion_usuarios:ruta_asignar_roles_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal">
                         <i class="fas fa-user-tag me-2 text-muted"></i> Asignar Roles
                     </a>
                     
+                    {# Restablecer contraseña del usuario #}
                     {% if perms.gestion_usuarios.force_password_reset %}
                         <form id="resetPasswordForm" action="{% url 'gestion_usuarios:ruta_restablecer_contrasena' id=membresia.usuario.id %}" method="post" class="d-none">
                             {% csrf_token %}
@@ -62,6 +69,7 @@
                         </a>
                     {% endif %}
 
+                    {# Forzar cierre de sesión del usuario (Activa ventana modal) #}
                     {% if perms.gestion_usuarios.accion_gestion_usuarios_forzar_logout %}
                         <a href="#" 
                            class="list-group-item list-group-item-action fs_normal boton-forzar-logout"
@@ -72,6 +80,7 @@
                         </a>
                     {% endif %}
 
+                    {# Activar impersonación de usuario #}
                     {% if request.user.is_superuser and membresia.usuario != request.user %}
                         <form action="{% url 'gestion_usuarios:ruta_impersonar_usuario' id=membresia.usuario.id %}" method="post">
                             {% csrf_token %}
@@ -81,16 +90,28 @@
                         </form>
                     {% endif %}
                     
-                    {% if membresia.estado == 'ACTIVO' %}
-                        <a href="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal list-group-item-warning ">
-                            <i class="fa-solid fa-ban me-2"></i> Desactivar Membresía
-                        </a>
-                    {% elif membresia.estado == 'INACTIVO' %}
-                        <a href="{% url 'gestion_usuarios:ruta_activar_usuario' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal list-group-item-success">
-                            <i class="fa-solid fa-circle-up me-2"></i> Activar Membresía
-                        </a>
+                    {# Activar/Desactivar membresía (Activa ventana modal) #}
+                    {% if perms.gestion_usuarios.accion_gestion_usuarios_desactivar_cuenta %}
+                        {% if membresia.estado == 'ACTIVO' %}
+                            <button 
+                            type="button" 
+                            class="boton-desactivar-usuario list-group-item list-group-item-action fs_normal list-group-item-warning "
+                            data-form-action="{% url 'gestion_usuarios:ruta_desactivar_usuario' id=membresia.usuario.id %}"
+                            >
+                                <i class="fa-solid fa-ban me-2"></i> Desactivar Membresía
+                            </button>
+                        {% elif membresia.estado == 'INACTIVO' %}
+                            <button 
+                            type="button" 
+                            class="boton-activar-usuario list-group-item list-group-item-action fs_normal list-group-item-success"
+                            data-form-action="{% url 'gestion_usuarios:ruta_activar_usuario' id=membresia.usuario.id %}"
+                            >
+                                <i class="fa-solid fa-circle-up me-2"></i> Activar Membresía
+                            </button>
+                        {% endif %}
                     {% endif %}
                     
+                    {# Finalizar membresía #}
                     <a href="{% url 'gestion_usuarios:ruta_finalizar_membresia' id=membresia.usuario.id %}" class="list-group-item list-group-item-action fs_normal list-group-item-danger">
                         <i class="fa-solid fa-flag-checkered me-2"></i> Finalizar Membresía
                     </a>
@@ -99,32 +120,38 @@
 
         </div>
 
+        <!-- ============================================= -->
+        <!-- COLUMNA DERECHA (Información)                 -->
+        <!-- ============================================= -->
         <div class="col-lg-8">
             <div class="card shadow-sm mb-4 {% if request.session.dark_mode %}dark-mode{% endif %}">
                 <div class="card-header">
-                    <h4 class="mb-0 fs_normal fw-bold">{{membresia.usuario.get_full_name|title}}</h4>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <h4 class="mb-0 fs_normal fw-bold">{{membresia.usuario.get_full_name|title}}</h4>
+                        
+                        {# Badges de Identidad del Usuario #}
+                        {% if membresia.usuario.is_superuser  %}
+                            <span class="badge bg-danger fs_pequena" title="Super Administrador"><i class="fas fa-shield-alt me-1"></i> Administrador</span>
+                        {% endif %}
+                        {% if membresia.usuario.is_staff and not membresia.usuario.is_superuser %}
+                            <span class="badge bg-info text-dark fs_pequena" title="Acceso al Admin"><i class="fas fa-clipboard-user me-1"></i> Staff</span>
+                        {% endif %}
+                        {% if membresia.usuario.is_verified %}
+                            <span class="badge bg-primary fs_pequena" title="Usuario Verificado"><i class="fas fa-check-circle me-1"></i> Verificado</span>
+                        {% endif %}
+                    </div>
                     <span class="fs_pequena text-muted">Miembro de la {{membresia.estacion.nombre|title}}</span>
                 </div>
                 
                 <div class="card-body">
                     {# --- Estados (Badges) --- #}
                     <div class="mb-3">
-                        <h5 class="fs_normal fw-bold">Estado</h5>
+                        <h5 class="fs_normal fw-bold">Estado de Membresía</h5>
                         <div class="d-flex flex-wrap gap-2">
                             {% if membresia.estado == 'ACTIVO' %}
                                 <span class="badge bg-success fs_pequena">Activo</span>
                             {% elif membresia.estado == 'INACTIVO' %}
                                 <span class="badge bg-warning text-dark fs_pequena">Inactivo</span>
-                            {% endif %}
-                            
-                            {% if membresia.usuario.is_superuser  %}
-                                <span class="badge bg-danger fs_pequena">Administrador</span>
-                            {% endif %}
-                            {% if membresia.usuario.is_staff %}
-                                <span class="badge bg-info text-dark fs_pequena">Staff (Admin)</span>
-                            {% endif %}
-                            {% if membresia.usuario.is_verified %}
-                                <span class="badge bg-primary fs_pequena">Verificado</span>
                             {% endif %}
                         </div>
                     </div>
@@ -203,10 +230,11 @@
     </div>
 </div>
 
+{# Ventanas modales #}
 {% include "gestion_usuarios/partials/_modal_restablecer_contrasena.html" %}
-{% include "gestion_usuarios/partials/_modal_activar_usuario.html" %}
-{% include "gestion_usuarios/partials/_modal_desactivar_usuario.html" %}
-{% include "gestion_usuarios/partials/_modal_forzar_logout.html" %}
+{% include 'gestion_usuarios/partials/_modal_desactivar_usuario.html' %}
+{% include 'gestion_usuarios/partials/_modal_activar_usuario.html' %}
+{% include 'gestion_usuarios/partials/_modal_forzar_logout.html' %}
 
 {# Token CSRF, necesario para el script de avatar #}
 {% csrf_token %} 

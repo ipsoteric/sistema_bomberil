@@ -67,7 +67,7 @@
     {# Activar usuario #}
     {% if perms.gestion_usuarios.accion_gestion_usuarios_desactivar_cuenta and membresia.estado == 'INACTIVO' %}
     <button type="button" 
-            class="menu-acciones-usuarios__accion boton-activar-usuario fondo_transparente color_primario"
+            class="menu-acciones-usuarios__accion boton-activar-usuario fondo_transparente color_negro"
             data-form-action="{% url 'gestion_usuarios:ruta_activar_usuario' id=membresia.usuario.id %}">
         <i class="fa-solid fa-circle-up"></i> Activar
     </button>

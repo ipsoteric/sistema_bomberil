@@ -1,61 +1,124 @@
 {% extends 'gestion_usuarios/layouts/base.html' %}
 {% load static %}
-{% block titulo_ventana %}Permisos de {{ membresia.usuario.get_full_name|title }}{% endblock %}
-{% block titulo_pagina %}Permisos de Usuario{% endblock %}
+{% load humanize %}
+
+{% block titulo_ventana %}Detalle del Rol: {{rol.nombre|title}}{% endblock %}
+
+{% block titulo_pagina %}
+    <span class="fs_grande color_primario">
+        <i class="fas fa-user-tag me-2"></i> Detalle del Rol
+    </span>
+{% endblock %}
 
 {% block contenido %}
 
-{# --- CAMBIO 1: Contenedor más ancho para mayores márgenes --- #}
-<div class="container-xl mt-4">
-    <div class="d-flex align-items-center mb-3">
-        {# --- CAMBIO 2: Clase de avatar más grande --- #}
-        {% if membresia.usuario.avatar_thumb_small %}
-            <img class="avatar_medium me-3" src="{{ membresia.usuario.avatar_thumb_small.url }}">
-        {% else %}
-            <img class="avatar_medium me-3" src="{% static 'imagenes/default_avatar.png' %}">
-        {% endif %}
-        <div>
-            <h1 class="h3 mb-0 color_primario fs_grande">
-                {{ membresia.usuario.get_full_name|title }}
-            </h1>
-            <p class="mb-0 color_primario_variante fs_normal">
-                Total de permisos únicos: {{ total_permisos }}
-            </p>
-        </div>
-    </div>
-    
-    <p class="color_primario_variante fs_normal">A continuación se listan todos los permisos que el usuario hereda de sus roles asignados en la estación <strong>{{ membresia.estacion.nombre }}</strong>.</p>
-    <hr>
-    
-    {% if permisos_agrupados %}
-        <div class="row">
-            {% for modulo, permisos in permisos_agrupados.items %}
-                <div class="col-md-6 col-lg-4"> {# Organiza las tarjetas en columnas #}
-                    <div class="card mb-3 fondo_secundario color_primario fs_normal h-100">
-                        <div class="card-header fw-bold">
-                            {{ modulo }}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-md-12">
+            
+            <div class="card shadow-sm {% if request.session.dark_mode %}dark-mode{% endif %}">
+                
+                {# --- CABECERA: Perfil del Rol --- #}
+                <div class="card-header bg-white p-4 border-0">
+                    <div class="d-flex align-items-center">
+                        {# Icono del Rol #}
+                        <div class="me-3">
+                            <span class="d-inline-flex justify-content-center align-items-center bg-primary bg-opacity-10 text-primary rounded-circle" style="width: 50px; height: 50px;">
+                                <i class="fas fa-shield-alt fs_grande"></i>
+                            </span>
                         </div>
-                        <div class="card-body">
-                            <ul class="list-unstyled mb-0">
-                                {% for perm in permisos %}
-                                    <li>
-                                        <i class="fa-solid fa-check-circle text-success me-2"></i>{{ perm.name }}
-                                    </li>
-                                {% endfor %}
-                            </ul>
+                        {# Nombre, Tipo y Descripción #}
+                        <div class="flex-grow-1">
+                            <h4 class="mb-0 fw-bold color_primario d-flex align-items-center">
+                                {{rol.nombre|title}}
+                                
+                                {# Etiqueta de Tipo #}
+                                {% if rol.estacion %}
+                                    <span class="badge bg-primary fw-normal fs_pequena ms-3" title="Este rol pertenece a la {{rol.estacion.nombre|title}}">Personalizado</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fw-normal fs_pequena ms-3">Global</span>
+                                {% endif %}
+                            </h4>
+                            <p class="text-muted fs_normal mb-0 mt-1">
+                                {% if rol.descripcion %}
+                                    {{ rol.descripcion }}
+                                {% else %}
+                                    <span class="fst-italic">Este rol no tiene descripción.</span>
+                                {% endif %}
+                            </p>
                         </div>
                     </div>
                 </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="alert alert-info" role="alert">
-            Este usuario no tiene ningún permiso asignado en esta estación.
-        </div>
-    {% endif %}
 
-    <div class="mt-4">
-        <a href="{% url 'gestion_usuarios:ruta_ver_usuario' id=membresia.usuario.id %}" class="btn btn-secondary fs_normal">Volver al Perfil</a>
+                <hr class="my-0">
+                
+                {# --- CUERPO: Permisos Asignados --- #}
+                <div class="card-body p-4">
+                    <h5 class="fs_normal fw-bold mb-4">Permisos Asignados</h5>
+                    
+                    {% for modulo, permisos in permisos_por_modulo.items %}
+                        {# Grupo de Módulo #}
+                        <div class="mb-4">
+                            {# Título del Módulo (ej. "Gestión de Inventario") #}
+                            <h6 class="text-uppercase fs_pequena fw-bold text-muted border-bottom pb-2 mb-3">
+                                {{ modulo }}
+                            </h6>
+                            
+                            {# Contenedor de "Etiquetas" de Permisos #}
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for nombre_permiso in permisos %}
+                                    <span class="badge bg-light text-dark border fw-normal fs_pequena py-2 px-3">
+                                        {{ nombre_permiso }}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        {# Estado Vacío #}
+                        <div class="text-center p-4 rounded" style="background-color: #f8f9fa;">
+                            <p class="fs_normal text-muted fst-italic mb-0">Este rol no tiene ningún permiso individual asignado.</p>
+                            
+                            {# Lógica especial para el Admin Global #}
+                            {% if rol.nombre == "ADMINISTRADOR" and not rol.estacion %}
+                                <div class="alert alert-info fs_pequena py-2 mt-3 mb-0">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    El rol "ADMINISTRADOR" global tiene acceso total (Superusuario) por defecto.
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                {# --- FOOTER: Botones de Acción --- #}
+                <div class="card-footer text-end bg-light p-3">
+                    <a href="{% url 'gestion_usuarios:ruta_lista_roles' %}" class="btn btn-outline-secondary btn-sm fs_normal me-2">
+                        <i class="fas fa-arrow-left me-1"></i> Volver
+                    </a>
+
+                    {# Lógica de botones (la misma que ya tenías y funcionaba) #}
+                    {% if rol.nombre != "ADMINISTRADOR" or rol.estacion %}
+                        <a href="{% url 'gestion_usuarios:ruta_editar_rol' id=rol.id %}" class="btn btn-primary btn-sm fs_normal me-2">
+                            <i class="fas fa-edit me-1"></i> Modificar
+                        </a>
+                        <a href="{% url 'gestion_usuarios:ruta_asignar_permisos' id=rol.id %}" class_ ="btn btn-info btn-sm fs_normal me-2">
+                            <i class="fas fa-check-double me-1"></i> Asignar Permisos
+                        </a>
+                        <a href="{% url 'gestion_usuarios:ruta_eliminar_rol' id=rol.id %}" class="btn btn-danger btn-sm fs_normal">
+                            <i class="fas fa-trash-alt me-1"></i> Eliminar
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+        </div>
     </div>
 </div>
-{% endblock %}
+
+<style>
+    /* Estilo para las etiquetas de permisos */
+    .badge.bg-light {
+        border-color: #dee2e6 !important;
+    }
+</style>
+
+{% endblock  %}

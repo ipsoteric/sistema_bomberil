@@ -21,7 +21,7 @@
                 <div class="flex-grow-1">
                     <strong class="fs_normal">Atención requerida:</strong> <span class="fs_normal">{{ alerta.mensaje }}</span>
                 </div>
-                <a href="{{ alerta.accion_url }}" class="btn btn-sm btn-outline-{{ alerta.tipo }} fs_pequena fw-bold">
+                <a href="{{ alerta.accion_url }}" class="btn btn-sm btn-outline-{{ alerta.tipo }} fs_normal fw-bold">
                     {{ alerta.accion_texto }} <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
@@ -228,36 +228,6 @@
 
 </div>
 
-{# --- ESTILOS CSS ESPECÍFICOS --- #}
-<style>
-    .border-start-success { border-left: 4px solid #1cc88a !important; }
-    .border-start-warning { border-left: 4px solid #f6c23e !important; }
-    .border-start-info { border-left: 4px solid #36b9cc !important; }
-    .border-start-primary { border-left: 4px solid #4e73df !important; }
-
-    .kpi-icon {
-        width: 40px; height: 40px;
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem;
-    }
-
-    .quick-action-card {
-        transition: transform 0.2s;
-    }
-    .quick-action-card:hover {
-        transform: translateY(-3px);
-        cursor: pointer;
-    }
-    .action-icon {
-        width: 40px; height: 40px;
-        border-radius: 8px;
-        display: flex; align-items: center; justify-content: center;
-    }
-
-    .animate-fade-in { animation: fadeIn 0.5s ease-in; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-</style>
 {% endblock %}
 
 {% block scripts %}
