@@ -162,6 +162,7 @@ class Voluntario(models.Model):
         verbose_name="N° Registro General de Bomberos", 
         max_length=50, null=True, blank=True, unique=True
     )
+    imagen = models.ImageField(upload_to="voluntarios/imagen/main/", null=True, blank=True)
     
     fecha_creacion = models.DateTimeField(default=timezone.now, editable=False)
 
