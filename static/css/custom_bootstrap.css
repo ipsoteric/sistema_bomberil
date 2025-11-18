@@ -308,3 +308,16 @@ ESTILOS DE MODO OSCURO
     border-color: #2d3238;
     color: #e6edf3;
 }
+
+
+/* 17. Corrige utilidad de fondo blanco (.bg-white) */
+.dark-mode .bg-white {
+    background-color: #1a1d21 !important;
+    color: #e6edf3 !important; /* Fuerza el texto a claro */
+}
+
+
+/* 18. Corrige la utilidad de bordes generales (.border) */
+.dark-mode .border {
+    border-color: #2d3238 !important;
+}
