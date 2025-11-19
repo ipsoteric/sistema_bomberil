@@ -1,0 +1,161 @@
+{% extends 'core_admin/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Nuevo Producto Global{% endblock %}
+{% block titulo_pagina %}Registro en Catálogo Maestro{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid mt-4">
+
+<form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 border-bottom-0">
+                    <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-tag me-2"></i>Identificación del Ítem</h5>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="mb-3">
+                        <label for="{{ form.nombre_oficial.id_for_label }}" class="form-label fw-bold">Nombre Oficial *</label>
+                        {{ form.nombre_oficial }}
+                        <div class="form-text text-muted">Use un nombre estandarizado (Ej: "Casco Estructural F1").</div>
+                        {% if form.nombre_oficial.errors %}
+                            <div class="text-danger small mt-1">{{ form.nombre_oficial.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.categoria.id_for_label }}" class="form-label fw-bold">Categoría *</label>
+                            {{ form.categoria }}
+                            {% if form.categoria.errors %}
+                                <div class="text-danger small mt-1">{{ form.categoria.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.gtin.id_for_label }}" class="form-label">Código GTIN/EAN</label>
+                            {{ form.gtin }}
+                            <div class="form-text small">Opcional. Escanee el código de barras si lo tiene.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.descripcion_general.id_for_label }}" class="form-label">Descripción General</label>
+                        {{ form.descripcion_general }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 border-bottom-0">
+                    <h5 class="mb-0 fw-bold text-secondary"><i class="fas fa-cogs me-2"></i>Especificaciones Técnicas</h5>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="alert alert-light border-start border-4 border-info small text-muted">
+                        <i class="fas fa-info-circle me-1"></i> 
+                        Si selecciona una <strong>Marca</strong>, debe especificar el <strong>Modelo</strong> obligatoriamente. 
+                        Para productos genéricos, deje ambos en blanco.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.marca.id_for_label }}" class="form-label fw-bold">Marca</label>
+                            {{ form.marca }}
+                            {% if form.marca.errors %}
+                                <div class="text-danger small mt-1">{{ form.marca.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.modelo.id_for_label }}" class="form-label fw-bold">Modelo</label>
+                            {{ form.modelo }}
+                            {% if form.modelo.errors %}
+                                <div class="text-danger small mt-1">{{ form.modelo.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                         <div class="col-md-6 mb-3">
+                            <label for="{{ form.vida_util_recomendada_anos.id_for_label }}" class="form-label">Vida Útil Recomendada (Años)</label>
+                            {{ form.vida_util_recomendada_anos }}
+                            <div class="form-text small">Valor sugerido. Cada estación puede anularlo.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 border-bottom-0">
+                    <h5 class="mb-0 fw-bold text-secondary"><i class="fas fa-camera me-2"></i>Imagen de Referencia</h5>
+                </div>
+                <div class="card-body text-center pt-0">
+                    <div class="mb-3 position-relative mx-auto" style="max-width: 250px;">
+                        <div class="ratio ratio-1x1 bg-light border rounded d-flex align-items-center justify-content-center overflow-hidden">
+                            <img id="imgPreview" src="{% static 'core_admin/img/default_product.png' %}" 
+                                 alt="Vista previa" class="w-100 h-100 object-fit-contain p-2"
+                                 style="display: none;">
+                            <div id="imgPlaceholder" class="text-muted">
+                                <i class="fas fa-cloud-upload-alt fa-3x mb-2"></i>
+                                <p class="small mb-0">Sin imagen seleccionada</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{ form.imagen }}
+                    {% if form.imagen.errors %}
+                        <div class="text-danger small mt-2">{{ form.imagen.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text small mt-2">Formatos: JPG, PNG. Recomendado fondo blanco.</div>
+                </div>
+            </div>
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger shadow-sm mb-4">
+                <ul class="mb-0 ps-3">
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-success btn-lg shadow-sm">
+                    <i class="fas fa-save me-2"></i>Crear Producto Maestro
+                </button>
+                <a href="{% url 'core_admin:ruta_catalogo_global' %}" class="btn btn-outline-secondary">
+                    Cancelar
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Script simple para previsualizar la imagen al seleccionarla
+    const imgInput = document.getElementById('{{ form.imagen.id_for_label }}');
+    const imgPreview = document.getElementById('imgPreview');
+    const imgPlaceholder = document.getElementById('imgPlaceholder');
+
+    if(imgInput) {
+        imgInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgPreview.src = e.target.result;
+                    imgPreview.style.display = 'block';
+                    imgPlaceholder.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+</script>
+
+</div>
+{% endblock %}

@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 
 from .mixins import SuperuserRequiredMixin
-from .forms import EstacionForm
+from .forms import EstacionForm, ProductoGlobalForm
 from apps.gestion_inventario.models import Estacion, Ubicacion, Vehiculo, Prestamo, Compartimento, Categoria, Marca, ProductoGlobal, Producto, Activo, LoteInsumo, MovimientoInventario
 from apps.gestion_usuarios.models import Membresia
 
@@ -266,4 +266,19 @@ class ProductoGlobalListView(SuperuserRequiredMixin, ListView):
             cnt=Count('variantes_locales')
         ).filter(cnt=0).count()
 
+        return context
+
+
+
+
+class ProductoGlobalCreateView(SuperuserRequiredMixin, CreateView):
+    model = ProductoGlobal
+    form_class = ProductoGlobalForm
+    template_name = 'core_admin/pages/producto_global_form.html'
+    success_url = reverse_lazy('core_admin:ruta_catalogo_global')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = "Alta de Producto Global"
+        context['accion'] = "Crear Producto"
         return context
