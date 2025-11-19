@@ -1,0 +1,129 @@
+{% extends 'core_admin/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Nuevo Usuario{% endblock %}
+{% block titulo_pagina %}Registro de Usuario{% endblock %}
+
+{% block contenido %}
+<div class="container mt-4">
+
+<form method="post" novalidate autocomplete="off">
+    {% csrf_token %}
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-user-plus me-2"></i>Ficha de Alta</h5>
+                </div>
+                
+                <div class="card-body p-4">
+                    
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">1. Identificación Personal</h6>
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.rut.id_for_label }}" class="form-label fw-bold">RUT *</label>
+                            {{ form.rut }}
+                            {% if form.rut.errors %}
+                                <div class="text-danger small mt-1">{{ form.rut.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text small">Este será el nombre de usuario para iniciar sesión.</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label fw-bold">Nombres *</label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label fw-bold">Apellidos *</label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">2. Datos de Contacto</h6>
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label fw-bold">Correo Electrónico *</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-envelope text-muted"></i></span>
+                                {{ form.email }}
+                            </div>
+                            {% if form.email.errors %}
+                                <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.phone.id_for_label }}" class="form-label">Teléfono</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-phone text-muted"></i></span>
+                                {{ form.phone }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3 border-bottom pb-2">3. Credenciales y Acceso</h6>
+                    <div class="alert alert-info small mb-3 color_blanco">
+                        <i class="fas fa-info-circle me-1"></i> Establezca una contraseña temporal. El usuario podrá cambiarla después en su perfil.
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.password.id_for_label }}" class="form-label fw-bold">Contraseña *</label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                                <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.password_confirm.id_for_label }}" class="form-label fw-bold">Repetir Contraseña *</label>
+                            {{ form.password_confirm }}
+                            {% if form.password_confirm.errors %}
+                                <div class="text-danger small mt-1">{{ form.password_confirm.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="bg-light p-3 rounded border">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    {{ form.is_active }}
+                                    <label class="form-check-label fw-bold" for="{{ form.is_active.id_for_label }}">
+                                        Usuario Activo
+                                    </label>
+                                    <div class="small text-muted">Si está desactivado, no podrá iniciar sesión.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    {{ form.is_staff }}
+                                    <label class="form-check-label fw-bold" for="{{ form.is_staff.id_for_label }}">
+                                        Es Staff (Acceso Admin)
+                                    </label>
+                                    <div class="small text-muted">Habilita acceso al panel de Django Admin (Usar con precaución).</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <div class="card-footer bg-white py-3 text-end">
+                    <a href="{% url 'core_admin:ruta_lista_usuarios' %}" class="btn btn-outline-secondary me-2">Cancelar</a>
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-save me-2"></i>Crear Usuario
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+</div>
+{% endblock %}

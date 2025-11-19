@@ -1,5 +1,19 @@
 from django.urls import path
-from .views import AdministracionInicioView, EstacionListaView, EstacionDetalleView, EstacionEditarView, EstacionCrearView, EstacionEliminarView, EstacionSwitchView, ProductoGlobalListView, ProductoGlobalCreateView, ProductoGlobalUpdateView, ProductoGlobalDeleteView, UsuarioListView
+from .views import (
+    AdministracionInicioView, 
+    EstacionListaView, 
+    EstacionDetalleView, 
+    EstacionEditarView, 
+    EstacionCrearView, 
+    EstacionEliminarView, 
+    EstacionSwitchView, 
+    ProductoGlobalListView, 
+    ProductoGlobalCreateView, 
+    ProductoGlobalUpdateView, 
+    ProductoGlobalDeleteView, 
+    UsuarioListView, 
+    UsuarioCreateView
+)
 
 app_name = 'core_admin'
 
@@ -39,4 +53,6 @@ urlpatterns = [
 
     # Lista de usuarios
     path('usuarios/', UsuarioListView.as_view(), name='ruta_lista_usuarios'),
+
+    path('usuarios/crear/', UsuarioCreateView.as_view(), name='ruta_crear_usuario'),
 ]

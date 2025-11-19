@@ -8,7 +8,7 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth import get_user_model
 
 from .mixins import SuperuserRequiredMixin
-from .forms import EstacionForm, ProductoGlobalForm
+from .forms import EstacionForm, ProductoGlobalForm, UsuarioCreationForm
 from apps.gestion_inventario.models import Estacion, Ubicacion, Vehiculo, Prestamo, Compartimento, Categoria, Marca, ProductoGlobal, Producto, Activo, LoteInsumo, MovimientoInventario
 from apps.gestion_usuarios.models import Membresia
 
@@ -379,4 +379,20 @@ class UsuarioListView(SuperuserRequiredMixin, ListView):
         context['kpi_activos'] = User.objects.filter(is_active=True).count()
         context['kpi_staff'] = User.objects.filter(is_staff=True).count()
         
+        return context
+
+
+
+
+class UsuarioCreateView(SuperuserRequiredMixin, CreateView):
+    model = get_user_model()
+    form_class = UsuarioCreationForm
+    template_name = 'core_admin/pages/usuario_form.html'
+    success_url = reverse_lazy('core_admin:ruta_lista_usuarios')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = "Registrar Nuevo Usuario"
+        context['accion'] = "Crear Usuario"
+        context['subtitulo'] = "Complete los datos de identidad y credenciales de acceso."
         return context
