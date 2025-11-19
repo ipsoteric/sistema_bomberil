@@ -1,8 +1,9 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 from apps.gestion_inventario.models import Estacion, Comuna, ProductoGlobal
-from apps.gestion_usuarios.models import Usuario
+from apps.gestion_usuarios.models import Usuario, Rol, Membresia
 
 
 class EstacionForm(forms.ModelForm):
@@ -157,3 +158,64 @@ class UsuarioChangeForm(forms.ModelForm):
         # Esto se maneja mejor en la vista, pero aquí podemos poner warnings en los help_text
         self.fields['is_superuser'].help_text = "<strong>¡Cuidado!</strong> Otorga acceso total al sistema y evita todas las restricciones de permisos."
         self.fields['rut'].help_text = "El identificador (RUT) no se puede modificar libremente para mantener la integridad histórica."
+
+
+
+
+class AsignarMembresiaForm(forms.ModelForm):
+    # Campo extra para seleccionar roles (M2M) en el formulario
+    roles_seleccionados = forms.ModelMultipleChoiceField(
+        queryset=Rol.objects.none(), # Se poblará dinámicamente
+        widget=forms.SelectMultiple(attrs={'class': 'form-select', 'size': '8'}),
+        label="Roles a Asignar",
+        help_text="Mantén presionada la tecla Ctrl (o Cmd) para seleccionar múltiples roles."
+    )
+
+    class Meta:
+        model = Membresia
+        fields = ['usuario', 'estacion', 'fecha_inicio']
+        widgets = {
+            'fecha_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'usuario': forms.Select(attrs={'class': 'form-select'}),
+            'estacion': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Si hay datos (POST), cargamos los roles válidos para validar la entrada
+        if 'estacion' in self.data:
+            try:
+                estacion_id = int(self.data.get('estacion'))
+                self.fields['roles_seleccionados'].queryset = Rol.objects.filter(
+                    Q(estacion__isnull=True) | Q(estacion_id=estacion_id)
+                )
+            except (ValueError, TypeError):
+                pass  # Entrada inválida, el clean lo manejará
+        elif self.instance.pk:
+            # Lógica para edición (si quisieras reutilizarlo)
+            self.fields['roles_seleccionados'].queryset = self.instance.estacion.roles.all() # Simplificado
+
+    def clean(self):
+        cleaned_data = super().clean()
+        usuario = cleaned_data.get('usuario')
+        
+        # --- VALIDACIÓN BLOQUEANTE ---
+        if usuario:
+            # Buscamos si tiene CUALQUIER membresía activa
+            # Usamos .exclude(pk=self.instance.pk) por si en el futuro usas esto para editar
+            otras_activas = Membresia.objects.filter(
+                usuario=usuario, 
+                estado='ACTIVO'
+            ).exclude(pk=self.instance.pk)
+
+            if otras_activas.exists():
+                # Obtenemos la estación actual para dar un mensaje claro
+                estacion_actual = otras_activas.first().estacion.nombre
+                
+                raise ValidationError(
+                    f"OPERACIÓN DENEGADA: El usuario {usuario} ya se encuentra ACTIVO en la estación '{estacion_actual}'. "
+                    "Debe finalizar esa membresía antes de asignarle una nueva."
+                )
+        
+        return cleaned_data

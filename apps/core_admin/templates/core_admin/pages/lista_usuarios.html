@@ -151,6 +151,13 @@
                             title="Enviar correo de recuperación">
                                 <i class="fas fa-key"></i>
                             </button>
+
+                            <a 
+                            href="{% url 'core_admin:ruta_crear_membresia' %}?usuario_id={{ usuario.pk }}" 
+                            class="btn btn-sm btn-outline-success" 
+                            title="Dar Acceso / Crear Membresía">
+                                <i class="fas fa-id-badge"></i>
+                            </a>
                         </div>
                     </td>
                 </tr>

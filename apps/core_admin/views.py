@@ -4,14 +4,16 @@ from django.views.generic import ListView, DetailView, UpdateView, CreateView, D
 from django.db.models import Count, Q, ProtectedError
 from django.urls import reverse_lazy
 from django.contrib import messages
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import PasswordResetForm
+from django.db import transaction
+from django.utils import timezone
 
 from .mixins import SuperuserRequiredMixin
-from .forms import EstacionForm, ProductoGlobalForm, UsuarioCreationForm, UsuarioChangeForm
+from .forms import EstacionForm, ProductoGlobalForm, UsuarioCreationForm, UsuarioChangeForm, AsignarMembresiaForm
 from apps.gestion_inventario.models import Estacion, Ubicacion, Vehiculo, Prestamo, Compartimento, Categoria, Marca, ProductoGlobal, Producto, Activo, LoteInsumo, MovimientoInventario
-from apps.gestion_usuarios.models import Membresia
+from apps.gestion_usuarios.models import Membresia, Rol
 
 
 class AdministracionInicioView(View):
@@ -455,3 +457,77 @@ class UsuarioResetPasswordView(SuperuserRequiredMixin, View):
             messages.error(request, "Error interno al generar el token de recuperación.")
 
         return redirect('core_admin:ruta_lista_usuarios')
+
+
+
+
+class ApiRolesPorEstacionView(SuperuserRequiredMixin, View):
+    """
+    Devuelve los roles disponibles para una estación específica:
+    Roles Globales (estacion=None) + Roles Locales (estacion=ID)
+    """
+    def get(self, request):
+        estacion_id = request.GET.get('estacion_id')
+        
+        # Consulta base: Roles Globales
+        criterio = Q(estacion__isnull=True)
+        
+        # Si seleccionaron una estación, sumamos sus roles locales
+        if estacion_id:
+            criterio = criterio | Q(estacion_id=estacion_id)
+            
+        roles = Rol.objects.filter(criterio).values('id', 'nombre', 'estacion__nombre').order_by('estacion', 'nombre')
+        
+        # Formateamos para el frontend
+        data = []
+        for rol in roles:
+            tipo = f"Específico de {rol['estacion__nombre']}" if rol['estacion__nombre'] else "Global / Sistema"
+            data.append({
+                'id': rol['id'],
+                'nombre': f"{rol['nombre']} ({tipo})"
+            })
+            
+        return JsonResponse({'roles': data})
+
+
+
+
+class MembresiaCreateView(SuperuserRequiredMixin, CreateView):
+    model = Membresia
+    form_class = AsignarMembresiaForm
+    template_name = 'core_admin/pages/membresia_form.html'
+    success_url = reverse_lazy('core_admin:ruta_lista_usuarios')
+
+
+    def get_initial(self):
+        """
+        Pre-selecciona el usuario usando datos GET de la URL.
+        Esto genera el HTML con el <option selected> ya marcado.
+        """
+        initial = super().get_initial()
+        # Capturamos ?usuario_id=123 de la URL
+        usuario_id = self.request.GET.get('usuario_id')
+        if usuario_id:
+            initial['usuario'] = usuario_id
+        return initial
+
+
+    def form_valid(self, form):
+        # 1. Guardamos la Membresía
+        self.object = form.save(commit=False)
+        self.object.estado = 'ACTIVO'
+        self.object.save()
+        
+        # 2. Guardamos los Roles
+        roles = form.cleaned_data['roles_seleccionados']
+        self.object.roles.set(roles)
+        
+        messages.success(self.request, f"Membresía creada exitosamente para {self.object.usuario} en {self.object.estacion}.")
+        return super().form_valid(form)
+    
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = "Asignar Acceso a Estación"
+        # YA NO NECESITAMOS PASAR 'usuario_preseleccionado' al contexto
+        return context

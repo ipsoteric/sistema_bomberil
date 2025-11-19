@@ -14,7 +14,9 @@ from .views import (
     UsuarioListView, 
     UsuarioCreateView,
     UsuarioUpdateView,
-    UsuarioResetPasswordView
+    UsuarioResetPasswordView,
+    ApiRolesPorEstacionView,
+    MembresiaCreateView
 )
 
 app_name = 'core_admin'
@@ -64,4 +66,11 @@ urlpatterns = [
 
     # Restablecer contraseña
     path('usuarios/<int:pk>/reset-password/', UsuarioResetPasswordView.as_view(), name='ruta_restablecer_contraseña'),
+
+    # API Roles por estación
+    path('api/roles-estacion/', ApiRolesPorEstacionView.as_view(), name='api_roles_estacion'),
+
+    # Asignar membresía a usuario
+    path('membresias/asignar/', MembresiaCreateView.as_view(), name='ruta_crear_membresia'),
+
 ]

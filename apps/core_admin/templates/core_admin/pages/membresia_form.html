@@ -1,0 +1,130 @@
+{% extends 'core_admin/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Asignar Membresía{% endblock %}
+{% block titulo_pagina %}Conceder Acceso y Roles{% endblock %}
+
+{% block contenido %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold text-success"><i class="fas fa-id-card-clip me-2"></i>Nueva Membresía</h5>
+                </div>
+                <div class="card-body p-4">
+                    
+                    <form method="post" id="formMembresia">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Usuario *</label>
+                            {{ form.usuario }}
+                            <div class="form-text">El bombero que recibirá el acceso.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Estación de Destino *</label>
+                            {{ form.estacion }}
+                            <div class="form-text">Seleccione la estación para cargar sus roles disponibles.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Fecha de Inicio *</label>
+                            {{ form.fecha_inicio }}
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-primary">Roles Disponibles (Globales + Locales) *</label>
+                            
+                            <div id="loadingRoles" class="d-none text-center py-2 text-muted">
+                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                Cargando roles de la estación...
+                            </div>
+
+                            {{ form.roles_seleccionados }}
+                            
+                            {% if form.roles_seleccionados.errors %}
+                                <div class="text-danger small mt-1">{{ form.roles_seleccionados.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                La lista se actualiza automáticamente según la estación seleccionada.
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i>Generar Membresía
+                            </button>
+                            <a href="{% url 'core_admin:ruta_lista_usuarios' %}" class="btn btn-outline-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectEstacion = document.getElementById('id_estacion');
+    const selectRoles = document.getElementById('id_roles_seleccionados');
+    const loadingDiv = document.getElementById('loadingRoles');
+
+    // Función para cargar roles
+    async function cargarRoles(estacionId) {
+        selectRoles.innerHTML = ''; // Limpiar
+        selectRoles.disabled = true;
+        loadingDiv.classList.remove('d-none');
+
+        if (!estacionId) {
+            loadingDiv.classList.add('d-none');
+            return;
+        }
+
+        try {
+            const url = "{% url 'core_admin:api_roles_estacion' %}?estacion_id=" + estacionId;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            data.roles.forEach(rol => {
+                const option = document.createElement('option');
+                option.value = rol.id;
+                option.textContent = rol.nombre;
+                selectRoles.appendChild(option);
+            });
+
+        } catch (error) {
+            console.error('Error cargando roles:', error);
+            alert('Error al cargar los roles de la estación.');
+        } finally {
+            selectRoles.disabled = false;
+            loadingDiv.classList.add('d-none');
+        }
+    }
+
+    // Listener al cambiar estación
+    if (selectEstacion) {
+        selectEstacion.addEventListener('change', function() {
+            cargarRoles(this.value);
+        });
+
+        // Cargar inicialmente si hay una estación seleccionada (ej: fallo de validación)
+        if (selectEstacion.value) {
+            cargarRoles(selectEstacion.value);
+        }
+    }
+});
+</script>
+{% endblock %}
