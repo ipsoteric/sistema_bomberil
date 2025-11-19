@@ -8,7 +8,7 @@ from django.http import HttpResponseRedirect
 
 from .mixins import SuperuserRequiredMixin
 from .forms import EstacionForm
-from apps.gestion_inventario.models import Estacion, Ubicacion, Vehiculo, Prestamo, Compartimento, Producto, Activo, LoteInsumo, MovimientoInventario
+from apps.gestion_inventario.models import Estacion, Ubicacion, Vehiculo, Prestamo, Compartimento, Categoria, Marca, ProductoGlobal, Producto, Activo, LoteInsumo, MovimientoInventario
 from apps.gestion_usuarios.models import Membresia
 
 
@@ -206,3 +206,64 @@ class EstacionSwitchView(SuperuserRequiredMixin, View):
         # 3. Redirigir al Dashboard operativo (Portal) [cite: 9]
         # Asumiendo que el namespace de tu portal es 'portal' y la url 'ruta_inicio'
         return redirect('portal:ruta_inicio')
+
+
+
+
+class ProductoGlobalListView(SuperuserRequiredMixin, ListView):
+    model = ProductoGlobal
+    template_name = 'core_admin/pages/lista_catalogo_global.html'
+    context_object_name = 'productos'
+    paginate_by = 20 # Un poco más denso para administración
+
+    def get_queryset(self):
+        # Optimización: Traemos marca y categoría para no hacer N+1 queries.
+        # Annotate: Contamos cuántas veces se usa este producto en 'Producto' (catalogo local)
+        qs = ProductoGlobal.objects.select_related('marca', 'categoria').annotate(
+            total_usos=Count('variantes_locales')
+        ).order_by('-created_at')
+
+        # --- FILTROS ---
+        q = self.request.GET.get('q')
+        categoria_id = self.request.GET.get('categoria')
+        marca_id = self.request.GET.get('marca')
+
+        if q:
+            qs = qs.filter(
+                Q(nombre_oficial__icontains=q) | 
+                Q(modelo__icontains=q) |
+                Q(gtin__icontains=q)
+            )
+        
+        if categoria_id:
+            qs = qs.filter(categoria_id=categoria_id)
+        
+        if marca_id:
+            qs = qs.filter(marca_id=marca_id)
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = "Catálogo Maestro Global"
+        
+        # Listas para los selectores del filtro
+        context['all_categorias'] = Categoria.objects.all().order_by('nombre')
+        context['all_marcas'] = Marca.objects.all().order_by('nombre')
+        
+        # Mantener el estado de los filtros en la paginación
+        context['current_search'] = self.request.GET.get('q', '')
+        context['current_categoria'] = self.request.GET.get('categoria', '')
+        context['current_marca'] = self.request.GET.get('marca', '')
+
+        # --- KPIs DE AUDITORÍA ---
+        # Total absoluto
+        context['kpi_total'] = ProductoGlobal.objects.count()
+        # Productos sin imagen (Para saber qué falta completar)
+        context['kpi_sin_imagen'] = ProductoGlobal.objects.filter(imagen='').count()
+        # Productos "Huérfanos" (Nadie los usa aún)
+        context['kpi_sin_uso'] = ProductoGlobal.objects.annotate(
+            cnt=Count('variantes_locales')
+        ).filter(cnt=0).count()
+
+        return context
