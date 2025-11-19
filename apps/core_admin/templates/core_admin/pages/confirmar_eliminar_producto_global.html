@@ -1,0 +1,53 @@
+{% extends 'core_admin/layouts/base.html' %}
+{% load static %}
+
+{% block titulo_ventana %}Eliminar Producto | {{ object.nombre_oficial }}{% endblock %}
+{% block titulo_pagina %}Confirmar Eliminación{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid mt-4">
+
+<div class="row justify-content-center mt-5">
+    <div class="col-lg-6 col-md-8">
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-trash-alt me-2"></i>Eliminar del Catálogo Maestro</h5>
+            </div>
+            <div class="card-body text-center p-5">
+                
+                <div class="mb-4 text-danger opacity-50">
+                    <i class="fas fa-box-open fa-5x"></i>
+                </div>
+
+                <h4 class="fw-bold text-dark mb-3">¿Eliminar "{{ object.nombre_oficial }}"?</h4>
+                
+                <p class="text-muted mb-4">
+                    Esta acción eliminará permanentemente el producto del catálogo global.
+                    <br>
+                    <small class="fst-italic">Marca: {{ object.marca.nombre|default:"Genérica" }} | Modelo: {{ object.modelo|default:"-" }}</small>
+                </p>
+
+                <div class="alert alert-warning text-start d-inline-block mb-4 small">
+                    <i class="fas fa-shield-alt me-1"></i>
+                    <strong>Protección de Integridad:</strong> Si alguna estación ya ha importado este producto a su inventario local, 
+                    la eliminación será bloqueada automáticamente por el sistema.
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                        <a href="{% url 'core_admin:ruta_catalogo_global' %}" class="btn btn-outline-secondary px-4">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-danger px-4">
+                            <i class="fas fa-times-circle me-2"></i>Confirmar Eliminación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}

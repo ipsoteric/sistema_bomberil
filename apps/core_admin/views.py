@@ -304,3 +304,35 @@ class ProductoGlobalUpdateView(SuperuserRequiredMixin, UpdateView):
             "se reflejarán en todas las estaciones que lo tengan en su inventario."
         )
         return context
+
+
+
+
+class ProductoGlobalDeleteView(SuperuserRequiredMixin, DeleteView):
+    model = ProductoGlobal
+    template_name = 'core_admin/pages/confirmar_eliminar_producto_global.html'
+    success_url = reverse_lazy('core_admin:ruta_catalogo_global')
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        success_url = self.get_success_url()
+
+        try:
+            self.object.delete()
+            messages.success(request, f"El producto '{self.object.nombre_oficial}' ha sido eliminado del catálogo maestro.")
+            return HttpResponseRedirect(success_url)
+        
+        except ProtectedError:
+            # Capturamos el intento de borrar algo que está en uso
+            messages.error(
+                request, 
+                f"Bloqueado: El producto '{self.object.nombre_oficial}' no se puede eliminar porque "
+                "ya fue importado por una o más estaciones. Debe retirarse de los inventarios locales primero."
+            )
+            # Redirigimos a la lista para que vea el estado
+            return redirect('core_admin:producto_global_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = "Eliminar Producto Maestro"
+        return context
