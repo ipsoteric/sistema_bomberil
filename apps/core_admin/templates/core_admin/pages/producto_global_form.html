@@ -7,6 +7,12 @@
 {% block contenido %}
 <div class="container-fluid mt-4">
 
+{% if mensaje_alerta %}
+<div class="alert alert-warning shadow-sm border-start border-4 border-warning mb-4">
+    <i class="fas fa-exclamation-triangle me-2"></i>{{ mensaje_alerta }}
+</div>
+{% endif %}
+
 <form method="post" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
     

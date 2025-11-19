@@ -282,3 +282,25 @@ class ProductoGlobalCreateView(SuperuserRequiredMixin, CreateView):
         context['titulo_pagina'] = "Alta de Producto Global"
         context['accion'] = "Crear Producto"
         return context
+
+
+
+
+class ProductoGlobalUpdateView(SuperuserRequiredMixin, UpdateView):
+    model = ProductoGlobal
+    form_class = ProductoGlobalForm
+    template_name = 'core_admin/pages/producto_global_form.html' # Reutilizamos template
+    success_url = reverse_lazy('core_admin:ruta_catalogo_global')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['titulo_pagina'] = f"Editar: {self.object.nombre_oficial}"
+        context['accion'] = "Guardar Cambios"
+        
+        # Mensaje de advertencia para el admin
+        # Es útil recordarle que este cambio impacta a todas las estaciones
+        context['mensaje_alerta'] = (
+            "Atención: Al editar este producto maestro, los cambios (nombre, marca, modelo) "
+            "se reflejarán en todas las estaciones que lo tengan en su inventario."
+        )
+        return context

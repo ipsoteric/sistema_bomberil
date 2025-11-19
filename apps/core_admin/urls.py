@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import AdministracionInicioView, EstacionListaView, EstacionDetalleView, EstacionEditarView, EstacionCrearView, EstacionEliminarView, EstacionSwitchView, ProductoGlobalListView, ProductoGlobalCreateView
+from .views import AdministracionInicioView, EstacionListaView, EstacionDetalleView, EstacionEditarView, EstacionCrearView, EstacionEliminarView, EstacionSwitchView, ProductoGlobalListView, ProductoGlobalCreateView, ProductoGlobalUpdateView
 
 app_name = 'core_admin'
 
@@ -28,5 +28,9 @@ urlpatterns = [
     # Catálogo global de productos
     path('catalogo-global/', ProductoGlobalListView.as_view(), name='ruta_catalogo_global'),
 
+    # Crear producto global
     path('catalogo-global/crear/', ProductoGlobalCreateView.as_view(), name='ruta_crear_producto_global'),
+
+    # Editar producto global
+    path('catalogo-global/<int:pk>/editar/', ProductoGlobalUpdateView.as_view(), name='ruta_editar_producto_global'),
 ]
