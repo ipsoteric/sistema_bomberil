@@ -13,7 +13,8 @@ from .views import (
     ProductoGlobalDeleteView, 
     UsuarioListView, 
     UsuarioCreateView,
-    UsuarioUpdateView
+    UsuarioUpdateView,
+    UsuarioResetPasswordView
 )
 
 app_name = 'core_admin'
@@ -60,4 +61,7 @@ urlpatterns = [
 
     # Editar usuario
     path('usuarios/<int:pk>/editar/', UsuarioUpdateView.as_view(), name='ruta_editar_usuario'),
+
+    # Restablecer contraseña
+    path('usuarios/<int:pk>/reset-password/', UsuarioResetPasswordView.as_view(), name='ruta_restablecer_contraseña'),
 ]

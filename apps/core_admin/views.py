@@ -6,6 +6,7 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import PasswordResetForm
 
 from .mixins import SuperuserRequiredMixin
 from .forms import EstacionForm, ProductoGlobalForm, UsuarioCreationForm, UsuarioChangeForm
@@ -415,3 +416,42 @@ class UsuarioUpdateView(SuperuserRequiredMixin, UpdateView):
         # Bandera para ocultar sección de password en el template
         context['is_edit_mode'] = True 
         return context
+
+
+
+
+class UsuarioResetPasswordView(SuperuserRequiredMixin, View):
+    """
+    Vista para que el Superusuario fuerce el envío de un correo de 
+    recuperación de contraseña. Reutiliza los templates del sistema.
+    """
+    
+    def post(self, request, pk):
+        # 1. Buscamos al usuario globalmente (sin restricción de estación)
+        User = get_user_model()
+        usuario = get_object_or_404(User, pk=pk)
+
+        # 2. Validación: Email existente
+        if not usuario.email:
+            messages.error(request, f"El usuario {usuario.get_full_name()} no tiene un correo registrado. No se puede enviar el reset.")
+            return redirect('core_admin:usuario_list')
+
+        # 3. Instanciamos el formulario estándar de Django
+        # Truco: Le pasamos el email del usuario como si él mismo lo hubiera escrito
+        form = PasswordResetForm({'email': usuario.email})
+
+        if form.is_valid():
+            # 4. REUTILIZACIÓN DE TUS PLANTILLAS EXISTENTES
+            form.save(
+                request=request,
+                from_email='noreply@bomberil.cl', # Ojo: Asegúrate que este email esté autorizado en tu settings
+                email_template_name='acceso/emails/password_reset_email.txt',
+                html_email_template_name='acceso/emails/password_reset_email.html',
+                subject_template_name='acceso/emails/password_reset_subject.txt',
+                # extra_email_context={'nombre_usuario': usuario.first_name} 
+            )
+            messages.success(request, f"Se ha enviado el correo de restablecimiento a {usuario.email}.")
+        else:
+            messages.error(request, "Error interno al generar el token de recuperación.")
+
+        return redirect('core_admin:ruta_lista_usuarios')

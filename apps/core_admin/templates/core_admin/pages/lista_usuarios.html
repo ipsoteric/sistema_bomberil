@@ -141,9 +141,16 @@
                             <a href="{% url 'core_admin:ruta_editar_usuario' usuario.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar Usuario">
                                 <i class="fas fa-pencil-alt"></i>
                             </a>
-                            <a href="#" class="btn btn-sm btn-outline-warning" title="Resetear Password">
+                            <button type="button" 
+                            class="btn btn-sm btn-outline-warning btn-reset-password" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#modalResetPassword"
+                            data-usuario-id="{{ usuario.pk }}"
+                            data-usuario-nombre="{{ usuario.get_full_name|default:usuario.rut }}"
+                            data-usuario-email="{{ usuario.email|default:'Sin correo' }}"
+                            title="Enviar correo de recuperación">
                                 <i class="fas fa-key"></i>
-                            </a>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -177,5 +184,85 @@
     {% endif %}
 </div>
 
+
+<div class="modal fade" id="modalResetPassword" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning bg-opacity-10">
+                <h5 class="modal-title text-dark fw-bold">
+                    <i class="fas fa-key me-2"></i>Restablecer Contraseña
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea forzar el restablecimiento de contraseña para el siguiente usuario?</p>
+                
+                <div class="alert alert-light border text-center">
+                    <h5 class="fw-bold mb-1" id="modal_usuario_nombre"></h5>
+                    <small class="text-muted" id="modal_usuario_email"></small>
+                </div>
+
+                <p class="small text-muted mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    El sistema enviará un correo electrónico a la dirección registrada con un enlace seguro para que el usuario defina una nueva clave.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                
+                <form method="post" id="formResetPassword" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar Correo
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 </div>
 {% endblock %}
+
+{% block scripts %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var modalReset = document.getElementById('modalResetPassword');
+        if (modalReset) {
+            modalReset.addEventListener('show.bs.modal', function(event) {
+                // Botón que activó el modal
+                var button = event.relatedTarget;
+                
+                // Extraer datos
+                var userId = button.getAttribute('data-usuario-id');
+                var userName = button.getAttribute('data-usuario-nombre');
+                var userEmail = button.getAttribute('data-usuario-email');
+                
+                // Actualizar textos del modal
+                document.getElementById('modal_usuario_nombre').textContent = userName;
+                document.getElementById('modal_usuario_email').textContent = userEmail;
+                
+                // Construir la URL dinámica para el POST
+                // OJO: Usamos un placeholder '0' en la URL de django y lo reemplazamos por JS
+                var urlBase = "{% url 'core_admin:ruta_restablecer_contraseña' 0 %}";
+                var urlFinal = urlBase.replace('0', userId);
+                
+                document.getElementById('formResetPassword').action = urlFinal;
+                
+                // Deshabilitar botón si no hay email
+                var btnSubmit = modalReset.querySelector('button[type="submit"]');
+                if(userEmail === 'Sin correo' || userEmail === '') {
+                    btnSubmit.disabled = true;
+                    btnSubmit.innerHTML = "Usuario sin Email";
+                } else {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Enviar Correo';
+                }
+            });
+        }
+    });
+</script>
+
+{% endblock scripts %}
