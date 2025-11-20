@@ -66,22 +66,6 @@ urlpatterns = [
     # Crear información médica de un voluntario
     path('pacientes/crear/', MedicoCrearView.as_view(), name="ruta_crear_paciente"),
 
-    # Adicion de medicamentos
-    path('medicamentos/crear/', MedicamentoCrearView.as_view(), name="ruta_crear_medicamento"),
-
-    # Lista de medicamentos
-    path('medicamentos/', MedicamentoListView.as_view(), name="ruta_lista_medicamentos"),
-
-    # Rutas de Medicamentos (REEMPLAZA las que tenías de medicamentos por estas 4)
-    path('medicamentos/', MedicamentoListView.as_view(), name="ruta_lista_medicamentos"),
-   
-    path('medicamentos/crear/', MedicamentoCrearView.as_view(), name="ruta_crear_medicamento"),
-    
-    # Estas son las nuevas para que funcionen los botones:
-    path('medicamentos/editar/<int:pk>/', MedicamentoUpdateView.as_view(), name="ruta_editar_medicamento"),
-   
-    path('medicamentos/eliminar/<int:pk>/', MedicamentoDeleteView.as_view(), name="ruta_eliminar_medicamento"),
-
     # NUEVA: Vista de Impresión
     path('paciente/imprimir/<int:pk>/', MedicoImprimirView.as_view(), name="ruta_imprimir_ficha"),
     
@@ -92,32 +76,39 @@ urlpatterns = [
 
     path('paciente/medicamentos/eliminar/<int:pk>/<int:medicamento_id>/', EliminarMedicamentoPacienteView.as_view(), name="ruta_eliminar_medicamento_paciente"),
 
-    # --- CATÁLOGO DE ALERGIAS ---
-    # --- CATÁLOGO DE ALERGIAS ---
-    path('alergias/', AlergiaListView.as_view(), name="ruta_lista_alergias"),
-    
-    path('alergias/crear/', AlergiaCrearView.as_view(), name="ruta_crear_alergia"),
-    
-    path('alergias/editar/<int:pk>/', AlergiaUpdateView.as_view(), name="ruta_editar_alergia"),
-   
-    path('alergias/eliminar/<int:pk>/', AlergiaDeleteView.as_view(), name="ruta_eliminar_alergia"),
-
     path('paciente/contacto/editar/<int:pk>/<int:contacto_id>/', EditarContactoView.as_view(), name="ruta_editar_contacto"),
-    
+
     #Ruta Contacto (Eliminar faltaba)
     path('paciente/contacto/eliminar/<int:pk>/<int:contacto_id>/', EliminarContactoView.as_view(), name="ruta_eliminar_contacto"),
 
     # Rutas de Cirugías (Paciente)
     path('paciente/cirugias/<int:pk>/', MedicoCirugiasView.as_view(), name="ruta_cirugias_paciente"),
+
+    path('paciente/cirugias/editar/<int:pk>/<int:cirugia_id>/', 
+         EditarCirugiaPacienteView.as_view(), 
+         name="ruta_editar_cirugia_paciente"),
     
     path('paciente/cirugias/eliminar/<int:pk>/<int:item_id>/', EliminarCirugiaPacienteView.as_view(), name="ruta_eliminar_cirugia_paciente"),
+
+    # --- CATÁLOGO DE ALERGIAS ---
+    path('alergias/', AlergiaListView.as_view(), name="ruta_lista_alergias"),
+    
+    path('alergias/crear/', AlergiaCrearView.as_view(), name="ruta_crear_alergia"),
 
     # --- CATÁLOGO DE ENFERMEDADES ---
     path('enfermedades/', EnfermedadListView.as_view(), name="ruta_lista_enfermedades"),
     
     path('enfermedades/crear/', EnfermedadCrearView.as_view(), name="ruta_crear_enfermedad"),
+
+    # Adicion de medicamentos
+    path('medicamentos/crear/', MedicamentoCrearView.as_view(), name="ruta_crear_medicamento"),
+
+    # Lista de medicamentos
+    path('medicamentos/', MedicamentoListView.as_view(), name="ruta_lista_medicamentos"),
+
+    # --- CATÁLOGO DE CIRUGÍAS ---
+    path('cirugias/', CirugiaListView.as_view(), name="ruta_lista_cirugias"),
     
-    path('enfermedades/editar/<int:pk>/', EnfermedadUpdateView.as_view(), name="ruta_editar_enfermedad"),
-    
-    path('enfermedades/eliminar/<int:pk>/', EnfermedadDeleteView.as_view(), name="ruta_eliminar_enfermedad"),
+    path('cirugias/crear/', CirugiaCrearView.as_view(), name="ruta_crear_cirugia"),
+        
     ]   

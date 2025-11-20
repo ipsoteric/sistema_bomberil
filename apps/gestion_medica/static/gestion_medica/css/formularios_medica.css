@@ -1,0 +1,62 @@
+/* ========================================================
+   ESTILOS DE COMPONENTES (PARA EDICIÓN Y FORMULARIOS)
+   ======================================================== */
+
+/* --- Inputs y Selects "Clean" --- */
+.form-control-clean, 
+.form-control, 
+.form-select {
+    border: 1px solid #e3e6f0;
+    padding-left: 15px;
+    font-size: 1rem;
+    background-color: transparent;
+    border-radius: 0.5rem;
+    height: calc(2.5rem + 2px);
+}
+
+/* Inputs grandes */
+.form-control-lg {
+    height: calc(3rem + 2px);
+    font-size: 1.1rem;
+}
+
+/* Quitar borde a inputs dentro de grupos */
+.input-group .form-control,
+.input-group .form-select {
+    border: none;
+    box-shadow: none;
+}
+
+/* Bordes del input-group redondeados */
+.input-group {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background-color: #fff;
+}
+
+/* Botones Blancos / Neutros */
+.btn-white { 
+    background: white; 
+    border: 1px solid #e3e6f0; 
+    color: #5a5c69;
+}
+.btn-white:hover { 
+    background: #f8f9fa; 
+    color: #2e59d9;
+}
+
+/* Utilidades extra para tablas y bordes */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+.border-bottom-light {
+    border-bottom: 1px solid #f1f1f1;
+}
+
+/* Efecto Hover Elevado (General) */
+.hover-elevate:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease;
+}

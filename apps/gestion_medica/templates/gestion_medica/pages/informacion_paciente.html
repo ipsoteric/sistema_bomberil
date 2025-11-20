@@ -182,7 +182,7 @@
             <div class="card h-100 shadow-sm {% if cirugias %}border-info border-2{% else %}border-light border-2{% endif %}">
                 <div class="card-header d-flex justify-content-between align-items-center bg-white">
                     <h6 class="mb-0 fw-bold text-secondary"><i class="fa-solid fa-scalpel me-2"></i>OPERACIONES</h6>
-                    <a href="#" class="btn btn-sm btn-link text-decoration-none p-0 disabled">Ver</a>
+                    <a href="{% url 'gestion_medica:ruta_cirugias_paciente' pk=ficha.id %}" class="btn btn-sm btn-link text-decoration-none p-0">Ver</a>
                 </div>
                 <div class="card-body text-center">
                     {% if cirugias %}

@@ -1,0 +1,145 @@
+/* ========================================================
+   TEMAS DE COLOR (PARA VISUALIZACIÓN DE DATOS)
+   ======================================================== */
+
+/* --- 1. TEMA AZUL (FICHA GENERAL / PRIMARY) --- */
+.bg-gradient-primary { background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); }
+.bg-primary-soft { background-color: #eaf1fb; }
+.text-primary-custom { color: #4e73df !important; }
+
+.btn-primary-custom {
+    background-color: #4e73df;
+    border-color: #4e73df;
+    color: white;
+}
+.btn-primary-custom:hover {
+    background-color: #2e59d9;
+    border-color: #2e59d9;
+    color: white;
+}
+
+.input-group-focus-primary:focus-within {
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25) !important;
+    border-color: #4e73df !important;
+}
+
+.hover-elevate-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(78, 115, 223, 0.3) !important;
+}
+
+/* --- 2. TEMA VERDE (CONTACTOS / SUCCESS) --- */
+.bg-gradient-success { background: linear-gradient(135deg, #1cc88a 0%, #13855c 100%); }
+.bg-success-soft { background-color: #e8f5e9; }
+.border-success-light { border-color: #c8e6c9 !important; }
+
+.input-group-focus-success:focus-within,
+.input-group:focus-within { 
+    box-shadow: 0 0 0 0.2rem rgba(28, 200, 138, 0.25) !important;
+    border-color: #1cc88a !important;
+}
+
+/* --- 3. TEMA ROJO (ALERGIAS / DANGER) --- */
+.bg-gradient-danger { background: linear-gradient(135deg, #de3952 0%, #ce1b5d 100%); }
+.bg-danger-soft { background-color: #ffebe9; }
+.text-danger-custom { color: #de3952 !important; }
+
+.btn-danger-custom {
+    background-color: #de3952;
+    border-color: #de3952;
+    color: white;
+}
+.btn-danger-custom:hover {
+    background-color: #ce1b5d;
+    border-color: #c74172;
+    color: white;
+}
+
+.input-group-focus-danger:focus-within {
+    box-shadow: 0 0 0 0.2rem rgba(222, 57, 82, 0.25) !important;
+    border-color: #de3952 !important;
+}
+
+.hover-elevate-danger:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(222, 57, 82, 0.3) !important;
+}
+
+/* --- 4. TEMA AMARILLO (ENFERMEDADES / WARNING) --- */
+.bg-gradient-warning { background: linear-gradient(135deg, #f6c23e 0%, #dda20a 100%); }
+.bg-warning-soft { background-color: #fff3cd; }
+.text-warning-dark { color: #d39e00 !important; }
+
+.btn-warning-custom {
+    background-color: #f6c23e;
+    border-color: #f6c23e;
+    color: white;
+}
+.btn-warning-custom:hover {
+    background-color: #dfa100;
+    border-color: #dfa100;
+    color: white;
+}
+
+.input-group-focus-warning:focus-within {
+    box-shadow: 0 0 0 0.2rem rgba(246, 194, 62, 0.25) !important;
+    border-color: #f6c23e !important;
+}
+
+.hover-elevate-warning:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(246, 194, 62, 0.3) !important;
+}
+
+/* --- 5. TEMA CYAN / TURQUESA (MEDICAMENTOS / INFO) --- */
+.bg-gradient-info { background: linear-gradient(135deg, #36b9cc 0%, #258391 100%); }
+.bg-info-soft { background-color: #e0fbfc; }
+.text-info-custom { color: #36b9cc !important; }
+
+.btn-info-custom {
+    background-color: #36b9cc;
+    border-color: #36b9cc;
+    color: white;
+}
+.btn-info-custom:hover {
+    background-color: #2a8b99;
+    border-color: #258391;
+    color: white;
+}
+
+.input-group-focus-info:focus-within {
+    box-shadow: 0 0 0 0.2rem rgba(54, 185, 204, 0.25) !important;
+    border-color: #36b9cc !important;
+}
+
+.hover-elevate-info:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(54, 185, 204, 0.3) !important;
+}
+
+/* --- 6. TEMA PÚRPURA (CIRUGÍAS / ÍNDIGO) --- */
+.bg-gradient-indigo { background: linear-gradient(135deg, #6610f2 0%, #590dc6 100%); }
+.bg-indigo-soft { background-color: #e0cffc; }
+.text-indigo-custom { color: #6610f2 !important; }
+
+.btn-indigo-custom {
+    background-color: #6610f2;
+    border-color: #6610f2;
+    color: white;
+}
+.btn-indigo-custom:hover {
+    background-color: #520dc2;
+    border-color: #4b0cba;
+    color: white;
+}
+
+.input-group-focus-indigo:focus-within {
+    box-shadow: 0 0 0 0.2rem rgba(102, 16, 242, 0.25) !important;
+    border-color: #6610f2 !important;
+}
+
+.hover-elevate-indigo:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(102, 16, 242, 0.3) !important;
+    transition: all 0.3s ease;
+}

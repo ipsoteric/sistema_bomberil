@@ -145,6 +145,15 @@ class EnfermedadForm(forms.ModelForm):
             'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Diabetes Tipo 2'}),
         }
 
+# 8. Formulario para CREAR nuevas Cirugías en el Catálogo
+class CirugiaForm(forms.ModelForm):
+    class Meta:
+        model = Cirugia
+        fields = ['nombre']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Apendicectomía'}),
+        }
+
 # 7. Formulario para Asignar Cirugías al Paciente ---
 class FichaMedicaCirugiaForm(forms.ModelForm):
     class Meta:

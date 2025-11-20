@@ -1,14 +1,15 @@
 {% extends 'gestion_medica/layouts/base.html' %}
 {% load static %}
-{% block titulo_ventana %}Catálogo de Alergias{% endblock %}
-{% block titulo_pagina %}Gestión de Alergias{% endblock %}
+
+{% block titulo_ventana %}Catálogo de Cirugías{% endblock %}
+{% block titulo_pagina %}Gestión de Tipos de Cirugías{% endblock %}
 
 {% block contenido %}
 <div class="container-fluid">
     
     <div class="d-flex justify-content-end mb-4">
-        <a href="{% url 'gestion_medica:ruta_crear_alergia' %}" class="btn btn-primary-custom shadow-sm">
-            <i class="fa-solid fa-plus me-2"></i>Nueva Alergia
+        <a href="{% url 'gestion_medica:ruta_crear_cirugia' %}" class="btn btn-primary-custom shadow-sm">
+            <i class="fa-solid fa-plus me-2"></i>Nueva Cirugía
         </a>
     </div>
 
@@ -17,19 +18,19 @@
             <table class="table table-custom">
                 <thead>
                     <tr>
-                        <th>Nombre de la Alergia</th>
-                    </tr>
+                        <th>Nombre de la Cirugía</th>
+                        </tr>
                 </thead>
                 <tbody>
                     {% for item in object_list %}
                     <tr>
                         <td class="fw-bold text-dark">{{ item.nombre }}</td>
-                    </tr>
+                        </tr>
                     {% empty %}
                     <tr>
                         <td class="text-center py-5 text-muted">
-                            <i class="fa-solid fa-hand-dots fs-1 mb-3 d-block opacity-50"></i>
-                            No hay alergias registradas.
+                            <i class="fa-solid fa-scalpel fs-1 mb-3 d-block opacity-50"></i>
+                            No hay cirugías registradas en el catálogo.
                         </td>
                     </tr>
                     {% endfor %}

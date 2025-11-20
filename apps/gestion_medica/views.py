@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.contrib import messages # Opcional, para mensajes bonitos
-from .models import Medicamento, FichaMedica, FichaMedicaMedicamento,FichaMedicaAlergia, FichaMedicaEnfermedad, FichaMedicaCirugia, ContactoEmergencia, Alergia,  Enfermedad
-from .forms import MedicamentoForm, FichaMedicaForm, FichaMedicaMedicamentoForm, FichaMedicaAlergiaForm, FichaMedicaEnfermedadForm, ContactoEmergenciaForm, FichaMedicaCirugiaForm, AlergiaForm, EnfermedadForm
+from .models import Medicamento, FichaMedica, FichaMedicaMedicamento,FichaMedicaAlergia, FichaMedicaEnfermedad, FichaMedicaCirugia, ContactoEmergencia, Alergia,  Enfermedad, Cirugia
+from .forms import MedicamentoForm, FichaMedicaForm, FichaMedicaMedicamentoForm, FichaMedicaAlergiaForm, FichaMedicaEnfermedadForm, ContactoEmergenciaForm, FichaMedicaCirugiaForm, AlergiaForm, EnfermedadForm, CirugiaForm    
 from datetime import date  
 from django.db import IntegrityError  # <--- IMPORTANTE
 
@@ -480,6 +480,30 @@ class MedicoCirugiasView(View):
         return render(request, "gestion_medica/pages/gestionar_cirugias.html", {
             'ficha': ficha, 'cirugias': cirugias, 'form': form
         })
+    
+class EditarCirugiaPacienteView(View):
+    def get(self, request, pk, cirugia_id):
+        ficha = get_object_or_404(FichaMedica, pk=pk)
+        item = get_object_or_404(FichaMedicaCirugia, id=cirugia_id, ficha_medica=ficha)
+        form = FichaMedicaCirugiaForm(instance=item)
+        return render(request, "gestion_medica/pages/editar_cirugia_paciente.html", {
+            'ficha': ficha,
+            'form': form,
+            'item': item
+        })
+
+    def post(self, request, pk, cirugia_id):
+        ficha = get_object_or_404(FichaMedica, pk=pk)
+        item = get_object_or_404(FichaMedicaCirugia, id=cirugia_id, ficha_medica=ficha)
+        form = FichaMedicaCirugiaForm(request.POST, instance=item)
+        if form.is_valid():
+            form.save()
+            return redirect('gestion_medica:ruta_cirugias_paciente', pk=pk)
+        return render(request, "gestion_medica/pages/editar_cirugia_paciente.html", {
+            'ficha': ficha,
+            'form': form,
+            'item': item
+        })
 
 class EliminarCirugiaPacienteView(View):
     def post(self, request, pk, item_id):
@@ -487,6 +511,48 @@ class EliminarCirugiaPacienteView(View):
         item = get_object_or_404(FichaMedicaCirugia, id=item_id, ficha_medica=ficha)
         item.delete()
         return redirect('gestion_medica:ruta_cirugias_paciente', pk=pk)
+    
+# Asegúrate de que en tus imports al principio tengas:
+# from .forms import ..., CirugiaForm
+
+# --- GESTIÓN CATÁLOGO CIRUGÍAS ---
+
+class CirugiaListView(View):
+    def get(self, request):
+        cirugias = Cirugia.objects.all().order_by('nombre')
+        return render(request, "gestion_medica/pages/lista_cirugias.html", {'object_list': cirugias})
+
+class CirugiaCrearView(View):
+    def get(self, request):
+        form = CirugiaForm()
+        return render(request, "gestion_medica/pages/crear_cirugia.html", {'form': form})
+
+    def post(self, request):
+        form = CirugiaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('gestion_medica:ruta_lista_cirugias')
+        return render(request, "gestion_medica/pages/crear_cirugia.html", {'form': form})
+
+class CirugiaUpdateView(View):
+    def get(self, request, pk):
+        item = get_object_or_404(Cirugia, pk=pk)
+        form = CirugiaForm(instance=item)
+        return render(request, "gestion_medica/pages/crear_cirugia.html", {'form': form})
+
+    def post(self, request, pk):
+        item = get_object_or_404(Cirugia, pk=pk)
+        form = CirugiaForm(request.POST, instance=item)
+        if form.is_valid():
+            form.save()
+            return redirect('gestion_medica:ruta_lista_cirugias')
+        return render(request, "gestion_medica/pages/crear_cirugia.html", {'form': form})
+
+class CirugiaDeleteView(View):
+    def post(self, request, pk):
+        item = get_object_or_404(Cirugia, pk=pk)
+        item.delete()
+        return redirect('gestion_medica:ruta_lista_cirugias')
     
 class EnfermedadListView(View):
     def get(self, request):

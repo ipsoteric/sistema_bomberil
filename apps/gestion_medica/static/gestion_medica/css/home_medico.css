@@ -1,0 +1,62 @@
+/* ========================================================
+   ESTILOS DEL DASHBOARD (HOME)
+   ======================================================== */
+
+/* Estructura específica del Home */
+.contenedor_medico {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.contenedor_tarjetas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: flex-start;
+}
+
+/* Tarjetas del Menú */
+.tarjeta {
+    background-color: var(--color-blanco, #ffffff);
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 250px;
+    height: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    text-align: center;
+    border: 1px solid #e0e0e0;
+}
+
+.tarjeta:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+    border-color: var(--color-primario, #4e73df);
+}
+
+.tarjeta img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    margin-bottom: 15px;
+}
+
+.tarjeta_titulo {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--color-texto-principal, #333);
+    text-decoration: none;
+    margin-top: 10px;
+    display: block;
+}
+
+.tarjeta_titulo:hover {
+    color: var(--color-primario, #4e73df);
+    text-decoration: underline;
+}
