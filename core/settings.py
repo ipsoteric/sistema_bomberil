@@ -1,8 +1,6 @@
 from pathlib import Path
 import os
 import environ
-import pymysql
-pymysql.install_as_MySQLdb()
 
 
 # Crea rutas dentro del proyecto de esta forma: BASE_DIR / 'subdir'.
@@ -96,10 +94,6 @@ DATABASES = {
         "PORT": env.str('DB_PORT'),
         "TEST": {
             "NAME": "mytestdatabase",
-        },
-
-        'OPTIONS': {
-            'charset': 'utf8mb4',
         },
     },
 }
