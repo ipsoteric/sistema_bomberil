@@ -1,0 +1,42 @@
+<div class="row">
+    <div class="col-md-5">
+        <h4>Distribución de Tipos de Sangre</h4>
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr><th>Tipo</th><th>Cantidad de Voluntarios</th></tr>
+            </thead>
+            <tbody>
+                {% for item in distribucion %}
+                <tr>
+                    <td><span class="badge bg-danger fs-6">{{ item.grupo_sanguineo }}</span></td>
+                    <td>{{ item.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="col-md-7">
+        <h4>Compatibilidad de Donación (Reglas)</h4>
+        <p>A continuación, se muestra la tabla universal para entender la lógica aplicada.</p>
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Donante</th>
+                    <th>Puede Donar a (Tipos)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for donor, recipients in compatibilidad_map.items %}
+                <tr>
+                    <td><span class="badge bg-danger">{{ donor }}</span></td>
+                    <td>
+                        {% for recipient in recipients %}
+                        <span class="badge bg-secondary me-1">{{ recipient }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
