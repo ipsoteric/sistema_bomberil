@@ -5,16 +5,74 @@ from .models import Medicamento, FichaMedica, FichaMedicaMedicamento,FichaMedica
 from .forms import MedicamentoForm, FichaMedicaForm, FichaMedicaMedicamentoForm, FichaMedicaAlergiaForm, FichaMedicaEnfermedadForm, ContactoEmergenciaForm, FichaMedicaCirugiaForm, AlergiaForm, EnfermedadForm, CirugiaForm    
 from datetime import date  
 from django.db import IntegrityError
+from django.db.models import Count
+
+# ==============================================================================
+# LÓGICA DE COMPATIBILIDAD SANGUÍNEA (Donante -> Receptor)
+# Esta es la base para determinar quién puede donar a quién.
+# Se define como: {'TIPO_DONANTE': ['TIPO_RECEPTOR_1', 'TIPO_RECEPTOR_2', ...]}
+# ==============================================================================
+BLOOD_COMPATIBILITY = {
+    'O-': ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'], # Donante Universal
+    'O+': ['O+', 'A+', 'B+', 'AB+'],
+    'A-': ['A-', 'A+', 'AB-', 'AB+'],
+    'A+': ['A+', 'AB+'],
+    'B-': ['B-', 'B+', 'AB-', 'AB+'],
+    'B+': ['B+', 'AB+'],
+    'AB-': ['AB-', 'AB+'],
+    'AB+': ['AB+'], # Receptor Universal (solo puede donar a su mismo tipo)
+}
 
 # ==============================================================================
 # 1. VISTAS GENERALES Y DE PACIENTES (FICHA MÉDICA)
 # ==============================================================================
 
 class MedicoInicioView(View):
-    '''Vista para ver la página principal del módulo'''
+    '''Vista para ver la página principal del módulo con resumen médico'''
     def get(self, request):
-        return render(request, "gestion_medica/pages/home.html")
+        # 1. Calcular la distribución de tipos de sangre
+        distribucion_qs = FichaMedica.objects.filter(
+            grupo_sanguineo__isnull=False
+        ).values('grupo_sanguineo').annotate(
+            count=Count('grupo_sanguineo')
+        ).order_by('-count')
 
+        total_fichas_con_grupo = sum(item['count'] for item in distribucion_qs)
+
+        # --- LÓGICA DE CÁLCULO DE PORCENTAJE (FINAL) ---
+        distribucion_final = []
+        if total_fichas_con_grupo > 0:
+            for item in distribucion_qs:
+                # CÁLCULO DE PORCENTAJE USANDO PYTHON (CORRECTO)
+                percentage = round((item['count'] / total_fichas_con_grupo) * 100)
+                
+                # Lo agregamos al diccionario para que el template lo use directamente
+                item['percentage'] = percentage 
+                distribucion_final.append(item)
+        else:
+            distribucion_final = distribucion_qs
+        # ------------------------------------------------
+
+        # 2. Obtener conteo de Donante Universal (O-) y Receptor Universal (AB+)
+        donor_universal_count = 0
+        receptor_universal_count = 0
+        
+        for item in distribucion_final:
+            # NOTA: str(item['grupo_sanguineo']) funcionará porque estás agrupando por la FK
+            blood_type = str(item['grupo_sanguineo']).upper().strip() 
+            if blood_type == 'O-':
+                donor_universal_count = item['count']
+            if blood_type == 'AB+':
+                receptor_universal_count = item['count']
+        
+        context = {
+            'total_fichas_con_grupo': total_fichas_con_grupo,
+            'distribucion_sumario': distribucion_final,
+            'donor_universal_count': donor_universal_count,
+            'receptor_universal_count': receptor_universal_count
+        }
+        return render(request, "gestion_medica/pages/home.html", context)
+    
 class MedicoListaView(View):
     def get(self, request):
         # 1. Buscamos todas las fichas médicas en la base de datos
@@ -129,6 +187,81 @@ class MedicoImprimirView(View):
             'fecha_reporte': date.today()
         })
 
+# En sistema_bomberil/apps/gestion_medica/views.py
+
+# ... (El diccionario BLOOD_COMPATIBILITY se mantiene igual)
+
+class MedicoCompatibilidadView(View):
+    def get(self, request):
+        # 1. Obtener fichas con tipo de sangre definido (Soluciona el ValueError)
+        fichas = FichaMedica.objects.filter(
+            grupo_sanguineo__isnull=False
+        ).select_related(
+            'voluntario__usuario' 
+        ).all()
+        
+        # 2. Calcular la distribución de tipos de sangre
+        distribucion_qs = FichaMedica.objects.filter(
+            grupo_sanguineo__isnull=False
+        ).values('grupo_sanguineo').annotate(
+            count=Count('grupo_sanguineo')
+        ).order_by('-count')
+
+        distribucion = list(distribucion_qs)
+
+        # 3. Preparar datos de receptores y Donantes (CORRECCIÓN DE 'str' object is not callable)
+        recipients_by_type = {}
+        for ficha in fichas:
+            # El tipo de sangre es una FK, usamos str() para obtener el valor del campo 'nombre'
+            blood_type = str(ficha.grupo_sanguineo).upper().strip() 
+            
+            if blood_type not in recipients_by_type:
+                recipients_by_type[blood_type] = []
+            
+            recipients_by_type[blood_type].append({
+                'id': ficha.id,
+                'nombre': ficha.voluntario.usuario.get_full_name,
+                'rut': ficha.voluntario.usuario.rut,
+                # AÑADIR LA URL DE LA IMAGEN
+                'avatar_url': ficha.voluntario.usuario.avatar.url if ficha.voluntario.usuario.avatar else None,
+            })
+        
+        # 4. Generar la lista final de compatibilidad
+        compatibilidad_list = []
+        
+        for ficha in fichas:
+            donor_type = str(ficha.grupo_sanguineo).upper().strip()
+            recipients_types = BLOOD_COMPATIBILITY.get(donor_type, [])
+            
+            possible_recipients = []
+            
+            for recipient_type in recipients_types:
+                if recipient_type in recipients_by_type:
+                    possible_recipients.extend(recipients_by_type[recipient_type])
+            
+            final_recipients = []
+            seen_ids = set()
+            for r in possible_recipients:
+                if r['id'] != ficha.id and r['id'] not in seen_ids:
+                    final_recipients.append(r)
+                    seen_ids.add(r['id'])
+            
+            compatibilidad_list.append({
+                'voluntario_id': ficha.id,
+                'nombre_donante': ficha.voluntario.usuario.get_full_name,
+                'tipo_sangre': donor_type,
+                'puede_donar_a_tipos': recipients_types,
+                'lista_compatibles': final_recipients,
+            })
+            
+        return render(request, "gestion_medica/pages/compatibilidad_sanguinea.html", {
+            'compatibilidad_list': compatibilidad_list,
+            'distribucion': distribucion,
+            'compatibilidad_map': BLOOD_COMPATIBILITY
+        })
+    
+# Nota: La definición de la lógica de compatibilidad (BLOOD_COMPATIBILITY) 
+# se debe mantener al inicio del archivo o en una ubicación accesible dentro de views.py.
 
 # ==============================================================================
 # 2. GESTIÓN DE CONTACTOS DE EMERGENCIA

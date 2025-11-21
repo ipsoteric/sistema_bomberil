@@ -1,0 +1,165 @@
+/* === VARIABLES FINALES DE DISEÑO (Base Limpia - Pulcritud) === */
+:root {
+    --blood-primary: #d32f2f; /* Rojo Fuerte para contrastes */
+    --text-dark: #333;
+    --text-muted: #777;
+    --card-bg: #ffffff; /* Fondo blanco puro */
+    --shadow-soft: 0 5px 15px rgba(0, 0, 0, 0.05); /* Sombra muy sutil */
+    --shadow-hover: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* === 1. ENCABEZADO PRINCIPAL (Estilo Rojo Líquido) === */
+
+.page-header-accent-final {
+    /* Degradado Rojo Sangre Intenso */
+    background: linear-gradient(135deg, #a50000 0%, #d32f2f 100%); 
+    color: white;
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+body {
+    background-color: #f4f6f9; /* Mantenemos fondo exterior suave */
+    font-family: 'Roboto', sans-serif, 'Arial', sans-serif;
+}
+
+/* === TARJETA PREMIUM (Blanco y Borde Limpio) === */
+.card-premium {
+    background: var(--card-bg); 
+    border: 1px solid #ddd; /* Borde sutil para definir la forma */
+    border-radius: 18px;
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+}
+
+/* === ENCABEZADO DE LA PÁGINA ("Con Ganas") === */
+.page-header-accent {
+    background: linear-gradient(135deg, #fce4ec 0%, #ffebee 100%); /* Degradado muy suave en tonos de sangre pálidos */
+    border-radius: 12px;
+    padding: 2rem 3rem;
+    margin-bottom: 2rem;
+    border: 1px solid #f0f0f0;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+}
+
+.page-header-accent h2 {
+    color: var(--blood-primary);
+    font-weight: 800;
+}
+
+/* === SCROLL VERTICAL Y TABLA BASE === */
+.table-scroll-container {
+    max-height: 70vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+.table-scroll-container::-webkit-scrollbar {
+    display: none;
+}
+.card-body-scroll-optimized {
+    padding: 0 !important;
+}
+
+.table-premium {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 14px; 
+    font-size: 1.15rem; /* Base de fuente GRANDE */
+}
+
+.table-premium thead th {
+    padding: 1rem 1.8rem; 
+    font-size: 0.95rem; 
+    font-weight: 700;
+    color: var(--text-dark);
+    border-bottom: 2px solid #eee;
+}
+
+.table-premium tbody tr {
+    background: white; 
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); 
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.table-premium tbody tr:hover {
+    transform: scale(1.005);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+
+.table-premium tbody tr td {
+    padding: 1.5rem 1.8rem; 
+    border: none !important; 
+    vertical-align: middle;
+}
+
+/* === DETALLES DE FILA (Voluntario) === */
+.donor-name {
+    font-weight: 700; 
+    color: var(--text-dark);
+    display: block;
+    font-size: 1.3rem; 
+}
+
+.donor-meta {
+    font-size: 0.9rem; 
+    color: var(--text-muted);
+}
+
+/* === LEGIBILIDAD GOTA DE SANGRE === */
+.fa-droplet {
+    color: var(--blood-primary);
+    font-size: 2.8rem; /* Ícono más grande */
+}
+
+/* Texto de la Gota: Mayor Contraste y Tamaño */
+.blood-type-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white; /* Letra blanca para contraste con el icono rojo */
+    font-size: 1rem; /* Letra muy legible */
+    font-weight: 900; /* Extra bold */
+    text-shadow: 0 0 5px rgba(0,0,0,0.3);
+    margin-top: 2px;
+}
+
+/* === LISTA DE RECEPTORES (Optimización Horizontal y Grande) === */
+.recipient-tag {
+    padding: 8px 12px;
+    font-size: 1rem; 
+    margin-right: 10px; 
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    border: 1px solid #eee;
+    color: var(--text-dark);
+    border-radius: 8px;
+}
+
+/* === REGLAS DE REFERENCIA (SIDEBAR) === */
+.sidebar-sticky {
+    position: sticky;
+    top: 1rem;
+    max-height: 95vh;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.rule-card {
+    padding: 1.5rem; 
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Sombra suave para separar del fondo */
+    border: 1px solid #eee;
+}
+
+.rule-card .fs-5 {
+    font-size: 1.4rem !important; 
+}
+
+.border-end-clean {
+    border-right: 2px solid #eee !important;
+}

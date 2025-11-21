@@ -1,0 +1,34 @@
+<hr>
+<h4 class="mt-4">Voluntarios Compatibles para Donación de Emergencia</h4>
+
+{% for item in compatibilidad_list %}
+<div class="card mb-3 shadow-sm">
+    <div class="card-header bg-warning-subtle">
+        <h5 class="mb-0">
+            <i class="fa-solid fa-droplet text-danger me-2"></i>
+            Donante: {{ item.nombre_donante }} 
+            <span class="badge bg-danger ms-2">{{ item.tipo_sangre }}</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if item.lista_compatibles %}
+            <p class="fw-bold">Compatibles (Receptores) en caso de Emergencia:</p>
+            <ul class="list-group list-group-flush">
+                {% for receptor in item.lista_compatibles %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        {{ receptor.nombre }}
+                        <small class="text-muted ms-2">({{ receptor.rut }})</small>
+                    </div>
+                    <span class="badge bg-info text-dark">Ficha #{{ receptor.id }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="alert alert-info mb-0" role="alert">
+                Este voluntario no tiene receptores compatibles registrados actualmente en el sistema.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}

@@ -2,108 +2,138 @@
 {% load static %}
 
 {% block titulo_ventana %}Dashboard Médico{% endblock %}
-{% block titulo_pagina %}Panel de Gestión Médica{% endblock %}
+{% block titulo_pagina %}Módulo Médico - Resumen{% endblock %}
 
 {% block contenido %}
-<div class="container-fluid">
-
+<div class="container-fluid mt-4">
     <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4 text-primary">
+                <i class="fa-solid fa-house-medical me-2"></i> Vista General de la Gestión Médica
+            </h2>
+        </div>
+    </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <a href="{% url 'gestion_medica:ruta_lista_paciente' %}" class="text-decoration-none">
-                <div class="card border-left-primary shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                    Pacientes</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">Ver Fichas</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fa-solid fa-file-medical fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
+    <div class="row mt-4">
+        
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow border-danger">
+                <div class="card-body">
+                    <h5 class="card-title text-danger mb-3 border-bottom pb-2">
+                        <i class="fa-solid fa-heart-pulse me-2"></i> Resumen de Donación
+                    </h5>
+                    
+                    <p class="card-text text-muted small">Total de voluntarios con grupo sanguíneo registrado: <strong>{{ total_fichas_con_grupo|default:0 }}</strong></p>
+                    
+                    <ul class="list-group list-group-flush pt-2 mb-3">
+                        <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent px-0">
+                            <span class="fw-bold">Donantes Universales (O-):</span>
+                            <span class="badge bg-success rounded-pill fs-6">{{ donor_universal_count|default:0 }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent px-0">
+                            <span class="fw-bold">Receptores Universales (AB+):</span>
+                            <span class="badge bg-info text-dark rounded-pill fs-6">{{ receptor_universal_count|default:0 }}</span>
+                        </li>
+                    </ul>
+                    
+                    <a href="{% url 'gestion_medica:ruta_compatibilidad_sanguinea' %}" class="btn btn-danger btn-sm w-100">
+                        <i class="fa-solid fa-droplet me-1"></i> Ver Compatibilidad Detallada
+                    </a>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <a href="{% url 'gestion_medica:ruta_lista_medicamentos' %}" class="text-decoration-none">
-                <div class="card border-left-info shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                    Catálogo</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">Medicamentos</div>
+        
+        <div class="col-lg-8 col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title text-primary mb-3 border-bottom pb-2">
+                        <i class="fa-solid fa-chart-bar me-2"></i> Distribución de Tipos de Sangre
+                    </h5>
+                    
+                    {% if distribucion_sumario and total_fichas_con_grupo > 0 %}
+                        {% for item in distribucion_sumario %}
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-end mb-1">
+                                    <span class="fw-bold fs-5 text-danger">{{ item.grupo_sanguineo }}</span>
+                                    <span class="text-secondary small">{{ item.count }} voluntarios ({{ item.percentage }}%)</span>
+                                </div>
+                                
+                                <div class="progress" style="height: 30px; border-radius: 5px;">
+                                    <div class="progress-bar bg-danger" 
+                                        role="progressbar" 
+                                        style="width: {{ item.percentage }}%;"
+                                        aria-valuenow="{{ item.count }}" 
+                                        aria-valuemin="0" 
+                                        aria-valuemax="{{ total_fichas_con_grupo }}">
+                                        
+                                        <strong class="text-white">{{ item.percentage }}%</strong>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-auto">
-                                <i class="fa-solid fa-pills fa-2x text-gray-300"></i>
-                            </div>
+
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-warning mb-0">
+                            No hay datos de grupo sanguíneo registrados para generar la distribución.
                         </div>
-                    </div>
+                    {% endif %}
                 </div>
-            </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-lg-12">
+            <h3 class="mb-3">Catálogos y Listados Rápidos</h3>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <a href="{% url 'gestion_medica:ruta_lista_enfermedades' %}" class="text-decoration-none">
-                <div class="card border-left-warning shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                    Catálogo</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">Enfermedades</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fa-solid fa-heartbeat fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-list-ul fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">Lista de Pacientes</h5>
+                    <p class="card-text text-muted small">Acceda al listado de voluntarios con ficha médica.</p>
+                    <a href="{% url 'gestion_medica:ruta_lista_paciente' %}" class="btn btn-outline-success btn-sm w-100">Ver Listado</a>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <a href="{% url 'gestion_medica:ruta_lista_alergias' %}" class="text-decoration-none">
-                <div class="card border-left-danger shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                    Catálogo</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">Alergias</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fa-solid fa-allergies fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-pills fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Catálogo de Medicamentos</h5>
+                    <p class="card-text text-muted small">Gestionar la lista maestra de medicamentos.</p>
+                    <a href="{% url 'gestion_medica:ruta_lista_medicamentos' %}" class="btn btn-outline-primary btn-sm w-100">Gestionar</a>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <a href="{% url 'gestion_medica:ruta_lista_cirugias' %}" class="text-decoration-none">
-                <div class="card border-left-secondary shadow h-100 py-2">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
-                                    Catálogo</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">Cirugías</div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fa-solid fa-syringe fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
-                    </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-viruses fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">Catálogo de Enfermedades</h5>
+                    <p class="card-text text-muted small">Mantenedor de enfermedades comunes.</p>
+                    <a href="{% url 'gestion_medica:ruta_lista_enfermedades' %}" class="btn btn-outline-warning btn-sm w-100">Gestionar</a>
                 </div>
-            </a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-mask fa-3x text-info mb-3"></i>
+                    <h5 class="card-title">Catálogo de Alergias</h5>
+                    <p class="card-text text-muted small">Mantenedor de tipos de alergias.</p>
+                    <a href="{% url 'gestion_medica:ruta_lista_alergias' %}" class="btn btn-outline-info btn-sm w-100">Gestionar</a>
+                </div>
+            </div>
         </div>
 
     </div>
+
 </div>
-{% endblock %}
+{% endblock contenido %}

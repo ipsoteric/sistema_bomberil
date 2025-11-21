@@ -12,7 +12,7 @@ urlpatterns = [
     path('pacientes/crear/', MedicoCrearView.as_view(), name="ruta_crear_paciente"), # Vista de creación (placeholder)
 
     # ==========================================================================
-    # 2. FICHA MÉDICA PRINCIPAL (INFORMACIÓN, EDICIÓN, IMPRESIÓN)
+    # 2. FICHA MÉDICA PRINCIPAL (INFORMACIÓN, EDICIÓN, IMPRESIÓN, Compatibilidad)
     # ==========================================================================
     # Ver Ficha (Información Detallada - Recibe ID)
     path('paciente/informacion/<int:pk>/', MedicoInfoView.as_view(), name="ruta_informacion_paciente"),
@@ -20,6 +20,8 @@ urlpatterns = [
     path('paciente/editar/<int:pk>/', MedicoModificarView.as_view(), name="ruta_modificar_paciente"),
     # Generar Documento de Impresión
     path('paciente/imprimir/<int:pk>/', MedicoImprimirView.as_view(), name="ruta_imprimir_ficha"),
+
+    path('compatibilidad_sanguinea/', MedicoCompatibilidadView.as_view(), name="ruta_compatibilidad_sanguinea"),
 
 
     # ==========================================================================
@@ -53,9 +55,7 @@ urlpatterns = [
 
     # --- CIRUGÍAS (Asignación) ---
     path('paciente/cirugias/<int:pk>/', MedicoCirugiasView.as_view(), name="ruta_cirugias_paciente"),
-    path('paciente/cirugias/editar/<int:pk>/<int:cirugia_id>/', 
-         EditarCirugiaPacienteView.as_view(), 
-         name="ruta_editar_cirugia_paciente"),
+    path('paciente/cirugias/editar/<int:pk>/<int:cirugia_id>/', EditarCirugiaPacienteView.as_view(),  name="ruta_editar_cirugia_paciente"),
     path('paciente/cirugias/eliminar/<int:pk>/<int:item_id>/', EliminarCirugiaPacienteView.as_view(), name="ruta_eliminar_cirugia_paciente"),
 
 
