@@ -36,11 +36,21 @@
                 Volver al Portal
             </a>
         </li>
+
         {% if user.is_staff %}
         <li class="menu_desplegable_usuario__opcion">
             <a class="fs_normal color_primario_variante" href="{% url 'admin:index' %}">
                 <i class="fa-solid fa-shield-halved"></i>
                 Panel de Administración
+            </a>
+        </li>
+        {% endif %}
+
+        {% if user.is_superuser %}
+        <li class="menu_desplegable_usuario__opcion border-top border-bottom py-1 my-1">
+            <a class="fs_normal color_primario fw-bold" href="{% url 'core_admin:ruta_inicio' %}">
+                <i class="fa-solid fa-user-gear text-danger"></i>
+                Administración Global
             </a>
         </li>
         {% endif %}
