@@ -103,6 +103,14 @@ class PlanMantenimiento(models.Model):
         verbose_name = "Plan de Mantenimiento"
         verbose_name_plural = "Planes de Mantenimiento"
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_planmantenimiento", "System: Puede ver Planes de Mantenimiento"),
+            ("sys_add_planmantenimiento", "System: Puede agregar Planes de Mantenimiento"),
+            ("sys_change_planmantenimiento", "System: Puede cambiar Planes de Mantenimiento"),
+            ("sys_delete_planmantenimiento", "System: Puede eliminar Planes de Mantenimiento"),
+        ]
+
     def __str__(self):
         return self.nombre
 
@@ -143,6 +151,14 @@ class PlanActivoConfig(models.Model):
         verbose_name_plural = "Configuraciones Activo-Plan"
         # Asegura que un activo solo esté una vez por plan
         unique_together = ('plan', 'activo')
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_planactivoconfig", "System: Puede ver Configuraciones Activo-Plan"),
+            ("sys_add_planactivoconfig", "System: Puede agregar Configuraciones Activo-Plan"),
+            ("sys_change_planactivoconfig", "System: Puede cambiar Configuraciones Activo-Plan"),
+            ("sys_delete_planactivoconfig", "System: Puede eliminar Configuraciones Activo-Plan"),
+        ]
 
     def __str__(self):
         return f"{self.activo.nombre_sku} en {self.plan.nombre}"
@@ -222,6 +238,14 @@ class OrdenMantenimiento(models.Model):
         verbose_name_plural = "Órdenes de Mantenimiento"
         ordering = ['-fecha_programada']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_ordenmantenimiento", "System: Puede ver Órdenes de Mantenimiento"),
+            ("sys_add_ordenmantenimiento", "System: Puede agregar Órdenes de Mantenimiento"),
+            ("sys_change_ordenmantenimiento", "System: Puede cambiar Órdenes de Mantenimiento"),
+            ("sys_delete_ordenmantenimiento", "System: Puede eliminar Órdenes de Mantenimiento"),
+        ]
+
     def __str__(self):
         return f"Orden {self.id} - {self.get_tipo_orden_display()} ({self.get_estado_display()})"
 
@@ -269,6 +293,14 @@ class RegistroMantenimiento(models.Model):
         verbose_name = "Registro de Mantenimiento"
         verbose_name_plural = "Registros de Mantenimiento"
         ordering = ['-fecha_ejecucion']
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_registromantenimiento", "System: Puede ver Registros de Mantenimiento"),
+            ("sys_add_registromantenimiento", "System: Puede agregar Registros de Mantenimiento"),
+            ("sys_change_registromantenimiento", "System: Puede cambiar Registros de Mantenimiento"),
+            ("sys_delete_registromantenimiento", "System: Puede eliminar Registros de Mantenimiento"),
+        ]
 
     def __str__(self):
         return f"Registro de {self.activo.nombre_sku} en {self.fecha_ejecucion.strftime('%Y-%m-%d')}"

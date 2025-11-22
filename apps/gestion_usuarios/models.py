@@ -171,6 +171,7 @@ class Membresia(models.Model):
             ("sys_change_membresia", "System: Puede cambiar membresías"),
             ("sys_delete_membresia", "System: Puede eliminar membresías"),
 
+
             # === MÓDULO: GESTIÓN DE USUARIOS Y ROLES ===
             ("acceso_gestion_usuarios", "Puede acceder al módulo de Gestión de Usuarios"),
             ("accion_gestion_usuarios_crear_usuario", "Puede crear y registrar nuevos usuarios"),
@@ -185,16 +186,18 @@ class Membresia(models.Model):
             ("accion_gestion_usuarios_finalizar_membresia", "Puede finalizar la membresía de un usuario"),
             ("accion_gestion_usuarios_ver_auditoria", "Puede ver el registro de actividad (auditoría) y el historial de membresías"),
             ("accion_gestion_usuarios_forzar_logout", "Puede forzar el cierre de sesión de los usuarios"),
+            ("accion_gestion_usuarios_generar_reportes", "Puede generar reportes"),
+
 
             # === GESTIÓN DE INVENTARIO: CONFIGURACIÓN ===
             ("acceso_gestion_inventario", "Puede acceder al módulo de Gestión de Inventario"),
             
             # --- Permisos de Ubicaciones ---
-            ("accion_gestion_inventario_ver_ubicaciones", "Puede ver la lista de Áreas, Vehículos y Compartimentos"), # <-- ¡NUEVO!
+            ("accion_gestion_inventario_ver_ubicaciones", "Puede ver la lista de Áreas, Vehículos y Compartimentos"),
             ("accion_gestion_inventario_gestionar_ubicaciones", "Puede crear, editar y eliminar Áreas, Vehículos y Compartimentos"),
             
             # --- Permisos de Proveedores ---
-            ("accion_gestion_inventario_ver_proveedores", "Puede ver la lista de Proveedores y sus contactos"), # <-- ¡NUEVO!
+            ("accion_gestion_inventario_ver_proveedores", "Puede ver la lista de Proveedores y sus contactos"),
             ("accion_gestion_inventario_gestionar_proveedores", "Puede crear, editar y eliminar Proveedores y sus contactos"),
             
             # --- Permisos de Catálogo ---
@@ -209,23 +212,43 @@ class Membresia(models.Model):
             ("accion_gestion_inventario_gestionar_bajas_stock", "Puede dar de baja, anular o reportar extravío de existencias"),
 
             # === GESTIÓN DE INVENTARIO: FLUJOS EXTERNOS ===
-            ("accion_gestion_inventario_ver_prestamos", "Puede ver el historial de préstamos y sus detalles"), # <-- ¡NUEVO!
+            ("accion_gestion_inventario_ver_prestamos", "Puede ver el historial de préstamos y sus detalles"),
             ("accion_gestion_inventario_gestionar_prestamos", "Puede crear préstamos, gestionar devoluciones y administrar destinatarios"),
             ("accion_gestion_inventario_trasladar_stock_externo", "Puede trasladar existencias (stock) a otra estación"),
 
             # === GESTIÓN DE INVENTARIO: REPORTES Y UTILIDADES ===
             ("accion_gestion_inventario_ver_historial_movimientos", "Puede ver el historial de movimientos del inventario"),
             ("accion_gestion_inventario_imprimir_etiquetas_qr", "Puede generar e imprimir etiquetas QR"),
-            ("accion_gestion_inventario_realizar_conteo_fisico", "Puede iniciar y gestionar un Conteo Físico (InventARIO)"),
+            ("accion_gestion_inventario_realizar_conteo_fisico", "Puede iniciar y gestionar un Conteo Físico (Inventario)"),
+            ("accion_gestion_inventario_generar_reportes", "Puede generar reportes"),
 
             # === MÓDULO: GESTIÓN DE MANTENIMIENTO DE HERRAMIENTAS ===
             ("acceso_gestion_mantenimiento", "Puede acceder al módulo de Mantenimiento"),
+            ("accion_gestion_mantenimiento_ver_ordenes", "Puede ver los planes de mantenimiento y las órdenes de trabajo"),
+            ("accion_gestion_mantenimiento_gestionar_planes", "Puede gestionar los planes de mantenimiento"),
+            ("accion_gestion_mantenimiento_gestionar_ordenes", "Puede gestionar las órdenes de trabajo y registrar tareas"),
+            ("accion_gestion_mantenimiento_generar_reportes", "Puede generar reportes"),
 
             # === MÓDULO: GESTIÓN DE VOLUNTARIOS ===
             ("acceso_gestion_voluntarios", "Puede acceder al módulo de Voluntarios"),
+            ("accion_gestion_voluntarios_ver_voluntarios", "Puede ver a los voluntarios de la compañía"),
+            ("accion_gestion_voluntarios_gestionar_voluntarios", "Puede gestionar a los voluntarios de la compañía"),
+            ("accion_gestion_voluntarios_generar_hoja_vida", "Puede generar la hoja de vida de un voluntario en PDF"),
+            ("accion_gestion_voluntarios_gestionar_datos_normalizacion", "Puede gestionar los cargos y profesiones de la compañía"),
+            ("accion_gestion_voluntarios_generar_reportes", "Puede generar reportes"),
 
             # === MÓDULO: GESTIÓN DE FICHAS MÉDICAS ===
             ("acceso_gestion_medica", "Puede acceder al módulo de Fichas médicas"),
+            ("accion_gestion_medica_ver_fichas_medicas", "Puede ver las fichas médicas de los voluntarios de la compañía"),
+            ("accion_gestion_medica_gestionar_fichas_medicas", "Puede gestionar las fichas médicas de los voluntarios de la compañía"),
+            ("accion_gestion_medica_gestionar_datos_normalizacion", "Puede gestionar enfermedades, medicamentos, cirugías, etc."),
+            ("accion_gestion_medica_generar_reportes", "Puede generar reportes"),
+
+            # === MÓDULO: GESTIÓN DE DOCUMENTAL ===
+            ("acceso_gestion_documental", "Puede acceder al módulo de Fichas médicas"),
+            ("accion_gestion_documental_ver_documentos", "Puede ver los documentos de la compañía"),
+            ("accion_gestion_documental_gestionar_documentos", "Puede gestionar los documentos de la compañía"),
+            ("accion_gestion_documental_generar_reportes", "Puede generar reportes"),
         ]
 
     
@@ -285,3 +308,13 @@ class RegistroActividad(models.Model):
         verbose_name = "Registro de Actividad"
         verbose_name_plural = "Registros de Actividad"
         ordering = ['-fecha']
+
+        default_permissions = []
+
+        permissions = [
+            # Permisos de Sistema
+            ("sys_view_registro_actividad", "System: Puede ver registros de actividad"),
+            ("sys_add_registro_actividad", "System: Puede agregar registros de actividad"),
+            ("sys_change_registro_actividad", "System: Puede cambiar registros de actividad"),
+            ("sys_delete_registro_actividad", "System: Puede eliminar registros de actividad"),
+        ]

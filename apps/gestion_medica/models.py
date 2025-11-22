@@ -1,3 +1,4 @@
+import uuid
 from django.utils import timezone
 from django.db import models
 from apps.gestion_voluntarios.models import Voluntario
@@ -16,8 +17,17 @@ class SistemaSalud(models.Model):
         verbose_name_plural = "Sistemas de salud"
         ordering = ['nombre']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_sistemasalud", "System: Puede ver Sistemas de salud"),
+            ("sys_add_sistemasalud", "System: Puede agregar Sistemas de salud"),
+            ("sys_change_sistemasalud", "System: Puede cambiar Sistemas de salud"),
+            ("sys_delete_sistemasalud", "System: Puede eliminar Sistemas de salud"),
+        ]
+
     def __str__(self):
         return self.nombre
+
 
 
 
@@ -30,8 +40,17 @@ class GrupoSanguineo(models.Model):
         verbose_name_plural = "Grupos sanguíneos"
         ordering = ['nombre']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_gruposanguineo", "System: Puede ver Grupos sanguíneos"),
+            ("sys_add_gruposanguineo", "System: Puede agregar Grupos sanguíneos"),
+            ("sys_change_gruposanguineo", "System: Puede cambiar Grupos sanguíneos"),
+            ("sys_delete_gruposanguineo", "System: Puede eliminar Grupos sanguíneos"),
+        ]
+
     def __str__(self):
         return self.nombre
+
 
 
 
@@ -44,8 +63,17 @@ class Medicamento(models.Model):
         verbose_name_plural = "Medicamentos"
         ordering = ['nombre']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_medicamento", "System: Puede ver Medicamentos"),
+            ("sys_add_medicamento", "System: Puede agregar Medicamentos"),
+            ("sys_change_medicamento", "System: Puede cambiar Medicamentos"),
+            ("sys_delete_medicamento", "System: Puede eliminar Medicamentos"),
+        ]
+
     def __str__(self):
         return self.nombre
+
 
 
 
@@ -58,8 +86,17 @@ class Enfermedad(models.Model):
         verbose_name_plural = "Enfermedades"
         ordering = ['nombre']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_enfermedad", "System: Puede ver Enfermedades"),
+            ("sys_add_enfermedad", "System: Puede agregar Enfermedades"),
+            ("sys_change_enfermedad", "System: Puede cambiar Enfermedades"),
+            ("sys_delete_enfermedad", "System: Puede eliminar Enfermedades"),
+        ]
+
     def __str__(self):
         return self.nombre
+
 
 
 
@@ -72,8 +109,17 @@ class Alergia(models.Model):
         verbose_name_plural = "Alergias"
         ordering = ['nombre']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_alergia", "System: Puede ver Alergias"),
+            ("sys_add_alergia", "System: Puede agregar Alergias"),
+            ("sys_change_alergia", "System: Puede cambiar Alergias"),
+            ("sys_delete_alergia", "System: Puede eliminar Alergias"),
+        ]
+
     def __str__(self):
         return self.nombre
+
 
 
 
@@ -85,6 +131,14 @@ class Cirugia(models.Model):
         verbose_name = "Cirugía"
         verbose_name_plural = "Cirugías"
         ordering = ['nombre']
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_cirugia", "System: Puede ver Cirugías"),
+            ("sys_add_cirugia", "System: Puede agregar Cirugías"),
+            ("sys_change_cirugia", "System: Puede cambiar Cirugías"),
+            ("sys_delete_cirugia", "System: Puede eliminar Cirugías"),
+        ]
 
     def __str__(self):
         return self.nombre
@@ -103,8 +157,8 @@ class FichaMedica(models.Model):
     voluntario = models.OneToOneField(
         Voluntario,
         on_delete=models.CASCADE,
+        primary_key=True,
         related_name="ficha_medica",
-        verbose_name="Voluntario"
     )
 
     # --- Datos Fisiológicos ---
@@ -146,6 +200,14 @@ class FichaMedica(models.Model):
         verbose_name = "Ficha Médica"
         verbose_name_plural = "Fichas Médicas"
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_fichamedica", "System: Puede ver Fichas Médicas"),
+            ("sys_add_fichamedica", "System: Puede agregar Fichas Médicas"),
+            ("sys_change_fichamedica", "System: Puede cambiar Fichas Médicas"),
+            ("sys_delete_fichamedica", "System: Puede eliminar Fichas Médicas"),
+        ]
+
     def __str__(self):
         # Accedemos al nombre a través de la relación anidada
         return f"Ficha Médica de: {self.voluntario.usuario.get_full_name}"
@@ -167,6 +229,17 @@ class FichaMedicaEnfermedad(models.Model):
         verbose_name_plural = "Enfermedades de Ficha"
         unique_together = ('ficha_medica', 'enfermedad') # Evita duplicados
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_fichamedicaenfermedad", "System: Puede ver Enfermedades de Ficha"),
+            ("sys_add_fichamedicaenfermedad", "System: Puede agregar Enfermedades de Ficha"),
+            ("sys_change_fichamedicaenfermedad", "System: Puede cambiar Enfermedades de Ficha"),
+            ("sys_delete_fichamedicaenfermedad", "System: Puede eliminar Enfermedades de Ficha"),
+        ]
+
+
+
+
 class FichaMedicaMedicamento(models.Model):
     """Registra los medicamentos permanentes de una ficha"""
     ficha_medica = models.ForeignKey(FichaMedica, on_delete=models.CASCADE, related_name="medicamentos")
@@ -181,6 +254,17 @@ class FichaMedicaMedicamento(models.Model):
         verbose_name_plural = "Medicamentos de Ficha"
         unique_together = ('ficha_medica', 'medicamento') # Evita duplicados
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_fichamedicamedicamento", "System: Puede ver Medicamentos de Ficha"),
+            ("sys_add_fichamedicamedicamento", "System: Puede agregar Medicamentos de Ficha"),
+            ("sys_change_fichamedicamedicamento", "System: Puede cambiar Medicamentos de Ficha"),
+            ("sys_delete_fichamedicamedicamento", "System: Puede eliminar Medicamentos de Ficha"),
+        ]
+
+
+
+
 class FichaMedicaCirugia(models.Model):
     """Registra las operaciones quirúrgicas de una ficha"""
     ficha_medica = models.ForeignKey(FichaMedica, on_delete=models.CASCADE, related_name="cirugias")
@@ -192,6 +276,17 @@ class FichaMedicaCirugia(models.Model):
         verbose_name = "Cirugía de Ficha"
         verbose_name_plural = "Cirugías de Ficha"
         ordering = ['-fecha_cirugia']
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_fichamedicacirugia", "System: Puede ver Cirugías de Ficha"),
+            ("sys_add_fichamedicacirugia", "System: Puede agregar Cirugías de Ficha"),
+            ("sys_change_fichamedicacirugia", "System: Puede cambiar Cirugías de Ficha"),
+            ("sys_delete_fichamedicacirugia", "System: Puede eliminar Cirugías de Ficha"),
+        ]
+
+
+
 
 class FichaMedicaAlergia(models.Model):
     """Registra las alergias de una ficha"""
@@ -206,6 +301,16 @@ class FichaMedicaAlergia(models.Model):
         verbose_name = "Alergia de Ficha"
         verbose_name_plural = "Alergias de Ficha"
         unique_together = ('ficha_medica', 'alergia') # Evita duplicados
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_fichamedicaalergia", "System: Puede ver Alergias de Ficha"),
+            ("sys_add_fichamedicaalergia", "System: Puede agregar Alergias de Ficha"),
+            ("sys_change_fichamedicaalergia", "System: Puede cambiar Alergias de Ficha"),
+            ("sys_delete_fichamedicaalergia", "System: Puede eliminar Alergias de Ficha"),
+        ]
+
+
 
 
 
@@ -228,6 +333,14 @@ class ContactoEmergencia(models.Model):
     class Meta:
         verbose_name = "Contacto de Emergencia"
         verbose_name_plural = "Contactos de Emergencia"
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_contactoemergencia", "System: Puede ver Contactos de Emergencia"),
+            ("sys_add_contactoemergencia", "System: Puede agregar Contactos de Emergencia"),
+            ("sys_change_contactoemergencia", "System: Puede cambiar Contactos de Emergencia"),
+            ("sys_delete_contactoemergencia", "System: Puede eliminar Contactos de Emergencia"),
+        ]
 
     def __str__(self):
         return f"{self.nombre_completo} (Contacto de {self.voluntario.usuario.username})"

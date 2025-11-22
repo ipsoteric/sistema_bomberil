@@ -25,6 +25,14 @@ class TipoDocumento(models.Model):
         verbose_name_plural = "Tipos de Documentos Históricos"
         ordering = ['nombre']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_tipodocumento", "System: Puede ver Tipos de Documentos Históricos"),
+            ("sys_add_tipodocumento", "System: Puede agregar Tipos de Documentos Históricos"),
+            ("sys_change_tipodocumento", "System: Puede cambiar Tipos de Documentos Históricos"),
+            ("sys_delete_tipodocumento", "System: Puede eliminar Tipos de Documentos Históricos"),
+        ]
+
     def __str__(self):
         return self.nombre
 
@@ -70,6 +78,15 @@ class DocumentoHistorico(models.Model):
         blank=True,
         help_text="Usuario que subió el documento al sistema."
     )
+
+    # Campo para la vista previa
+    preview_imagen = models.ImageField(
+        upload_to="documentos/previews/", 
+        null=True, 
+        blank=True, 
+        editable=False, # El usuario no la sube, el sistema la crea
+        help_text="Imagen generada automáticamente de la primera página."
+    )
     
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
@@ -78,6 +95,14 @@ class DocumentoHistorico(models.Model):
         verbose_name = "Documento Histórico"
         verbose_name_plural = "Documentos Históricos"
         ordering = ['-fecha_documento'] # Ordenar por fecha del documento, del más nuevo al más viejo
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_documentohistorico", "System: Puede ver Documentos Históricos"),
+            ("sys_add_documentohistorico", "System: Puede agregar Documentos Históricos"),
+            ("sys_change_documentohistorico", "System: Puede cambiar Documentos Históricos"),
+            ("sys_delete_documentohistorico", "System: Puede eliminar Documentos Históricos"),
+        ]
 
     def __str__(self):
         return f"{self.titulo} ({self.fecha_documento.year})"

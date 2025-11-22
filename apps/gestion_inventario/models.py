@@ -3,6 +3,12 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
+import uuid
+
+
+def ruta_exitencia_activo(instance, filename):
+    # El archivo se guardará en: MEDIA_ROOT/archivo_historico/<estacion_id>/<tipo_id>/<filename>
+    return f'existencias_activos/{instance.estacion.id}/{instance.tipo_documento.id}/{filename}'
 
 
 # ESTADOS
@@ -16,11 +22,12 @@ class TipoEstado(models.Model):
         verbose_name = "Tipo de estado"
         verbose_name_plural = "Tipos de estado"
 
+        default_permissions = []
         permissions = [
-            ("sys_view_tipoestado", "System: Puede ver Tipos de Estado"),
-            ("sys_add_tipoestado", "System: Puede agregar Tipos de Estado"),
-            ("sys_change_tipoestado", "System: Puede cambiar Tipos de Estado"),
-            ("sys_delete_tipoestado", "System: Puede eliminar Tipos de Estado"),
+            ("sys_view_tipoestado", "System: Puede ver Tipos de estado"),
+            ("sys_add_tipoestado", "System: Puede agregar Tipos de estado"),
+            ("sys_change_tipoestado", "System: Puede cambiar Tipos de estado"),
+            ("sys_delete_tipoestado", "System: Puede eliminar Tipos de estado"),
         ]
 
     def __str__(self):
@@ -40,6 +47,7 @@ class Estado(models.Model):
         verbose_name = "Estado"
         verbose_name_plural = "Estados"
 
+        default_permissions = []
         permissions = [
             ("sys_view_estado", "System: Puede ver Estados"),
             ("sys_add_estado", "System: Puede agregar Estados"),
@@ -63,11 +71,12 @@ class Region(models.Model):
         verbose_name = "Región de Chile"
         verbose_name_plural = "Regiones de Chile"
 
+        default_permissions = []
         permissions = [
-            ("sys_view_region", "System: Puede ver Regiones"),
-            ("sys_add_region", "System: Puede agregar Regiones"),
-            ("sys_change_region", "System: Puede cambiar Regiones"),
-            ("sys_delete_region", "System: Puede eliminar Regiones"),
+            ("sys_view_region", "System: Puede ver Regiones de Chile"),
+            ("sys_add_region", "System: Puede agregar Regiones de Chile"),
+            ("sys_change_region", "System: Puede cambiar Regiones de Chile"),
+            ("sys_delete_region", "System: Puede eliminar Regiones de Chile"),
         ]
 
     def __str__(self):
@@ -86,11 +95,12 @@ class Comuna(models.Model):
         verbose_name = "Comuna de Chile"
         verbose_name_plural = "Comunas de Chile"
 
+        default_permissions = []
         permissions = [
-            ("sys_view_comuna", "System: Puede ver Comunas"),
-            ("sys_add_comuna", "System: Puede agregar Comunas"),
-            ("sys_change_comuna", "System: Puede cambiar Comunas"),
-            ("sys_delete_comuna", "System: Puede eliminar Comunas"),
+            ("sys_view_comuna", "System: Puede ver Comunas de Chile"),
+            ("sys_add_comuna", "System: Puede agregar Comunas de Chile"),
+            ("sys_change_comuna", "System: Puede cambiar Comunas de Chile"),
+            ("sys_delete_comuna", "System: Puede eliminar Comunas de Chile"),
         ]
 
     def __str__(self):
@@ -109,9 +119,14 @@ class Estacion(models.Model):
     descripcion = models.TextField(verbose_name="Descripción (opcional)", null=True, blank=True)
     direccion = models.CharField(verbose_name="Dirección", null=True, blank=True, max_length=100, help_text="Ingrese la dirección (calle y número) de la compañía")
     es_departamento = models.BooleanField(verbose_name="Es Cuerpo", default=False, help_text="Seleccione si esta estación corresponde a un Cuerpo de Bomberos")
-    imagen = models.ImageField(verbose_name="Imagen de la compañía", null=True, blank=True, upload_to="estaciones/imagenes/")
-    logo = models.ImageField(verbose_name="Logo de la compañía", null=True, blank=True, upload_to="estaciones/logos/")
+    imagen = models.ImageField(verbose_name="Imagen de la compañía", null=True, blank=True, upload_to="estaciones/imagen/main/")
+    imagen_thumb_medium = models.ImageField(verbose_name="Thumbnail (600x600)", upload_to="estaciones/imagen/medium/", blank=True, null=True,editable=False)
+    imagen_thumb_small = models.ImageField(verbose_name="Thumbnail (50x50)",upload_to="estaciones/imagen/small/", blank=True, null=True,editable=False)
+    logo = models.ImageField(verbose_name="Logo de la compañía", null=True, blank=True, upload_to="estaciones/logo/")
+    logo_thumb_medium = models.ImageField(upload_to="estaciones/logo/medium/", blank=True, null=True, editable=False)
+    logo_thumb_small = models.ImageField(upload_to="estaciones/logo/small/", blank=True, null=True, editable=False)
     comuna = models.ForeignKey(Comuna, on_delete=models.PROTECT, verbose_name="Comuna", help_text="Seleccione la comuna correspondiente")
+    codigo = models.CharField(max_length=50, unique=True, editable=False, verbose_name="Código de Sistema")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -120,15 +135,33 @@ class Estacion(models.Model):
         verbose_name_plural = "Estaciones"
         ordering = ['nombre']
 
+        default_permissions = []
         permissions = [
             ("sys_view_estacion", "System: Puede ver Estaciones"),
             ("sys_add_estacion", "System: Puede agregar Estaciones"),
             ("sys_change_estacion", "System: Puede cambiar Estaciones"),
             ("sys_delete_estacion", "System: Puede eliminar Estaciones"),
         ]
+    
+    def save(self, *args, **kwargs):
+        # Lógica para usar el ID como número
+        if not self.pk:  
+            # Si el objeto es nuevo, aún no tiene ID.
+            # Guardamos primero para que Django le asigne un ID.
+            super().save(*args, **kwargs)
+            
+        # Ahora que ya tiene ID (self.pk), generamos el código si no lo tiene
+        if not self.codigo:
+            self.codigo = f"E{str(self.pk).zfill(3)}"
+            # Volvemos a guardar, pero solo actualizamos el campo código para ser eficientes
+            # Usamos self.__class__.objects.filter(...).update(...) o save normal
+            super().save(update_fields=['codigo'])
+        else:
+            # Si ya tenía código (es una edición normal), guardamos normal
+            super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.nombre
+        return f"{self.nombre} ({self.codigo})"
 
 
 
@@ -143,11 +176,12 @@ class TipoUbicacion(models.Model):
         verbose_name = "Tipo de ubicación"
         verbose_name_plural = "Tipos de ubicación"
 
+        default_permissions = []
         permissions = [
-            ("sys_view_tipoubicacion", "System: Puede ver Tipos de Ubicación"),
-            ("sys_add_tipoubicacion", "System: Puede agregar Tipos de Ubicación"),
-            ("sys_change_tipoubicacion", "System: Puede cambiar Tipos de Ubicación"),
-            ("sys_delete_tipoubicacion", "System: Puede eliminar Tipos de Ubicación"),
+            ("sys_view_tipoubicacion", "System: Puede ver Tipos de ubicación"),
+            ("sys_add_tipoubicacion", "System: Puede agregar Tipos de ubicación"),
+            ("sys_change_tipoubicacion", "System: Puede cambiar Tipos de ubicación"),
+            ("sys_delete_tipoubicacion", "System: Puede eliminar Tipos de ubicación"),
         ]
 
     def __str__(self):
@@ -161,12 +195,16 @@ class Ubicacion(models.Model):
     Una ubicación puede ser una bodega, un vehículo, una habitación, etc.
     """
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre = models.CharField(verbose_name="Nombre", max_length=128, help_text="Ingrese el nombre de la ubicación")
     descripcion = models.TextField(verbose_name="Descripción (opcional)", blank=True, null=True, help_text="(Opcional) Ingrese una descripción de la ubicación")
     direccion = models.CharField(verbose_name="Dirección (opcional)", max_length=128, blank=True, null=True, help_text="(opcional) Ingrese la dirección en el caso de que la ubicación se encuentre en una dirección distinta a la de la estación (Ejemplo: AV GIRASOL #1234)")
     tipo_ubicacion = models.ForeignKey(TipoUbicacion, on_delete=models.PROTECT, verbose_name="Tipo de sección", help_text="Seleccione el tipo de ubicación")
     estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT, verbose_name="Estación", help_text="Seleccionar estación correspondiente")
-    imagen = models.ImageField(verbose_name="Imagen (opcional)", upload_to="temporal/estaciones/secciones/", blank=True, null=True)
+    imagen = models.ImageField(verbose_name="Imagen (opcional)", upload_to="ubicaciones/imagen/main/", blank=True, null=True)
+    imagen_thumb_medium = models.ImageField(verbose_name="Thumbnail (600x600)", upload_to="ubicaciones/imagen/medium/", blank=True, null=True,editable=False)
+    imagen_thumb_small = models.ImageField(verbose_name="Thumbnail (50x50)",upload_to="ubicaciones/imagen/small/", blank=True, null=True,editable=False)
+    codigo = models.CharField(max_length=20, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -176,6 +214,7 @@ class Ubicacion(models.Model):
         verbose_name = "Ubicación"
         verbose_name_plural = "Ubicaciones"
 
+        default_permissions = []
         permissions = [
             ("sys_view_ubicacion", "System: Puede ver Ubicaciones"),
             ("sys_add_ubicacion", "System: Puede agregar Ubicaciones"),
@@ -183,9 +222,20 @@ class Ubicacion(models.Model):
             ("sys_delete_ubicacion", "System: Puede eliminar Ubicaciones"),
         ]
 
+    def save(self, *args, **kwargs):
+        if not self.codigo:
+            # 1. Contamos cuántas ubicaciones tiene YA esta estación
+            ultima_ubicacion = Ubicacion.objects.filter(estacion=self.estacion).count()
+            correlativo = ultima_ubicacion + 1
+            
+            # 2. Construimos el código: PADRE + U + CORRELATIVO
+            # Ej: E01-U01
+            self.codigo = f"{self.estacion.codigo}-U{str(correlativo).zfill(2)}"
+            
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.nombre
+        return f"{self.nombre} ({self.codigo})"
 
 
 
@@ -199,6 +249,7 @@ class Marca(models.Model):
         verbose_name = "Marca"
         verbose_name_plural = "Marcas"
 
+        default_permissions = []
         permissions = [
             ("sys_view_marca", "System: Puede ver Marcas"),
             ("sys_add_marca", "System: Puede agregar Marcas"),
@@ -222,11 +273,12 @@ class TipoVehiculo(models.Model):
         verbose_name = "Tipo de vehículo"
         verbose_name_plural = "Tipos de vehículos"
 
+        default_permissions = []
         permissions = [
-            ("sys_view_tipovehiculo", "System: Puede ver Tipos de Vehículo"),
-            ("sys_add_tipovehiculo", "System: Puede agregar Tipos de Vehículo"),
-            ("sys_change_tipovehiculo", "System: Puede cambiar Tipos de Vehículo"),
-            ("sys_delete_tipovehiculo", "System: Puede eliminar Tipos de Vehículo"),
+            ("sys_view_tipovehiculo", "System: Puede ver Tipos de vehículos"),
+            ("sys_add_tipovehiculo", "System: Puede agregar Tipos de vehículos"),
+            ("sys_change_tipovehiculo", "System: Puede cambiar Tipos de vehículos"),
+            ("sys_delete_tipovehiculo", "System: Puede eliminar Tipos de vehículos"),
         ]
 
     def __str__(self):
@@ -248,6 +300,7 @@ class Vehiculo(models.Model):
     ubicacion = models.OneToOneField(Ubicacion, on_delete=models.CASCADE, related_name="detalles_vehiculo", limit_choices_to={'tipo_ubicacion__nombre': 'Vehículo'})
 
     class Meta:
+        default_permissions = []
         permissions = [
             ("sys_view_vehiculo", "System: Puede ver Vehículos"),
             ("sys_add_vehiculo", "System: Puede agregar Vehículos"),
@@ -263,13 +316,15 @@ class Vehiculo(models.Model):
 
 class Compartimento(models.Model):
     '''(Local) Modelo para registrar los compartimentos/gavetas de las secciones. Funcionan como sub-secciones.'''
-
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre = models.CharField(verbose_name="Nombre", max_length=50, help_text="Ingrese el nombre del compartimento")
     descripcion = models.TextField(verbose_name="Descripción (opcional)", null=True, blank=True)
-    imagen = models.ImageField(verbose_name="Imagen (opcional)", upload_to="temporal/estaciones/compartimentos/", blank=True, null=True,help_text="(Opcional) Imagen del compartimento"
-    )
+    imagen = models.ImageField(verbose_name="Imagen (opcional)", upload_to="compartimentos/imagen/main/", blank=True, null=True,help_text="(Opcional) Imagen del compartimento")
+    imagen_thumb_medium = models.ImageField(verbose_name="Thumbnail (600x600)", upload_to="compartimentos/imagen/medium/", blank=True, null=True,editable=False)
+    imagen_thumb_small = models.ImageField(verbose_name="Thumbnail (50x50)",upload_to="compartimentos/imagen/small/", blank=True, null=True,editable=False)
     # Ubicación/sección correspondiente
     ubicacion = models.ForeignKey(Ubicacion, on_delete=models.PROTECT, verbose_name="Ubicación/sección", help_text="Seleccionar ubicación correspondiente")
+    codigo = models.CharField(max_length=30, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -278,6 +333,7 @@ class Compartimento(models.Model):
         verbose_name_plural = "Compartimentos"
         ordering = ['ubicacion__nombre', 'nombre']
 
+        default_permissions = []
         permissions = [
             ("sys_view_compartimento", "System: Puede ver Compartimentos"),
             ("sys_add_compartimento", "System: Puede agregar Compartimentos"),
@@ -285,8 +341,20 @@ class Compartimento(models.Model):
             ("sys_delete_compartimento", "System: Puede eliminar Compartimentos"),
         ]
 
+    def save(self, *args, **kwargs):
+        if not self.codigo:
+            # 1. Contamos cuántos compartimentos tiene YA esa ubicación
+            ultimo_compartimento = Compartimento.objects.filter(ubicacion=self.ubicacion).count()
+            correlativo = ultimo_compartimento + 1
+            
+            # 2. Construimos el código: PADRE + C + CORRELATIVO
+            # Ej: E01-U05-C03
+            self.codigo = f"{self.ubicacion.codigo}-C{str(correlativo).zfill(3)}"
+            
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.nombre} ({self.ubicacion.nombre})"
+        return f"{self.nombre} ({self.codigo})"
 
 
 
@@ -313,6 +381,7 @@ class Proveedor(models.Model):
         verbose_name_plural = "Proveedores"
         ordering = ['nombre']
 
+        default_permissions = []
         permissions = [
             ("sys_view_proveedor", "System: Puede ver Proveedores"),
             ("sys_add_proveedor", "System: Puede agregar Proveedores"),
@@ -361,6 +430,7 @@ class ContactoProveedor(models.Model):
         verbose_name_plural = "Contactos de Proveedor"
         ordering = ['proveedor', 'nombre_contacto']
 
+        default_permissions = []
         permissions = [
             ("sys_view_contactoproveedor", "System: Puede ver Contactos de Proveedor"),
             ("sys_add_contactoproveedor", "System: Puede agregar Contactos de Proveedor"),
@@ -385,6 +455,7 @@ class Categoria(models.Model):
         verbose_name = "Categoría"
         verbose_name_plural = "Categorías"
 
+        default_permissions = []
         permissions = [
             ("sys_view_categoria", "System: Puede ver Categorías"),
             ("sys_add_categoria", "System: Puede agregar Categorías"),
@@ -411,9 +482,9 @@ class ProductoGlobal(models.Model):
     gtin = models.CharField(max_length=50, unique=True, blank=True, null=True, help_text="GTIN/EAN/UPC del fabricante, si aplica.")
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, help_text="Seleccione la categoría a la que corresponde el producto")
     vida_util_recomendada_anos = models.PositiveIntegerField(verbose_name="Vida útil recomendada (años)", null=True, blank=True, help_text="Vida útil en años según el fabricante (para equipos).")
-    imagen = models.ImageField(verbose_name="Imagen (opcional)", upload_to="temporal/estaciones/productos/", blank=True, null=True)
-    imagen_thumb_medium = models.ImageField(verbose_name="Thumbnail (100x100)", upload_to="productos_globales/medium/", blank=True, null=True,editable=False)
-    imagen_thumb_small = models.ImageField(verbose_name="Thumbnail (40x40)",upload_to="productos_globales/small/", blank=True, null=True,editable=False)
+    imagen = models.ImageField(verbose_name="Imagen (opcional)", upload_to="productos_globales/imagen/main/", blank=True, null=True)
+    imagen_thumb_medium = models.ImageField(verbose_name="Thumbnail (600x600)", upload_to="productos_globales/imagen/medium/", blank=True, null=True,editable=False)
+    imagen_thumb_small = models.ImageField(verbose_name="Thumbnail (50x50)",upload_to="productos_globales/imagen/small/", blank=True, null=True,editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -435,6 +506,7 @@ class ProductoGlobal(models.Model):
             )
         ]
 
+        default_permissions = []
         permissions = [
             ("sys_view_productoglobal", "System: Puede ver Productos Globales"),
             ("sys_add_productoglobal", "System: Puede agregar Productos Globales"),
@@ -481,11 +553,12 @@ class Producto(models.Model):
         # Restricciones para mantener la integridad de los datos
         unique_together = [('estacion', 'producto_global'), ('estacion', 'sku')]
 
+        default_permissions = []
         permissions = [
-            ("sys_view_producto", "System: Puede ver Productos Locales"),
-            ("sys_add_producto", "System: Puede agregar Productos Locales"),
-            ("sys_change_producto", "System: Puede cambiar Productos Locales"),
-            ("sys_delete_producto", "System: Puede eliminar Productos Locales"),
+            ("sys_view_producto", "System: Puede ver Productos de Compañía"),
+            ("sys_add_producto", "System: Puede agregar Productos de Compañía"),
+            ("sys_change_producto", "System: Puede cambiar Productos de Compañía"),
+            ("sys_delete_producto", "System: Puede eliminar Productos de Compañía"),
         ]
 
     def __str__(self):
@@ -509,7 +582,7 @@ class Activo(models.Model):
     Representa un objeto físico, único y rastreable (un Activo Serializado).
     Cada fila es un equipo con su propio historial.
     """
-
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, verbose_name="Producto")
     codigo_activo = models.CharField(verbose_name="Código de Activo (ID Interno)", max_length=50, blank=True, help_text="ID Interno único generado por el sistema (Ej: ACT-00123)")
     estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT, verbose_name="Estación", help_text="Seleccionar estación propietaria de la existencia")
@@ -525,6 +598,9 @@ class Activo(models.Model):
     fecha_recepcion = models.DateField(verbose_name="Fecha de Recepción", null=True, blank=True, db_index=True)
     fecha_expiracion = models.DateField(verbose_name="Fecha de expiración", null=True, blank=True, help_text="Usar solo para activos que tienen una fecha de caducidad específica.")
     fin_vida_util_calculada = models.DateField(verbose_name="Fin de Vida Útil (Calculada)", null=True, blank=True, db_index=True,editable=False)  # Se calcula siempre en save()
+    imagen = models.ImageField(verbose_name="Imagen del activo", null=True, blank=True, upload_to="estaciones/imagen/main/")
+    imagen_thumb_medium = models.ImageField(verbose_name="Thumbnail (600x600)", upload_to="estaciones/imagen/medium/", blank=True, null=True,editable=False)
+    imagen_thumb_small = models.ImageField(verbose_name="Thumbnail (50x50)",upload_to="estaciones/imagen/small/", blank=True, null=True,editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -568,6 +644,7 @@ class Activo(models.Model):
         verbose_name_plural = "Activos"
         unique_together = ('estacion', 'codigo_activo')
 
+        default_permissions = []
         permissions = [
             ("sys_view_activo", "System: Puede ver Activos"),
             ("sys_add_activo", "System: Puede agregar Activos"),
@@ -632,6 +709,14 @@ class RegistroUsoActivo(models.Model):
         verbose_name_plural = "Registros de Uso de Activos"
         ordering = ['-fecha_uso']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_registrousoactivo", "System: Puede ver Registros de Uso de Activos"),
+            ("sys_add_registrousoactivo", "System: Puede agregar Registros de Uso de Activos"),
+            ("sys_change_registrousoactivo", "System: Puede cambiar Registros de Uso de Activos"),
+            ("sys_delete_registrousoactivo", "System: Puede eliminar Registros de Uso de Activos"),
+        ]
+
     def __str__(self):
         return f"Uso de {self.activo} ({self.horas_registradas}h) en {self.fecha_uso.strftime('%Y-%m-%d')}"
 
@@ -643,6 +728,7 @@ class LoteInsumo(models.Model):
     Gestiona el stock de insumos fungibles por lotes, permitiendo
     el seguimiento de fechas de expiración individuales.
     """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE, limit_choices_to={'es_serializado': False})
     codigo_lote = models.CharField(verbose_name="Código de Lote (ID Interno)", max_length=50, unique=True, blank=True, editable=False, help_text="ID Interno único generado por el sistema (Ej: E1-LOT-00001)")
     estado = models.ForeignKey(Estado, on_delete=models.PROTECT, verbose_name="Estado del Lote", help_text="Estado actual del lote (Disponible, Anulado, etc.)")
@@ -658,6 +744,7 @@ class LoteInsumo(models.Model):
         verbose_name = "Lote de Insumo"
         verbose_name_plural = "Lotes de Insumos"
 
+        default_permissions = []
         permissions = [
             ("sys_view_loteinsumo", "System: Puede ver Lotes de Insumos"),
             ("sys_add_loteinsumo", "System: Puede agregar Lotes de Insumos"),
@@ -753,11 +840,12 @@ class Destinatario(models.Model):
         ordering = ['nombre_entidad']
         unique_together = ('estacion', 'nombre_entidad') # Evitar duplicados por estación
 
+        default_permissions = []
         permissions = [
-            ("sys_view_destinatario", "System: Puede ver Destinatarios"),
-            ("sys_add_destinatario", "System: Puede agregar Destinatarios"),
-            ("sys_change_destinatario", "System: Puede cambiar Destinatarios"),
-            ("sys_delete_destinatario", "System: Puede eliminar Destinatarios"),
+            ("sys_view_destinatario", "System: Puede ver Destinatarios de Préstamos"),
+            ("sys_add_destinatario", "System: Puede agregar Destinatarios de Préstamos"),
+            ("sys_change_destinatario", "System: Puede cambiar Destinatarios de Préstamos"),
+            ("sys_delete_destinatario", "System: Puede eliminar Destinatarios de Préstamos"),
         ]
 
     def __str__(self):
@@ -793,6 +881,7 @@ class Prestamo(models.Model):
         verbose_name_plural = "Préstamos"
         ordering = ['-fecha_prestamo']
 
+        default_permissions = []
         permissions = [
             ("sys_view_prestamo", "System: Puede ver Préstamos"),
             ("sys_add_prestamo", "System: Puede agregar Préstamos"),
@@ -827,11 +916,12 @@ class PrestamoDetalle(models.Model):
         verbose_name = "Detalle de Préstamo"
         verbose_name_plural = "Detalles de Préstamos"
 
+        default_permissions = []
         permissions = [
-            ("sys_view_prestamodetalle", "System: Puede ver Detalles de Préstamo"),
-            ("sys_add_prestamodetalle", "System: Puede agregar Detalles de Préstamo"),
-            ("sys_change_prestamodetalle", "System: Puede cambiar Detalles de Préstamo"),
-            ("sys_delete_prestamodetalle", "System: Puede eliminar Detalles de Préstamo"),
+            ("sys_view_prestamodetalle", "System: Puede ver Detalles de Préstamos"),
+            ("sys_add_prestamodetalle", "System: Puede agregar Detalles de Préstamos"),
+            ("sys_change_prestamodetalle", "System: Puede cambiar Detalles de Préstamos"),
+            ("sys_delete_prestamodetalle", "System: Puede eliminar Detalles de Préstamos"),
         ]
 
     def clean(self):
@@ -892,8 +982,12 @@ class MovimientoInventario(models.Model):
         verbose_name_plural = "Movimientos de Inventario"
         ordering = ['-fecha_hora']
 
+        default_permissions = []
         permissions = [
             ("sys_view_movimientoinventario", "System: Puede ver Movimientos de Inventario"),
+            ("sys_add_movimientoinventario", "System: Puede agregar Movimientos de Inventario"),
+            ("sys_change_movimientoinventario", "System: Puede cambiar Movimientos de Inventario"),
+            ("sys_delete_movimientoinventario", "System: Puede eliminar Movimientos de Inventario"),
         ]
 
     def __str__(self):

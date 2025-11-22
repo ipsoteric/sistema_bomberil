@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
@@ -20,6 +21,14 @@ class Nacionalidad(models.Model):
         verbose_name = "Nacionalidad"
         verbose_name_plural = "Nacionalidades"
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_nacionalidad", "System: Puede ver Nacionalidades"),
+            ("sys_add_nacionalidad", "System: Puede agregar Nacionalidades"),
+            ("sys_change_nacionalidad", "System: Puede cambiar Nacionalidades"),
+            ("sys_delete_nacionalidad", "System: Puede eliminar Nacionalidades"),
+        ]
+
     def __str__(self):
         return self.gentilicio
 
@@ -35,6 +44,14 @@ class Profesion(models.Model):
         verbose_name_plural = "Profesiones"
         ordering = ['nombre']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_profesion", "System: Puede ver Profesiones"),
+            ("sys_add_profesion", "System: Puede agregar Profesiones"),
+            ("sys_change_profesion", "System: Puede cambiar Profesiones"),
+            ("sys_delete_profesion", "System: Puede eliminar Profesiones"),
+        ]
+
     def __str__(self):
         return self.nombre
 
@@ -44,6 +61,15 @@ class Profesion(models.Model):
 class TipoCargo(models.Model):
     """(Global) Categoría de un cargo, ej: 'Operativo', 'Administrativo', 'Honorario'"""
     nombre = models.CharField(verbose_name="Nombre", unique=True, max_length=100)
+
+    class Meta:
+        default_permissions = []
+        permissions = [
+            ("sys_view_tipocargo", "System: Puede ver Tipos de Cargo"),
+            ("sys_add_tipocargo", "System: Puede agregar Tipos de Cargo"),
+            ("sys_change_tipocargo", "System: Puede cambiar Tipos de Cargo"),
+            ("sys_delete_tipocargo", "System: Puede eliminar Tipos de Cargo"),
+        ]
     
     def __str__(self):
         return self.nombre
@@ -64,6 +90,14 @@ class Cargo(models.Model):
         verbose_name_plural = "Cargos / Rangos"
         ordering = ['tipo_cargo', 'nombre']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_cargo", "System: Puede ver Cargos / Rangos"),
+            ("sys_add_cargo", "System: Puede agregar Cargos / Rangos"),
+            ("sys_change_cargo", "System: Puede cambiar Cargos / Rangos"),
+            ("sys_delete_cargo", "System: Puede eliminar Cargos / Rangos"),
+        ]
+
     def __str__(self):
         return self.nombre
 
@@ -81,6 +115,14 @@ class TipoReconocimiento(models.Model):
         verbose_name = "Tipo de Reconocimiento"
         verbose_name_plural = "Tipos de Reconocimientos"
         ordering = ['nombre']
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_tiporeconocimiento", "System: Puede ver Tipos de Reconocimientos"),
+            ("sys_add_tiporeconocimiento", "System: Puede agregar Tipos de Reconocimientos"),
+            ("sys_change_tiporeconocimiento", "System: Puede cambiar Tipos de Reconocimientos"),
+            ("sys_delete_tiporeconocimiento", "System: Puede eliminar Tipos de Reconocimientos"),
+        ]
 
     def __str__(self):
         return self.nombre
@@ -102,6 +144,7 @@ class Voluntario(models.Model):
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
+        primary_key=True,
         related_name="perfil_voluntario"
     )
     
@@ -163,12 +206,22 @@ class Voluntario(models.Model):
         max_length=50, null=True, blank=True, unique=True
     )
     imagen = models.ImageField(upload_to="voluntarios/imagen/main/", null=True, blank=True)
+    imagen_thumb_medium = models.ImageField(verbose_name="Thumbnail (600x600)", upload_to="voluntarios/imagen/medium/", blank=True, null=True,editable=False)
+    imagen_thumb_small = models.ImageField(verbose_name="Thumbnail (50x50)",upload_to="voluntarios/imagen/small/", blank=True, null=True,editable=False)
     
     fecha_creacion = models.DateTimeField(default=timezone.now, editable=False)
 
     class Meta:
         verbose_name = "Voluntario"
         verbose_name_plural = "Voluntarios"
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_voluntario", "System: Puede ver Voluntarios"),
+            ("sys_add_voluntario", "System: Puede agregar Voluntarios"),
+            ("sys_change_voluntario", "System: Puede cambiar Voluntarios"),
+            ("sys_delete_voluntario", "System: Puede eliminar Voluntarios"),
+        ]
 
     def __str__(self):
         return self.usuario.get_full_name or self.usuario.rut
@@ -207,6 +260,14 @@ class HistorialPertenencia(models.Model):
         verbose_name_plural = "Historial de Pertenencia"
         ordering = ['-fecha_evento']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_historialpertenencia", "System: Puede ver Historial de Pertenencia"),
+            ("sys_add_historialpertenencia", "System: Puede agregar Historial de Pertenencia"),
+            ("sys_change_historialpertenencia", "System: Puede cambiar Historial de Pertenencia"),
+            ("sys_delete_historialpertenencia", "System: Puede eliminar Historial de Pertenencia"),
+        ]
+
 
 
 
@@ -233,6 +294,14 @@ class HistorialCargo(models.Model):
         verbose_name = "Historial de Cargo"
         verbose_name_plural = "Historial de Cargos"
         ordering = ['-fecha_inicio']
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_historialcargo", "System: Puede ver Historial de Cargos"),
+            ("sys_add_historialcargo", "System: Puede agregar Historial de Cargos"),
+            ("sys_change_historialcargo", "System: Puede cambiar Historial de Cargos"),
+            ("sys_delete_historialcargo", "System: Puede eliminar Historial de Cargos"),
+        ]
 
 
 
@@ -271,6 +340,14 @@ class HistorialReconocimiento(models.Model):
         verbose_name_plural = "Historial de Reconocimientos"
         ordering = ['-fecha_evento']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_historialreconocimiento", "System: Puede ver Historial de Reconocimientos"),
+            ("sys_add_historialreconocimiento", "System: Puede agregar Historial de Reconocimientos"),
+            ("sys_change_historialreconocimiento", "System: Puede cambiar Historial de Reconocimientos"),
+            ("sys_delete_historialreconocimiento", "System: Puede eliminar Historial de Reconocimientos"),
+        ]
+
 
 
 
@@ -305,6 +382,14 @@ class HistorialSancion(models.Model):
         verbose_name_plural = "Historial de Sanciones"
         ordering = ['-fecha_evento']
 
+        default_permissions = []
+        permissions = [
+            ("sys_view_historialsancion", "System: Puede ver Historial de Sanciones"),
+            ("sys_add_historialsancion", "System: Puede agregar Historial de Sanciones"),
+            ("sys_change_historialsancion", "System: Puede cambiar Historial de Sanciones"),
+            ("sys_delete_historialsancion", "System: Puede eliminar Historial de Sanciones"),
+        ]
+
 
 
 
@@ -322,6 +407,14 @@ class HistorialCurso(models.Model):
         verbose_name = "Historial de Curso"
         verbose_name_plural = "Historial de Cursos"
         ordering = ['-fecha_curso']
+
+        default_permissions = []
+        permissions = [
+            ("sys_view_historialcurso", "System: Puede ver Historial de Cursos"),
+            ("sys_add_historialcurso", "System: Puede agregar Historial de Cursos"),
+            ("sys_change_historialcurso", "System: Puede cambiar Historial de Cursos"),
+            ("sys_delete_historialcurso", "System: Puede eliminar Historial de Cursos"),
+        ]
 
 
 
@@ -343,111 +436,10 @@ class AnotacionHojaVida(models.Model):
         verbose_name_plural = "Anotaciones en Hoja de Vida"
         ordering = ['-fecha_evento']
 
-
-
-#class VoluntarioFormacion(models.Model):
-#    '''(Local)'''
-#
-#
-#
-#class VoluntarioTelefono(models.Model):
-#    '''(Local) Modelo para registrar los números de teléfono de los voluntarios'''
-#
-#    numero = models.CharField(verbose_name="Número de teléfono", max_length=12)
-#    es_primario = models.BooleanField(verbose_name="Es primario")
-#    voluntario = models.ForeignKey(Voluntario, on_delete=models.CASCADE)
-#
-#
-#
-#class VoluntarioExperiencia(models.Model):
-#    '''(Local) Modelo para registrar la experiencia de los voluntarios'''
-#
-#    cargo = models.ForeignKey(RangoBomberil, on_delete=models.PROTECT)
-#    estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT)
-#    fecha_inicio = models.DateField(verbose_name="Fecha de Inicio")
-#    fecha_fin = models.DateField(verbose_name="Fecha de Término")
-#    responsabilidades = models.TextField(blank=True, null=True)
-#
-#
-#
-#class Actividad(models.Model):
-#    '''(Local) Modelo para registrar las actividades bomberiles realizadas por cada voluntario'''
-#
-#    class NivelGeografico(models.TextChoices):
-#        PROVINCIAL = 'PROVINCIAL', 'Provincial'
-#        REGIONAL = 'REGIONAL', 'Regional'
-#        NACIONAL = 'NACIONAL', 'Nacional'
-#        INTERNACIONAL = 'INTERNACIONAL', 'Internacional'
-#
-#    nombre = models.CharField(verbose_name="Nombre", unique=True, max_length=50, help_text="Ingrese el nombre de la actividad")
-#    descripcion = models.TextField(verbose_name="Descripción (opcional)", null=True, blank=True)
-#    nivel_geografico = models.CharField(max_length=20, choices=NivelGeografico.choices)
-#    fecha = models.DateField(verbose_name="Fecha de actividad")
-#    estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT, help_text="Estación creadora de la actividad")
-#    fecha_creacion = models.DateTimeField(verbose_name="Fecha de creación", default=timezone.now, editable=False)
-#    fecha_modificacion = models.DateTimeField(verbose_name="Última modificación", default=timezone.now)
-#
-#
-#
-#class VoluntarioActividad(models.Model):
-#    '''Modelo intermedio para relacionar las actividades bomberiles con los voluntarios. Cada registro aquí indica la participación del voluntario en la actividad.'''
-#
-#    voluntario = models.ForeignKey(Voluntario, on_delete=models.PROTECT)
-#    actividad = models.ForeignKey(Actividad, on_delete=models.CASCADE)
-#    descripcion = models.TextField(verbose_name="Descripción de las labores realizadas")
-#
-#
-#
-#class VoluntarioReconocimiento(models.Model):
-#    '''(Local) Modelo para registrar los reconocimientos otorgados a los voluntarios'''
-#
-#    voluntario = models.ForeignKey(Voluntario, on_delete=models.PROTECT)
-#    descripcion = models.TextField(verbose_name="Descripción del reconocimiento")
-#    fecha = models.DateField(verbose_name="Fecha del reconocimiento")
-#    estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT, help_text="Estación que registra el reconocimiento")
-#    fecha_creacion = models.DateTimeField(verbose_name="Fecha de creación", default=timezone.now, editable=False)
-#    fecha_modificacion = models.DateTimeField(verbose_name="Última modificación", default=timezone.now)
-#
-#
-#
-#class VoluntarioSancion(models.Model):
-#    '''(Local) Modelo para registrar las sanciones aplicadas a los voluntarios'''
-#
-#    voluntario = models.ForeignKey(Voluntario, on_delete=models.PROTECT)
-#    descripcion = models.TextField(verbose_name="Descripción de la sanción/motivo")
-#    fecha = models.DateField(verbose_name="Fecha de la sanción")
-#    estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT, help_text="Estación que registra la sanción")
-#    fecha_creacion = models.DateTimeField(verbose_name="Fecha de creación", default=timezone.now, editable=False)
-#    fecha_modificacion = models.DateTimeField(verbose_name="Última modificación", default=timezone.now)
-#
-#
-#
-#class LogroGeneralBomberil(models.Model):
-#    '''(Global) Modelo para registrar logros bomberiles generales'''
-#
-#    nombre = models.CharField(verbose_name="Nombre", unique=True, max_length=50, help_text="Ingrese el nombre del logro")
-#    descripcion = models.TextField(verbose_name="Descripción (opcional)", null=True, blank=True)
-#    fecha_creacion = models.DateTimeField(verbose_name="Fecha de creación", default=timezone.now, editable=False)
-#    fecha_modificacion = models.DateTimeField(verbose_name="Última modificación", default=timezone.now)
-#
-#
-#
-#class VoluntarioLogroGeneralBomberil(models.Model):
-#    '''Modelo para relacionar a los logros generales con los voluntarios. Cada registro indica que el voluntario obtuvo el logro'''
-#
-#    voluntario = models.ForeignKey(Voluntario, on_delete=models.PROTECT)
-#    logro = models.ForeignKey(LogroGeneralBomberil, on_delete=models.CASCADE)
-#    fecha = models.DateField(verbose_name="Fecha del logro")
-#    fecha_creacion = models.DateTimeField(verbose_name="Fecha de creación", default=timezone.now, editable=False)
-#
-#
-#
-#class VoluntarioLogroEspecialBomberil(models.Model):
-#    '''Modelo para registrar logros especiales para voluntarios'''
-#
-#    voluntario = models.ForeignKey(Voluntario, on_delete=models.PROTECT)
-#    descripcion = models.TextField(verbose_name="Descripción del logro especial")
-#    fecha = models.DateField(verbose_name="Fecha del logro especial")
-#    estacion = models.ForeignKey(Estacion, on_delete=models.PROTECT, help_text="Estación que registra el logro especial")
-#    fecha_creacion = models.DateTimeField(verbose_name="Fecha de creación", default=timezone.now, editable=False)
-#    fecha_modificacion = models.DateTimeField(verbose_name="Última modificación", default=timezone.now)
+        default_permissions = []
+        permissions = [
+            ("sys_view_anotacionhojavida", "System: Puede ver Anotaciones en Hoja de Vida"),
+            ("sys_add_anotacionhojavida", "System: Puede agregar Anotaciones en Hoja de Vida"),
+            ("sys_change_anotacionhojavida", "System: Puede cambiar Anotaciones en Hoja de Vida"),
+            ("sys_delete_anotacionhojavida", "System: Puede eliminar Anotaciones en Hoja de Vida"),
+        ]
