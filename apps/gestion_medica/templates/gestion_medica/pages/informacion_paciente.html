@@ -2,293 +2,191 @@
 {% load static %}
 
 {% block titulo_ventana %}Ficha: {{ voluntario.usuario.get_full_name }}{% endblock %}
-{% block titulo_pagina %}Expediente Clínico del Voluntario{% endblock %}
+{% block titulo_pagina %}{% endblock %}
 
 {% block contenido %}
-<div class="container-fluid">
+<link rel="stylesheet" href="{% static 'gestion_medica/css/ficha_medica.css' %}">
 
-    <div class="card border-start border-5 border-primary shadow-sm mb-4">
-        <div class="card-body p-4">
-            <div class="row">
-                
-                <div class="col-lg-5 d-flex align-items-start mb-3 mb-lg-0 border-end pe-4">
-                    <div class="me-4 text-center position-relative">
-                        {% if voluntario.usuario.avatar %}
-                            <img src="{{ voluntario.usuario.avatar.url }}" class="rounded-circle border shadow-sm" width="100" height="100" style="object-fit: cover;">
+<div class="container-fluid ficha-container">
+    <div class="row">
+
+        <div class="col-lg-4 col-xl-3 mb-4">
+            <div class="profile-card">
+                <div class="profile-header-bg"></div>
+                <div class="avatar-container">
+                    {% if voluntario.usuario.avatar %}
+                        <img src="{{ voluntario.usuario.avatar.url }}" alt="Avatar" class="profile-avatar">
+                    {% else %}
+                        <div class="profile-avatar d-flex align-items-center justify-content-center text-secondary" style="font-size: 3rem; background: #f8f9fc;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="patient-info">
+                    <h2 class="patient-name">{{ voluntario.usuario.get_full_name }}</h2>
+                    <span class="patient-rut">{{ voluntario.usuario.rut }}</span>
+                    <div class="blood-badge">
+                        <i class="fas fa-tint"></i> <span>{{ ficha.grupo_sanguineo.nombre|default:"?" }}</span>
+                        <small>Grupo Sanguíneo</small>
+                    </div>
+                    <div class="profile-stats">
+                        <div class="stat-box">
+                            <span class="stat-value">{{ edad|default:"--" }}</span>
+                            <span class="stat-label">Años</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value">{{ ficha.sistema_salud.nombre|default:"--" }}</span>
+                            <span class="stat-label">Salud</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <a href="{% url 'gestion_medica:ruta_modificar_paciente' ficha.pk %}" class="btn btn-primary rounded-pill fw-bold py-2">
+                        <i class="fas fa-pen me-2"></i> Editar Ficha
+                    </a>
+                    <a href="{% url 'gestion_medica:ruta_imprimir_ficha' ficha.pk %}" class="btn btn-outline-secondary rounded-pill fw-bold py-2" target="_blank">
+                        <i class="fas fa-file-pdf me-2"></i> Generar PDF
+                    </a>
+                    <a href="{% url 'gestion_medica:ruta_imprimir_qr' ficha.pk %}" class="btn-hero btn-secondary-hero" target="_blank">
+                        <i class="fas fa-qrcode"></i> Ver QR
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8 col-xl-9">
+
+            <div class="vitals-row">
+                <div class="vital-card-color vc-blue">
+                    <i class="fas fa-weight vc-icon"></i>
+                    <div class="vc-value">{{ ficha.peso_kg|default:"--" }}</div>
+                    <div class="vc-label">Peso (kg)</div>
+                </div>
+                <div class="vital-card-color vc-indigo">
+                    <i class="fas fa-ruler-vertical vc-icon"></i>
+                    <div class="vc-value">{{ ficha.altura_mts|default:"--" }}</div>
+                    <div class="vc-label">Altura (m)</div>
+                </div>
+                <div class="vital-card-color vc-rose">
+                    <i class="fas fa-heartbeat vc-icon"></i>
+                    <div class="vc-value">
+                        {% if ficha.presion_arterial_sistolica %}
+                            {{ ficha.presion_arterial_sistolica }}/{{ ficha.presion_arterial_diastolica }}
                         {% else %}
-                            <img src="{% static 'imagenes/default_avatar.png' %}" class="rounded-circle border shadow-sm" width="100" height="100">
+                            --/--
                         {% endif %}
-                        
-                        <button class="btn btn-dark btn-sm position-absolute bottom-0 start-50 translate-middle-x rounded-pill px-2 py-0 shadow" style="font-size: 0.7rem;" data-bs-toggle="modal" data-bs-target="#modalQR">
-                            <i class="fa-solid fa-qrcode me-1"></i>QR
-                        </button>
                     </div>
-
-                    <div class="flex-grow-1">
-                        <h3 class="fw-bold text-dark mb-0">{{ voluntario.usuario.get_full_name }}</h3>
-                        <div class="text-muted mb-2 fs-5">RUT: {{ voluntario.usuario.rut|default:"--" }}</div>
-                        
-                        <div class="d-flex gap-2 flex-wrap">
-                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10">
-                                <i class="fa-solid fa-helmet-safety me-1"></i>Voluntario
-                            </span>
-                            {% if ficha.sistema_salud %}
-                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-10">
-                                {{ ficha.sistema_salud.nombre }}
-                            </span>
-                            {% endif %}
-                        </div>
-                    </div>
+                    <div class="vc-label">P. Arterial</div>
                 </div>
-
-                <div class="col-lg-4 px-4 mb-3 mb-lg-0 border-end">
-                    <h6 class="text-uppercase text-muted fw-bold small mb-3">Información Personal</h6>
-                    
-                    <ul class="list-unstyled small text-secondary mb-0">
-                        <li class="mb-2 d-flex">
-                            <i class="fa-solid fa-cake-candles text-primary mt-1 me-3" style="width: 15px;"></i>
-                            <div>
-                                <span class="d-block text-dark fw-bold">
-                                    {{ voluntario.usuario.birthdate|date:"d/m/Y"|default:"--/--/----" }}
-                                    {% if edad and edad != "S/I" %}<span class="text-muted fw-normal">({{ edad }} años)</span>{% endif %}
-                                </span>
-                                <span class="text-muted fst-italic">Nacido en {{ voluntario.lugar_nacimiento|default:"-" }}</span>
-                            </div>
-                        </li>
-
-                        <li class="mb-2 d-flex">
-                            <i class="fa-solid fa-map-location-dot text-primary mt-1 me-3" style="width: 15px;"></i>
-                            <div>
-                                <span class="d-block text-dark fw-bold">
-                                    {{ voluntario.domicilio_calle|default:"" }} {{ voluntario.domicilio_numero|default:"" }}
-                                </span>
-                                <span class="text-muted">{{ voluntario.domicilio_comuna|default:"Comuna no registrada" }}</span>
-                            </div>
-                        </li>
-
-                        <li class="d-flex">
-                            <i class="fa-solid fa-phone text-primary mt-1 me-3" style="width: 15px;"></i>
-                            <div>
-                                <span class="d-block text-dark fw-bold">
-                                    {{ voluntario.usuario.phone|default:"Sin teléfono" }}
-                                </span>
-                                <span class="text-muted">{{ voluntario.usuario.email }}</span>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="col-lg-3 ps-4 d-flex flex-column justify-content-between">
-                    <div class="row g-2 text-center mb-3">
-                        <div class="col-6">
-                            <div class="p-2 bg-light rounded border">
-                                <small class="text-muted fw-bold d-block" style="font-size: 0.65rem;">SANGRE</small>
-                                <span class="fs-4 fw-bold text-danger">{{ ficha.grupo_sanguineo.nombre|default:"--" }}</span>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="p-2 bg-light rounded border">
-                                <small class="text-muted fw-bold d-block" style="font-size: 0.65rem;">PESO</small>
-                                <span class="fs-4 fw-bold text-dark">{{ ficha.peso_kg|default:"--" }}<small class="fs-6 text-muted">kg</small></span>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="p-2 bg-light rounded border d-flex justify-content-around align-items-center">
-                                <div>
-                                    <small class="text-muted fw-bold d-block" style="font-size: 0.65rem;">ALTURA</small>
-                                    <span class="fs-5 fw-bold text-dark">{{ ficha.altura_mts|default:"--" }} m</span>
-                                </div>
-                                <div class="border-start ps-3">
-                                    <small class="text-muted fw-bold d-block" style="font-size: 0.65rem;">PRESIÓN</small>
-                                    <span class="fs-5 fw-bold text-primary">{{ ficha.presion_arterial_sistolica|default:"-" }}/{{ ficha.presion_arterial_diastolica|default:"-" }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <a href="{% url 'gestion_medica:ruta_modificar_paciente' pk=ficha.id %}" class="btn btn-outline-secondary btn-sm">
-                            <i class="fa-solid fa-pencil me-2"></i>Editar Datos
-                        </a>
-                        <a href="{% url 'gestion_medica:ruta_imprimir_ficha' pk=ficha.id %}" target="_blank" class="btn btn-danger btn-sm">
-                            <i class="fa-solid fa-print me-2"></i>Imprimir Ficha
-                        </a>
-                    </div>
-                </div>
-
             </div>
-        </div>
-    </div>
 
-    <div class="row g-4">
+            <div class="row">
 
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm {% if alergias %}border-danger border-2{% else %}border-success border-2{% endif %}">
-                <div class="card-header d-flex justify-content-between align-items-center bg-white">
-                    <h6 class="mb-0 fw-bold text-secondary"><i class="fa-solid fa-hand-dots me-2"></i>ALERGIAS</h6>
-                    <a href="{% url 'gestion_medica:ruta_alergias_paciente' pk=ficha.id %}" class="btn btn-sm btn-link text-decoration-none p-0">Gestionar</a>
-                </div>
-                <div class="card-body text-center">
-                    {% if alergias %}
-                        <div class="alert alert-danger py-1 fw-bold mb-3"><i class="fa-solid fa-circle-exclamation"></i> SÍ PRESENTA</div>
-                        <ul class="list-group list-group-flush text-start small">
+                <div class="col-md-6 mb-4"> <div class="section-card">
+                        <div class="section-header header-gradient-alergia">
+                            <h3 class="section-title">
+                                <i class="fas fa-exclamation-circle"></i> Alergias
+                            </h3>
+                            <a href="{% url 'gestion_medica:ruta_alergias_paciente' ficha.pk %}" class="btn-soft-add"><i class="fas fa-plus"></i></a>
+                        </div>
+                        <ul class="modern-list">
                             {% for item in alergias %}
-                                <li class="list-group-item px-0 py-1 fw-bold">
-                                    <i class="fa-solid fa-circle-exclamation text-danger me-2 small"></i>{{ item.alergia.nombre }}
-                                    {% if item.observaciones %}<br><small class="text-muted fw-normal ms-4">{{ item.observaciones }}</small>{% endif %}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <div class="py-3 text-success opacity-75">
-                            <i class="fa-regular fa-circle-check fs-1 mb-2"></i>
-                            <h4 class="fw-bold">NO</h4>
-                            <small>Sin alergias registradas</small>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm {% if enfermedades %}border-warning border-2{% else %}border-success border-2{% endif %}">
-                <div class="card-header d-flex justify-content-between align-items-center bg-white">
-                    <h6 class="mb-0 fw-bold text-secondary"><i class="fa-solid fa-heart-pulse me-2"></i>ENFERMEDADES</h6>
-                    <a href="{% url 'gestion_medica:ruta_enfermedad_paciente' pk=ficha.id %}" class="btn btn-sm btn-link text-decoration-none p-0">Gestionar</a>
-                </div>
-                <div class="card-body text-center">
-                    {% if enfermedades %}
-                        <div class="alert alert-warning py-1 fw-bold mb-3 text-dark">SÍ PRESENTA</div>
-                        <ul class="list-group list-group-flush text-start small">
-                            {% for item in enfermedades %}
-                                <li class="list-group-item px-0 py-1 fw-bold">
-                                    <i class="fa-solid fa-circle text-warning me-2 small"></i>{{ item.enfermedad.nombre }}
-                                    {% if item.observaciones %}<br><small class="text-muted fw-normal ms-4">{{ item.observaciones }}</small>{% endif %}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <div class="py-3 text-success opacity-75">
-                            <i class="fa-regular fa-heart fs-1 mb-2"></i>
-                            <h4 class="fw-bold">NO</h4>
-                            <small>Sin enfermedades crónicas</small>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm {% if cirugias %}border-info border-2{% else %}border-light border-2{% endif %}">
-                <div class="card-header d-flex justify-content-between align-items-center bg-white">
-                    <h6 class="mb-0 fw-bold text-secondary"><i class="fa-solid fa-scalpel me-2"></i>OPERACIONES</h6>
-                    <a href="{% url 'gestion_medica:ruta_cirugias_paciente' pk=ficha.id %}" class="btn btn-sm btn-link text-decoration-none p-0">Ver</a>
-                </div>
-                <div class="card-body text-center">
-                    {% if cirugias %}
-                        <div class="alert alert-info py-1 fw-bold mb-3 text-dark">HISTORIAL</div>
-                        <ul class="list-group list-group-flush text-start small">
-                            {% for item in cirugias %}
-                                <li class="list-group-item px-0 py-1">
-                                    <strong>{{ item.cirugia.nombre }}</strong>
-                                    <span class="badge bg-light text-dark border ms-1">{{ item.fecha_cirugia|date:"Y" }}</span>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <div class="py-3 text-secondary opacity-50">
-                            <i class="fa-solid fa-user-check fs-1 mb-2"></i>
-                            <h4 class="fw-bold">NO</h4>
-                            <small>Sin cirugías registradas</small>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-lg-6">
-            <div class="card h-100 shadow-sm {% if medicamentos %}border-primary border-2{% else %}border-light border-2{% endif %}">
-                <div class="card-header d-flex justify-content-between align-items-center bg-white">
-                    <h6 class="mb-0 fw-bold text-secondary"><i class="fa-solid fa-pills me-2"></i>MEDICAMENTOS EN USO</h6>
-                    <a href="{% url 'gestion_medica:ruta_medicamentos_paciente' pk=ficha.id %}" class="btn btn-sm btn-link text-decoration-none p-0">Gestionar</a>                
-                </div>
-                <div class="card-body">
-                    {% if medicamentos %}
-                        <div class="alert alert-primary py-1 fw-bold text-center mb-3">TRATAMIENTO ACTIVO</div>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover mb-0 small">
-                                <thead class="table-light"><tr><th>Fármaco</th><th>Dosis / Frecuencia</th></tr></thead>
-                                <tbody>
-                                    {% for item in medicamentos %}
-                                    <tr>
-                                        <td class="fw-bold text-primary">{{ item.medicamento.nombre }}</td>
-                                        <td>{{ item.dosis_frecuencia|default:"-" }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-4 text-secondary opacity-75">
-                            <h4 class="fw-bold">NO</h4>
-                            <small>No consume medicamentos actualmente</small>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-lg-6">
-            <div class="card h-100 shadow-sm border-success border-2">
-                <div class="card-header d-flex justify-content-between align-items-center bg-success text-white">
-                    <h6 class="mb-0 fw-bold"><i class="fa-solid fa-phone-volume me-2"></i>CONTACTOS DE EMERGENCIA</h6>
-                    <a href="{% url 'gestion_medica:ruta_contacto_emergencia' pk=ficha.id %}" class="btn btn-sm btn-light text-success fw-bold p-1 px-2" style="font-size: 0.75rem;">GESTIONAR</a>
-                </div>
-                <div class="card-body bg-success bg-opacity-10">
-                    {% if contactos %}
-                        <div class="row g-2">
-                            {% for contacto in contactos %}
-                            <div class="col-md-6">
-                                <div class="bg-white p-2 rounded border border-success d-flex align-items-center">
-                                    <div class="bg-success text-white rounded-circle p-2 me-2 fs-5 d-flex align-items-center justify-content-center" style="width:35px; height:35px;">
-                                        <i class="fa-solid fa-user"></i>
-                                    </div>
-                                    <div class="overflow-hidden">
-                                        <div class="fw-bold text-dark text-truncate">{{ contacto.nombre_completo }}</div>
-                                        <div class="d-flex justify-content-between align-items-center w-100">
-                                            <small class="text-muted text-uppercase me-2" style="font-size: 0.7rem;">{{ contacto.parentesco }}</small>
-                                            <span class="fw-bold text-success">{{ contacto.telefono }}</span>
-                                        </div>
-                                    </div>
+                            <li class="modern-item">
+                                <div class="item-icon-box bg-soft-red"><i class="fas fa-allergies"></i></div>
+                                <div class="item-text">
+                                    <h6>{{ item.alergia.nombre }}</h6>
+                                    {% if item.observaciones %} <p>{{ item.observaciones }}</p> {% endif %}
                                 </div>
-                            </div>
+                            </li>
+                            {% empty %}
+                            <div class="empty-state-modern"><i class="far fa-check-circle"></i>Sin alergias</div>
                             {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="alert alert-warning text-center mb-0 p-2 small">
-                            <i class="fa-solid fa-triangle-exclamation me-1"></i> <strong>¡ATENCIÓN!</strong> Sin contactos registrados.
-                        </div>
-                    {% endif %}
+                        </ul>
+                    </div>
                 </div>
-            </div>
-        </div>
 
+                 <div class="col-md-6 mb-4">
+                    <div class="section-card">
+                        <div class="section-header header-gradient-enfermedad">
+                            <h3 class="section-title">
+                                <i class="fas fa-notes-medical"></i> Enfermedades
+                            </h3>
+                            <a href="{% url 'gestion_medica:ruta_enfermedad_paciente' ficha.pk %}" class="btn-soft-add"><i class="fas fa-plus"></i></a>
+                        </div>
+                        <ul class="modern-list">
+                            {% for item in enfermedades %}
+                            <li class="modern-item">
+                                <div class="item-icon-box bg-soft-yellow"><i class="fas fa-procedures"></i></div>
+                                <div class="item-text">
+                                    <h6>{{ item.enfermedad.nombre }}</h6>
+                                    {% if item.observaciones %} <p>{{ item.observaciones }}</p> {% endif %}
+                                </div>
+                            </li>
+                            {% empty %}
+                            <div class="empty-state-modern"><i class="far fa-smile"></i>Sin enfermedades</div>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div> <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="section-card">
+                        <div class="section-header header-gradient-medicina">
+                            <h3 class="section-title">
+                                <i class="fas fa-pills"></i> Medicamentos
+                            </h3>
+                            <a href="..." class="btn-soft-add"><i class="fas fa-plus"></i></a>
+                        </div>
+                        <ul class="modern-list">
+                            {% for item in medicamentos %}
+                            <li class="modern-item">
+                                <div class="item-icon-box bg-soft-blue"><i class="fas fa-prescription-bottle"></i></div>
+                                <div class="item-text">
+                                    <h6>{{ item.medicamento.nombre }}</h6>
+                                    {% if item.dosis_frecuencia %} <p>{{ item.dosis_frecuencia }}</p> {% endif %}
+                                </div>
+                            </li>
+                            {% empty %}
+                            <div class="empty-state-modern"><i class="far fa-file-alt"></i>Sin medicamentos</div>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="section-card">
+                        <div class="section-header header-gradient-contacto">
+                            <h3 class="section-title">
+                                <i class="fas fa-phone-alt"></i> Emergencia
+                            </h3>
+                            <a href="{% url 'gestion_medica:ruta_contacto_emergencia' ficha.pk %}" class="btn-soft-add"><i class="fas fa-plus"></i></a>
+                        </div>
+                        <ul class="modern-list">
+                            {% for contacto in contactos %}
+                            <li class="modern-item">
+                                <div class="item-icon-box bg-soft-green"><i class="fas fa-user-shield"></i></div>
+                                <div class="item-text" style="flex-grow:1;">
+                                    <h6>{{ contacto.nombre_completo }}</h6>
+                                    <p>{{ contacto.parentesco }}</p>
+                                </div>
+                                <a href="tel:{{ contacto.telefono }}" class="btn btn-success btn-sm rounded-circle text-white" style="width:35px; height:35px; display:flex; align-items:center; justify-content:center;">
+                                    <i class="fas fa-phone"></i>
+                                </a>
+                            </li>
+                            {% empty %}
+                            <div class="empty-state-modern"><i class="far fa-address-book"></i>Sin contactos</div>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div> </div>
     </div>
 </div>
 
-<div class="modal fade" id="modalQR" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-0 pb-0">
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-center pb-4">
-                <h5 class="modal-title fw-bold mb-3">Ficha Digital</h5>
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ qr_url }}" class="img-fluid border p-2 rounded mb-3" alt="QR Code">
-                <p class="small text-muted mb-0">Escanea para ver la ficha en móvil</p>
-                <div class="badge bg-warning text-dark mt-2">Solo Personal Autorizado</div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+<script>
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+</script>
+{% endblock contenido %}

@@ -4,8 +4,12 @@ from django.contrib import messages # Opcional, para mensajes bonitos
 from .models import Medicamento, FichaMedica, FichaMedicaMedicamento,FichaMedicaAlergia, FichaMedicaEnfermedad, FichaMedicaCirugia, ContactoEmergencia, Alergia,  Enfermedad, Cirugia
 from .forms import MedicamentoForm, FichaMedicaForm, FichaMedicaMedicamentoForm, FichaMedicaAlergiaForm, FichaMedicaEnfermedadForm, ContactoEmergenciaForm, FichaMedicaCirugiaForm, AlergiaForm, EnfermedadForm, CirugiaForm    
 from datetime import date  
+from django.urls import reverse  
 from django.db import IntegrityError
 from django.db.models import Count
+import qrcode
+from io import BytesIO
+import base64
 
 # ==============================================================================
 # LÓGICA DE COMPATIBILIDAD SANGUÍNEA (Donante -> Receptor)
@@ -191,6 +195,42 @@ class MedicoImprimirView(View):
             'cirugias': ficha.cirugias.all().select_related('cirugia'),
             'contactos': voluntario.contactos_emergencia.all(),
             'fecha_reporte': date.today()
+        })
+    
+class MedicoImprimirQRView(View):
+    '''Genera una vista imprimible con el QR del paciente'''
+    def get(self, request, pk):
+        ficha = get_object_or_404(FichaMedica, pk=pk)
+        voluntario = ficha.voluntario
+        
+        # 1. Datos a codificar en el QR
+        # Puede ser la URL de la ficha o un JSON con datos vitales
+        # Para este caso, usaremos la URL absoluta de la ficha médica
+        data_qr = request.build_absolute_uri(reverse('gestion_medica:ruta_informacion_paciente', args=[pk]))
+        
+        # 2. Generar QR en memoria
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(data_qr)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # 3. Convertir imagen a Base64 para incrustar en HTML
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        img_str = base64.b64encode(buffer.getvalue()).decode()
+        
+        # 4. Renderizar plantilla de impresión
+        return render(request, "gestion_medica/pages/imprimir_qr.html", {
+            'voluntario': voluntario,
+            'ficha': ficha,
+            'qr_image': img_str,
+            'fecha_impresion': date.today()
         })
 
 # En sistema_bomberil/apps/gestion_medica/views.py

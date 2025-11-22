@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>QR Paciente - {{ voluntario.usuario.get_full_name }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        
+        .print-card {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .logo-text {
+            font-weight: 900;
+            color: #2563eb;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .qr-box {
+            border: 2px dashed #2563eb;
+            padding: 1rem;
+            border-radius: 1rem;
+            margin: 1.5rem 0;
+            background: #fff;
+            display: inline-block;
+        }
+
+        .qr-img {
+            width: 250px;
+            height: 250px;
+            display: block;
+        }
+
+        h2 {
+            margin: 0;
+            color: #1e293b;
+            font-size: 1.4rem;
+        }
+
+        p {
+            color: #64748b;
+            margin: 0.5rem 0 0 0;
+            font-size: 1rem;
+        }
+
+        .rut-badge {
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 5px 15px;
+            border-radius: 50px;
+            font-weight: bold;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .actions {
+            margin-top: 2rem;
+        }
+
+        .btn-print {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-print:hover { background: #1d4ed8; }
+
+        /* ESTILOS SOLO PARA IMPRESIÓN */
+        @media print {
+            body { background: white; display: block; }
+            .print-card { box-shadow: none; border: none; padding: 0; margin: 0 auto; width: 100%; max-width: 100%; }
+            .actions { display: none !important; } /* Oculta el botón al imprimir */
+            .qr-box { border: 2px solid #000; } /* Borde negro sólido para mejor contraste */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="print-card">
+        <div class="logo-text">Bomberil Salud</div>
+        
+        <div class="qr-box">
+            <img src="data:image/png;base64,{{ qr_image }}" class="qr-img" alt="Código QR">
+        </div>
+
+        <h2>{{ voluntario.usuario.get_full_name }}</h2>
+        <div class="rut-badge">{{ voluntario.usuario.rut }}</div>
+        <p>Ficha Clínica Digital</p>
+        <p style="font-size: 0.8rem; margin-top: 1rem; color: #94a3b8;">Generado el: {{ fecha_impresion }}</p>
+
+        <div class="actions">
+            <a href="javascript:window.print()" class="btn-print">🖨️ Imprimir QR</a>
+        </div>
+    </div>
+
+</body>
+</html>
