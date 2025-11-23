@@ -659,9 +659,18 @@ class Activo(models.Model):
 
         # ... (validación existente) ...
         if not self.codigo_activo and not self.pk and self.estacion: 
-            # Construye el prefijo usando 'E' y el ID de la estación
-            prefix = f"E{self.estacion.id}-ACT-" # Ej: "E1-ACT-", "E2-ACT-"
+            estacion_code = self.estacion.codigo
 
+            # (Opcional) Protección por si la estación es antigua y no tiene código generado
+            if not estacion_code:
+                # Forzamos la lógica de la estación si viniera vacía (fallback)
+                estacion_code = f"E{str(self.estacion.id).zfill(3)}"
+
+            # 2. Construir el prefijo con la nomenclatura oficial
+            # Quedará algo como: "E001-ACT-"
+            prefix = f"{estacion_code}-ACT-"
+
+            # 3. Buscar el último correlativo usando este NUEVO prefijo
             last_activo = Activo.objects.filter(
                 estacion=self.estacion, 
                 codigo_activo__startswith=prefix 
@@ -675,11 +684,13 @@ class Activo(models.Model):
                 except (IndexError, ValueError):
                     pass 
 
-            self.codigo_activo = f"{prefix}{next_num:05d}" # Ej: "E1-ACT-00001"
+            # 4. Asignar el código final (Ej: E001-ACT-00001)
+            self.codigo_activo = f"{prefix}{next_num:05d}"
             
+            # 5. Loop de seguridad por si existe concurrencia (evita duplicados)
             while Activo.objects.filter(estacion=self.estacion, codigo_activo=self.codigo_activo).exists():
-                 next_num += 1
-                 self.codigo_activo = f"{prefix}{next_num:05d}"
+                next_num += 1
+                self.codigo_activo = f"{prefix}{next_num:05d}"
         
         # Recalcula el fin de vida útil antes de guardar
         self._calcular_fin_vida_util()
