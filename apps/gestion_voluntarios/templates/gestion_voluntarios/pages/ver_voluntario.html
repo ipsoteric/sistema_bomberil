@@ -15,7 +15,23 @@
         .btn { padding: 8px 16px; border-radius: 4px; cursor: pointer; border: none; font-weight: 600; }
         .btn-principal { background-color: #D72600; color: white; }
         .btn-secondary { background-color: #6c757d; color: white; }
-        .btn-add-item { background-color: #28a745; color: white; font-size: 0.85rem; margin-left: 10px; padding: 5px 10px; }
+        
+        /* --- CLASE ACTUALIZADA --- */
+        .btn-add-item { 
+            background-color: #28a745; 
+            color: white; 
+            font-size: 0.85rem; 
+            margin-left: 10px; 
+            padding: 6px 12px; /* Un poco más de padding para que respire */
+            
+            /* Propiedades para adaptar al texto */
+            width: fit-content;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
         .modal-footer { text-align: right; margin-top: 20px; }
         
         /* Mejoras para la grilla de información */
@@ -23,7 +39,7 @@
         .info-item { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
         .info-item strong { display: block; color: #555; margin-bottom: 5px; font-size: 0.9em; text-transform: uppercase; }
         .info-item span { font-size: 1.1em; color: #333; font-weight: 500; }
-        .info-item.full-width { grid-column: 1 / -1; }
+        .info-item.full-width { grid-column: 1 / -1; }      
     </style>
 
     <div class="container profile-container">

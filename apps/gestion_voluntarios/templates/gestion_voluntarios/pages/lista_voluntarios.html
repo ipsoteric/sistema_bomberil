@@ -1,331 +1,119 @@
 {# Plantilla base #}{% extends 'gestion_voluntarios/layouts/base.html' %}
 {# Cargar assets #}{% load static %}
-{# Título de la ventana #} {% block titulo_ventana %}Lista de Voluntarios{% endblock %}
-{# Título de la página #} {% block titulo_pagina %}Lista de Voluntarios{% endblock %}
+{# Título de la ventana #} {% block titulo_ventana %}Directorio de Voluntarios{% endblock %}
+{# Título de la página #} {% block titulo_pagina %}Directorio de Voluntarios{% endblock %}
 
 {% block contenido %}
-
-    <style>
-        /* --- Barra de Filtros --- */
-        .filter-bar {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            align-items: center;
-            border: 1px solid #eee;
-        }
-
-        .search-box {
-            flex-grow: 1;
-            position: relative;
-            min-width: 250px;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 10px 15px 10px 40px; /* Espacio para el icono */
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 1rem;
-            box-sizing: border-box;
-        }
-
-        .search-box i {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #888;
-        }
-
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .filter-group label {
-            font-weight: 600;
-            color: #333;
-            white-space: nowrap;
-        }
-
-        .filter-group select {
-            padding: 8px 12px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: white;
-            font-size: 0.95rem;
-            min-width: 150px;
-        }
-
-        /* --- Grilla de Tarjetas --- */
-        .volunteer-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
-        }
-
-        .volunteer-card {
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            border: 1px solid #eee;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .volunteer-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-            border-color: #D72600; /* Borde rojo al pasar el mouse */
-        }
-
-        .profile-header {
-            padding: 20px;
-            text-align: center;
-            background: linear-gradient(to bottom, #f8f9fa 50%, white 50%);
-            position: relative;
-        }
-
-        .profile-header img {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 4px solid white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            background-color: #fff;
-        }
-
-        /* Indicador de Estado */
-        .status-indicator {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            border: 2px solid white;
-            position: absolute;
-            top: 25px; /* Ajustado a la imagen */
-            left: 50%;
-            margin-left: 35px; /* Desplazado a la derecha del avatar */
-        }
-        .status-indicator.active { background-color: #28a745; }
-        .status-indicator.inactive { background-color: #dc3545; }
-
-        .profile-info {
-            padding: 0 20px 20px;
-            text-align: center;
-            flex-grow: 1;
-        }
-
-        .profile-info h3 {
-            margin: 10px 0 5px;
-            font-size: 1.2rem;
-            color: #333;
-            font-weight: 700;
-        }
-
-        .profile-info .rank {
-            color: #D72600; /* Rojo corporativo */
-            font-weight: 600;
-            margin-bottom: 5px;
-            font-size: 1rem;
-        }
-
-        .profile-info .station {
-            color: #666;
-            font-size: 0.9rem;
-            margin: 0;
-        }
-
-        .card-actions {
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        /* Botones de Acción */
-        .action-btn {
-            width: 35px;
-            height: 35px;
-            border-radius: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            text-decoration: none;
-            transition: background-color 0.2s;
-            border: none;
-            cursor: pointer;
-        }
-
-        .view-btn {
-            background-color: #17a2b8; /* Azul info */
-        }
-        .view-btn:hover { background-color: #138496; }
-
-        .edit-btn {
-            background-color: #ffc107; /* Amarillo warning */
-            color: #333;
-        }
-        .edit-btn:hover { background-color: #e0a800; }
-
-        /* Estilo para el mensaje vacío */
-        .empty-message {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 40px;
-            background: white;
-            border-radius: 8px;
-            color: #666;
-            border: 1px dashed #ccc;
-        }
-    </style>
-
     <div class="container">
 
-        <div class="filter-bar">
-            <div class="search-box">
-                <input type="text" id="search-input" placeholder="Buscar por nombre, RUT, etc." value="{{ request.GET.q }}">
+        <div class="toolbar">
+            <div class="search-container">
                 <i class="fas fa-search"></i>
+                <input type="text" id="search-input" placeholder="Buscar por nombre, RUT o apellido..." value="{{ request.GET.q }}">
             </div>
             
-            <div class="filter-group">
-                <label for="estacion-filter">Estación:</label>
-                <select id="estacion-filter" class="form-control">
-                    <option value="global">Todas las estaciones</option>
-                    {% for estacion in estaciones %}
-                    <option value="{{ estacion.id }}" {% if request.GET.estacion == estacion.id|stringformat:"s" %}selected{% endif %}>
-                        {{ estacion.nombre }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label for="rango-filter">Rango:</label>
-                <select id="rango-filter">
-                    <option value="global">Todos los rangos</option>
-                    {% for cargo in cargos %}
-                    <option value="{{ cargo.id }}" {% if request.GET.rango == cargo.id|stringformat:"s" %}selected{% endif %}>
-                        {{ cargo.nombre }}
-                    </option>
-                    {% endfor %}
-                </select>
+            <div class="filters-container">
+                <div class="filter-group">
+                    <label for="estacion-filter">Compañía / Estación</label>
+                    <select id="estacion-filter" class="filter-select">
+                        <option value="global">Todas las estaciones</option>
+                        {% for estacion in estaciones %}
+                        <option value="{{ estacion.id }}" {% if request.GET.estacion == estacion.id|stringformat:"s" %}selected{% endif %}>
+                            {{ estacion.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="rango-filter">Rango / Cargo</label>
+                    <select id="rango-filter" class="filter-select">
+                        <option value="global">Todos los rangos</option>
+                        {% for cargo in cargos %}
+                        <option value="{{ cargo.id }}" {% if request.GET.rango == cargo.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cargo.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
         </div>
 
         <div class="volunteer-grid">
 
             {% for voluntario in voluntarios %}
-                
-                {% with membresia=voluntario.membresia_activa_list|first cargo_actual=voluntario.cargo_actual_list|first %}
+
+                {# LÓGICA DE DATOS #}
+                {# Accedemos a voluntario.usuario.membresia_activa_list para el estado #}
+                {% with membresia=voluntario.usuario.membresia_activa_list|first cargo_actual=voluntario.cargo_actual_list|first %}
                 
                 <div class="volunteer-card">
-                    <div class="profile-header">
-                        
-                        {# --- CORRECCIÓN AQUÍ: Usamos voluntario.imagen --- #}
-                        {% if voluntario.imagen %}
-                            <img src="{{ voluntario.imagen.url }}" alt="Foto de perfil">
-                        {% else %}
-                            <img src="https://via.placeholder.com/100" alt="Foto de perfil">
-                        {% endif %}
+                    <div class="card-header">
+                        <div class="avatar-wrapper">
+                            {# FOTO DEL VOLUNTARIO (Corregido para usar voluntario.imagen) #}
+                            {% if voluntario.imagen %}
+                                <img src="{{ voluntario.imagen.url }}" alt="{{ voluntario.usuario.get_full_name }}">
+                            {% else %}
+                                <div class="avatar-placeholder">
+                                    {{ voluntario.usuario.first_name|slice:":1" }}{{ voluntario.usuario.last_name|slice:":1" }}
+                                </div>
+                            {% endif %}
 
-                        {# Indicador de Estado #}
-                        {% if membresia and membresia.estado == 'ACTIVO' %}
-                            <span class="status-indicator active" title="Activo"></span>
-                        {% else %}
-                            <span class="status-indicator inactive" title="Inactivo"></span>
-                        {% endif %}
+                            {# INDICADOR DE ESTADO #}
+                            {# Si existe membresia (activa), es verde. Si no, rojo. #}
+                            {% if membresia %}
+                                <div class="status-badge active" title="Estado: Activo"></div>
+                            {% else %}
+                                <div class="status-badge inactive" title="Estado: Inactivo"></div>
+                            {% endif %}
+                        </div>
                     </div>
                     
-                    <div class="profile-info">
-                        <h3>{{ voluntario.usuario.get_full_name }}</h3>
+                    <div class="card-body">
+                        <h3 class="volunteer-name">{{ voluntario.usuario.get_full_name }}</h3>
                         
-                        <p class="rank">
+                        <div class="volunteer-role">
                             {% if cargo_actual %}
                                 {{ cargo_actual.cargo.nombre }}
                             {% else %}
-                                <span style="color: #999;">Sin cargo actual</span>
+                                Sin Cargo
                             {% endif %}
-                        </p>
+                        </div>
                         
-                        <p class="station">
-                            <i class="fas fa-building" style="margin-right: 5px;"></i>
+                        <div class="volunteer-station">
+                            <i class="fas fa-building"></i>
                             {% if membresia %}
                                 {{ membresia.estacion.nombre }}
                             {% else %}
-                                <span style="color: #999;">Sin estación activa</span>
+                                Sin estación asignada
                             {% endif %}
-                        </p>
+                        </div>
                     </div>
                     
-                    <div class="card-actions">
-                        <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.id %}" class="action-btn view-btn" title="Ver Hoja de Vida">
-                            <i class="fas fa-eye"></i>
+                    <div class="card-footer">
+                        <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.id %}" class="action-btn btn-view">
+                            <i class="fas fa-id-card"></i> Hoja de Vida
                         </a>
-                        <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.id %}" class="action-btn edit-btn" title="Editar Perfil">
-                            <i class="fas fa-pen"></i>
+                        <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.id %}" class="action-btn btn-edit">
+                            <i class="fas fa-pen"></i> Editar
                         </a>
                     </div>
                 </div>
                 
                 {% endwith %}
             {% empty %}
-                <div class="empty-message">
-                    <i class="fas fa-user-slash fa-2x" style="margin-bottom: 10px; color: #ccc;"></i>
-                    <p>No se encontraron voluntarios con los filtros seleccionados.</p>
+                <div class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <h3>No se encontraron resultados</h3>
+                    <p>Intenta ajustar los filtros de búsqueda o estación.</p>
                 </div>
             {% endfor %}
             
         </div>
     </div>    
-
+    
 {% endblock  %}
 
 {% block scripts %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const estacionSelect = document.getElementById('estacion-filter');
-            const rangoSelect = document.getElementById('rango-filter');
-            const searchInput = document.getElementById('search-input');
-
-            function aplicarFiltros() {
-                const estacion = estacionSelect.value;
-                const rango = rangoSelect.value;
-                const busqueda = searchInput.value;
-
-                const url = new URL(window.location.href);
-                url.searchParams.set('estacion', estacion);
-                url.searchParams.set('rango', rango);
-                
-                if (busqueda) {
-                    url.searchParams.set('q', busqueda);
-                } else {
-                    url.searchParams.delete('q');
-                }
-
-                window.location.href = url.toString();
-            }
-
-            estacionSelect.addEventListener('change', aplicarFiltros);
-            rangoSelect.addEventListener('change', aplicarFiltros);
-
-            searchInput.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    aplicarFiltros();
-                }
-            });
-        });
-    </script>
+<script src="{% static 'gestion_voluntarios/js/lista_voluntario.js' %}"></script>
 {% endblock %}
