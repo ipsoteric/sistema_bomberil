@@ -4,72 +4,383 @@
 {# Título de la página #} {% block titulo_pagina %}Hoja de Vida del Voluntario{% endblock %}
 
 {% block contenido %}
+
     <style>
-        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; }
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 600px; border-radius: 8px; z-index: 1050; display: none; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
-        .modal.show, .modal-backdrop.show { display: block; }
-        .modal-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .close-btn { cursor: pointer; font-size: 1.5rem; font-weight: bold; }
-        .form-group { margin-bottom: 15px; }
-        .form-control { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .btn { padding: 8px 16px; border-radius: 4px; cursor: pointer; border: none; font-weight: 600; }
-        .btn-principal { background-color: #D72600; color: white; }
-        .btn-secondary { background-color: #6c757d; color: white; }
+        :root {
+            --card-border-radius: 12px;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            --primary-color: #D72600;
+            --secondary-color: #2c3e50;
+            --bg-gray: #f8f9fa;
+        }
+
+        .profile-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding-bottom: 50px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #6c757d;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--primary-color); }
+        .back-link i { margin-right: 8px; }
+
+        /* --- CABECERA DEL PERFIL --- */
+        .profile-header-main {
+            background: #fff;
+            border-radius: var(--card-border-radius);
+            box-shadow: var(--card-shadow);
+            padding: 40px;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            position: relative;
+            border: 1px solid #eef2f7;
+            flex-wrap: wrap;
+        }
+
+        .profile-image-container {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .profile-image-container img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid #fff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            object-fit: cover;
+        }
+
+        /* Placeholder con Iniciales (Estilo Robusto) */
+        .avatar-placeholder-large {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid #fff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            background-color: #2c3e50;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Indicador de Estado */
+        .status-indicator {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 4px solid #fff;
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .status-indicator.active { background-color: #28a745; }
+        .status-indicator.inactive { background-color: #dc3545; }
+
+        .profile-main-info {
+            flex-grow: 1;
+        }
+
+        .profile-main-info h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.2rem;
+            color: var(--secondary-color);
+            font-weight: 800;
+        }
+
+        .profile-badges {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-rank { background-color: rgba(215, 38, 0, 0.1); color: var(--primary-color); }
+        .badge-station { background-color: #eef2f7; color: #555; }
+
+        .profile-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* --- BOTONES GENERALES --- */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .btn:hover { transform: translateY(-2px); }
         
-        /* --- CLASE ACTUALIZADA --- */
+        .btn-principal { background-color: var(--primary-color); color: white; box-shadow: 0 4px 6px rgba(215, 38, 0, 0.2); }
+        .btn-principal:hover { background-color: #b01f00; box-shadow: 0 6px 8px rgba(215, 38, 0, 0.3); }
+
+        .btn-secondary { background-color: #fff; color: #555; border: 1px solid #ccc; }
+        .btn-secondary:hover { background-color: #f8f9fa; border-color: #aaa; }
+
+        .btn-pdf { background-color: #dc3545; color: white; }
+        .btn-pdf:hover { background-color: #c82333; }
+
+        .btn-edit { background-color: #ffc107; color: #212529; }
+        .btn-edit:hover { background-color: #e0a800; }
+
         .btn-add-item { 
             background-color: #28a745; 
             color: white; 
             font-size: 0.85rem; 
-            margin-left: 10px; 
-            padding: 6px 12px; /* Un poco más de padding para que respire */
-            
-            /* Propiedades para adaptar al texto */
+            padding: 6px 12px; 
+            border-radius: 6px;
+            /* Ajuste al texto */
             width: fit-content;
             white-space: nowrap;
             display: inline-flex;
             align-items: center;
             justify-content: center;
         }
+        .btn-add-item:hover { background-color: #218838; transform: none; }
+
+        /* --- PESTAÑAS --- */
+        .profile-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #eef2f7;
+            padding-bottom: 2px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #6c757d;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            margin-bottom: -2px;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover { color: var(--primary-color); }
         
-        .modal-footer { text-align: right; margin-top: 20px; }
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        /* --- CONTENIDO DE PESTAÑAS --- */
+        .tab-content {
+            display: none;
+            background: #fff;
+            padding: 30px;
+            border-radius: var(--card-border-radius);
+            box-shadow: var(--card-shadow);
+            border: 1px solid #eef2f7;
+            animation: fadeIn 0.3s ease;
+        }
+        .tab-content.active { display: block; }
         
-        /* Mejoras para la grilla de información */
-        .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
-        .info-item { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
-        .info-item strong { display: block; color: #555; margin-bottom: 5px; font-size: 0.9em; text-transform: uppercase; }
-        .info-item span { font-size: 1.1em; color: #333; font-weight: 500; }
-        .info-item.full-width { grid-column: 1 / -1; }      
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .tab-content h2 {
+            margin-top: 0;
+            color: var(--secondary-color);
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 15px;
+        }
+
+        /* --- Grilla de Información --- */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-item strong {
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .info-item span {
+            font-size: 1.1rem;
+            color: #2c3e50;
+            font-weight: 500;
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .info-item.full-width { grid-column: 1 / -1; }
+
+        /* --- Listas de Historial --- */
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-list li {
+            position: relative;
+            padding-left: 25px;
+            margin-bottom: 20px;
+            border-left: 2px solid #eef2f7;
+        }
+        
+        .history-list li::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 2px rgba(215, 38, 0, 0.2);
+        }
+
+        .history-list strong {
+            display: block;
+            font-size: 1.1rem;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .history-list .date-range {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .history-list p, .history-list small {
+            color: #555;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        /* --- MODALES (Manteniendo lógica anterior, mejorando estética) --- */
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; backdrop-filter: blur(2px); }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 500px; border-radius: 12px; z-index: 1050; display: none; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+        .modal.show, .modal-backdrop.show { display: block; }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .modal-header h3 { margin: 0; color: var(--primary-color); }
+        .close-btn { cursor: pointer; font-size: 1.5rem; color: #aaa; transition: color 0.2s; }
+        .close-btn:hover { color: #333; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #333; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
+        .form-control:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 3px rgba(215, 38, 0, 0.1); }
+        
+        .modal-footer { text-align: right; margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+        
+        /* Ajuste para los botones del footer del modal */
+        .modal-footer .btn {
+            width: fit-content;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 80px;
+        }
     </style>
 
     <div class="container profile-container">
-        <a href="{% url 'gestion_voluntarios:ruta_lista_voluntarios' %}" class="back-link"><i class="fas fa-arrow-left"></i> Volver al listado</a>
+        <a href="{% url 'gestion_voluntarios:ruta_lista_voluntarios' %}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Volver al Directorio
+        </a>
 
         <div class="profile-header-main">
             <div class="profile-image-container">
-                {% if voluntario.imagen%}
-                    <img src="{{ voluntario.imagen.url }}" alt="">
+                {# LÓGICA DE IMAGEN CORREGIDA #}
+                {% if voluntario.imagen %}
+                    <img src="{{ voluntario.imagen.url }}" alt="Foto de perfil">
                 {% else %}
-                    <img src="https://via.placeholder.com/150" alt="Sin imagen">
+                    <div class="avatar-placeholder-large">
+                        {{ voluntario.usuario.first_name|slice:":1" }}{{ voluntario.usuario.last_name|slice:":1" }}
+                    </div>
                 {% endif %}
+                
+                {# Indicador de Estado #}
                 {% if membresia and membresia.estado == 'ACTIVO' %}
-                    <span class="status-indicator active large" title="Activo"></span>
+                    <span class="status-indicator active" title="Estado: Activo"></span>
                 {% else %}
-                    <span class="status-indicator inactive large" title="Inactivo"></span>
+                    <span class="status-indicator inactive" title="Estado: Inactivo"></span>
                 {% endif %}
             </div>
+
             <div class="profile-main-info">
                 <h1>{{ voluntario.usuario.get_full_name }}</h1>
-                <p class="main-rank">
-                    {% if cargo_actual %}{{ cargo_actual.cargo.nombre }}{% else %}Sin Rango Asignado{% endif %}
-                </p>
-                <p class="main-station">
-                    Estación: {% if membresia %}{{ membresia.estacion.nombre }}{% else %}Sin Estación Activa{% endif %}
-                </p>
-            </div>
-            <div class="profile-actions">
-                <a href="{% url 'gestion_voluntarios:ruta_hoja_vida' id=voluntario.id %}" target="_blank" class="action-btn pdf-btn"><i class="fas fa-file-pdf"></i> Generar Hoja de Vida</a>
-                <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.id %}" class="action-btn edit-btn"><i class="fas fa-user-edit"></i> Modificar Perfil</a>
+                
+                <div class="profile-badges">
+                    <span class="badge badge-rank">
+                        <i class="fas fa-star" style="margin-right:5px;"></i>
+                        {% if cargo_actual %}{{ cargo_actual.cargo.nombre }}{% else %}Sin Rango{% endif %}
+                    </span>
+                    <span class="badge badge-station">
+                        <i class="fas fa-building" style="margin-right:5px;"></i>
+                        {% if membresia %}{{ membresia.estacion.nombre }}{% else %}Sin Estación{% endif %}
+                    </span>
+                </div>
+
+                <div class="profile-actions">
+                    <a href="{% url 'gestion_voluntarios:ruta_hoja_vida' id=voluntario.id %}" target="_blank" class="btn btn-pdf">
+                        <i class="fas fa-file-pdf"></i> Generar Hoja de Vida
+                    </a>
+                    <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.id %}" class="btn btn-edit">
+                        <i class="fas fa-pen"></i> Modificar Perfil
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -83,110 +394,80 @@
         <div id="info" class="tab-content active">
             <h2>Datos Personales y de Contacto</h2>
             <div class="info-grid">
-                <div class="info-item">
-                    <strong>RUT / DNI</strong>
-                    <span>{{ voluntario.usuario.rut | default:"No registrado" }}</span>
-                </div>
-                <div class="info-item">
-                    <strong>Correo Electrónico</strong>
-                    <span>{{ voluntario.usuario.email | default:"No registrado" }}</span>
-                </div>
-                <div class="info-item">
-                    <strong>Teléfono</strong>
-                    <span>{{ voluntario.usuario.phone | default:"No registrado" }}</span>
-                </div>
-
-                <div class="info-item">
-                    <strong>Fecha de Nacimiento</strong>
-                    <span>{{ voluntario.fecha_nacimiento | date:"d/m/Y" | default:"No registrada" }}</span>
-                </div>
-                <div class="info-item">
-                    <strong>Lugar de Nacimiento</strong>
-                    <span>{{ voluntario.lugar_nacimiento | default:"No registrado" }}</span>
-                </div>
-                <div class="info-item">
-                    <strong>Nacionalidad</strong>
-                    <span>{{ voluntario.nacionalidad.gentilicio | default:"No registrada" }}</span>
-                </div>
-                <div class="info-item">
-                    <strong>Estado Civil</strong>
-                    <span>{{ voluntario.get_estado_civil_display | default:"No registrado" }}</span>
-                </div>
-                <div class="info-item">
-                    <strong>Género</strong>
-                    <span>{{ voluntario.get_genero_display | default:"No registrado" }}</span>
-                </div>
-                <div class="info-item">
-                    <strong>Profesión Civil</strong>
-                    <span>{{ voluntario.profesion.nombre | default:"No registrada" }}</span>
-                </div>
-
-                <div class="info-item">
-                    <strong>N° Registro General</strong>
-                    <span>{{ voluntario.numero_registro_bomberil | default:"No asignado" }}</span>
-                </div>
-                <div class="info-item">
-                    <strong>Fecha Primer Ingreso</strong>
-                    <span>{{ voluntario.fecha_primer_ingreso | date:"d/m/Y" | default:"No registrada" }}</span>
-                </div>
-
-                <div class="info-item full-width">
-                    <strong>Domicilio Registrado</strong>
-                    <span>
-                        {{ voluntario.domicilio_calle | default:"" }} {{ voluntario.domicilio_numero | default:"" }}
-                        {{ voluntario.domicilio_comuna.nombre | default:"Comuna no registrada" }}
-                    </span>
-                </div>
+                <div class="info-item"><strong>RUT / DNI</strong><span>{{ voluntario.usuario.rut|default:"No registrado" }}</span></div>
+                <div class="info-item"><strong>Fecha Nacimiento</strong><span>{{ voluntario.fecha_nacimiento|date:"d/m/Y"|default:"-" }}</span></div>
+                <div class="info-item"><strong>Teléfono</strong><span>{{ voluntario.usuario.phone|default:"-" }}</span></div>
+                <div class="info-item"><strong>Correo</strong><span>{{ voluntario.usuario.email|default:"-" }}</span></div>
+                <div class="info-item"><strong>Profesión Civil</strong><span>{{ voluntario.profesion.nombre|default:"-" }}</span></div>
+                <div class="info-item"><strong>Nacionalidad</strong><span>{{ voluntario.nacionalidad.gentilicio|default:"-" }}</span></div>
+                <div class="info-item"><strong>Género</strong><span>{{ voluntario.get_genero_display|default:"-" }}</span></div>
+                <div class="info-item"><strong>Estado Civil</strong><span>{{ voluntario.get_estado_civil_display|default:"-" }}</span></div>
+                <div class="info-item full-width"><strong>Dirección</strong><span>{{ voluntario.domicilio_calle|default:"" }} {{ voluntario.domicilio_numero|default:"" }} {{ voluntario.domicilio_comuna.nombre|default:"" }}</span></div>
             </div>
         </div>
 
         <div id="experience" class="tab-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2>Historial de Cargos</h2>
-                <button class="btn btn-add-item" onclick="abrirModal('modalAgregarCargo')">Registrar Ascenso</button>
-            </div>
+            <h2>
+                Historial de Cargos
+                <button class="btn btn-add-item" onclick="abrirModal('modalAgregarCargo')">
+                    <i class="fas fa-plus" style="margin-right: 5px;"></i> Registrar Ascenso
+                </button>
+            </h2>
             <ul class="history-list">
                 {% for cargo in voluntario.historial_cargos.all %}
                     <li>
-                        <strong>{{ cargo.cargo.nombre }}</strong> - {{ cargo.ambito }}
-                        <span class="date-range">({{ cargo.fecha_inicio|date:"d/m/Y" }} - {% if cargo.fecha_fin %}{{ cargo.fecha_fin|date:"d/m/Y" }}{% else %}Actualidad{% endif %})</span>
-                        <small>Registra: {{ cargo.estacion_registra.nombre }}</small>
+                        <strong>{{ cargo.cargo.nombre }}</strong>
+                        <span class="date-range">
+                            {{ cargo.fecha_inicio|date:"d/m/Y" }} — 
+                            {% if cargo.fecha_fin %}{{ cargo.fecha_fin|date:"d/m/Y" }}{% else %}Actualidad{% endif %}
+                        </span>
+                        <small>Ámbito: {{ cargo.ambito }} | Registrado por: {{ cargo.estacion_registra.nombre }}</small>
                     </li>
-                {% empty %}<li>No hay cargos registrados.</li>{% endfor %}
+                {% empty %}
+                    <p style="color:#888; font-style:italic;">No hay cargos registrados en el historial.</p>
+                {% endfor %}
             </ul>
         </div>
 
         <div id="recognitions" class="tab-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2>Reconocimientos y Logros</h2>
-                <button class="btn btn-add-item" onclick="abrirModal('modalAgregarReconocimiento')">Agregar Reconocimiento</button>
-            </div>
+            <h2>
+                Reconocimientos y Logros
+                <button class="btn btn-add-item" onclick="abrirModal('modalAgregarReconocimiento')">
+                    <i class="fas fa-plus" style="margin-right: 5px;"></i> Agregar
+                </button>
+            </h2>
             <ul class="history-list">
                 {% for reco in voluntario.historial_reconocimientos.all %}
                     <li>
                         <strong>{{ reco.tipo_reconocimiento.nombre }}</strong>
-                        <span class="date-range">({{ reco.fecha_evento|date:"d/m/Y" }})</span>
-                        <p style="margin:5px 0;">{{ reco.descripcion_personalizada }}</p>
-                        <small>Otorga: {{ reco.ambito }} | Registra: {{ reco.estacion_registra.nombre }}</small>
+                        <span class="date-range">Fecha: {{ reco.fecha_evento|date:"d/m/Y" }}</span>
+                        {% if reco.descripcion_personalizada %}<p>{{ reco.descripcion_personalizada }}</p>{% endif %}
+                        <small>Otorgado por: {{ reco.ambito }}</small>
                     </li>
-                {% empty %}<li>No hay reconocimientos registrados.</li>{% endfor %}
+                {% empty %}
+                    <p style="color:#888; font-style:italic;">No hay reconocimientos registrados.</p>
+                {% endfor %}
             </ul>
         </div>
         
         <div id="sanctions" class="tab-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2>Registro de Sanciones</h2>
-                <button class="btn btn-add-item" style="background-color: #dc3545;" onclick="abrirModal('modalAgregarSancion')">Registrar Sanción</button>
-            </div>
+            <h2>
+                Registro de Sanciones
+                <button class="btn btn-add-item" style="background-color: var(--danger-color);" onclick="abrirModal('modalAgregarSancion')">
+                    <i class="fas fa-gavel" style="margin-right: 5px;"></i> Registrar
+                </button>
+            </h2>
             <ul class="history-list">
                 {% for sancion in voluntario.historial_sanciones.all %}
                      <li>
-                        <strong>{{ sancion.get_tipo_sancion_display }}</strong>
-                        <span class="date-range">({{ sancion.fecha_evento|date:"d/m/Y" }})</span>
+                        <strong style="color: var(--danger-color);">{{ sancion.get_tipo_sancion_display }}</strong>
+                        <span class="date-range">Fecha: {{ sancion.fecha_evento|date:"d/m/Y" }}</span>
                         <p style="margin: 5px 0;">{{ sancion.descripcion }}</p>
                         <small>Emitida por: {{ sancion.estacion_evento.nombre }}</small>
                     </li>
-                {% empty %}<li>No existen sanciones registradas.</li>{% endfor %}
+                {% empty %}
+                    <p style="color:#888; font-style:italic;">No existen sanciones registradas (¡Excelente!).</p>
+                {% endfor %}
             </ul>
         </div>
 
@@ -198,9 +479,8 @@
             {% csrf_token %}
             {% for field in form_cargo %}
                 <div class="form-group">
-                    <label style="font-weight: 600; display: block; margin-bottom: 5px;">{{ field.label }}</label>
+                    <label>{{ field.label }}</label>
                     {{ field }}
-                    {% if field.errors %}<div style="color: red; font-size: 0.8em;">{{ field.errors|first }}</div>{% endif %}
                 </div>
             {% endfor %}
             <div class="modal-footer">
@@ -215,10 +495,7 @@
         <form method="POST" action="{% url 'gestion_voluntarios:ruta_agregar_reconocimiento' id=voluntario.id %}">
             {% csrf_token %}
             {% for field in form_reconocimiento %}
-                <div class="form-group">
-                    <label style="font-weight: 600; display: block; margin-bottom: 5px;">{{ field.label }}</label>
-                    {{ field }}
-                </div>
+                <div class="form-group"><label>{{ field.label }}</label>{{ field }}</div>
             {% endfor %}
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalAgregarReconocimiento')">Cancelar</button>
@@ -232,10 +509,7 @@
         <form method="POST" action="{% url 'gestion_voluntarios:ruta_agregar_sancion' id=voluntario.id %}" enctype="multipart/form-data">
             {% csrf_token %}
             {% for field in form_sancion %}
-                <div class="form-group">
-                    <label style="font-weight: 600; display: block; margin-bottom: 5px;">{{ field.label }}</label>
-                    {{ field }}
-                </div>
+                <div class="form-group"><label>{{ field.label }}</label>{{ field }}</div>
             {% endfor %}
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalAgregarSancion')">Cancelar</button>
@@ -251,7 +525,7 @@
 {% block scripts %}
 <script src="{% static 'gestion_voluntarios/js/ver.js' %}"></script>
 <script>
-    // Lógica para abrir/cerrar modales
+    // Lógica de pestañas y modales
     const backdrop = document.getElementById('modalBackdrop');
 
     function abrirModal(modalId) {
@@ -270,5 +544,12 @@
         });
         backdrop.classList.remove('show');
     });
+
+    function openTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).style.display = 'block';
+        document.querySelector(`button[onclick="openTab('${tabId}')"]`).classList.add('active');
+    }
 </script>
 {% endblock %}
