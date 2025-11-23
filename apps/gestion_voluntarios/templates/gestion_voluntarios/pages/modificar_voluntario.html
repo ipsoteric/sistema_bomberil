@@ -3,19 +3,26 @@
 {# Título de la ventana #} {% block titulo_ventana %}Modificar a {{ voluntario.usuario.get_full_name }}{% endblock %}
 {# Título de la página #} {% block titulo_pagina %}Modificar Voluntario{% endblock %}
 
+{% block styles %}
+    <link rel="stylesheet" href="{% static 'gestion_voluntarios/css/estilo_modificar.css' %}">
+{% endblock %}
+
 {% block contenido %}
 
     <div class="container">
-        <h1>Modificar Voluntario: {{ voluntario.usuario.get_full_name }}</h1>
-        <p>Ajuste la información del perfil del voluntario.</p>
+        <h1>Modificar Voluntario</h1>
+        <p class="subtitle">Editando perfil de: <strong>{{ voluntario.usuario.get_full_name }}</strong></p>
         
-        <div style="text-align: center; margin-bottom: 20px;">
+        <div class="current-photo-container">
+            {# --- LÓGICA DE IMAGEN ROBUSTA --- #}
             {% if voluntario.imagen %}
-                <img src="{{ voluntario.imagen.url }}" alt="Foto actual" style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; border: 3px solid #D72600;">
-                <p style="font-size: 0.9em; color: #666;">Foto actual</p>
+                <img src="{{ voluntario.imagen.url }}" alt="Foto actual" class="current-photo">
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Foto de perfil actual</p>
             {% else %}
-                 <img src="https://via.placeholder.com/150" alt="Sin foto" style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; border: 3px solid #ccc;">
-                 <p style="font-size: 0.9em; color: #666;">Sin foto de perfil</p>
+                <div class="avatar-placeholder-large">
+                    {{ voluntario.usuario.first_name|slice:":1" }}{{ voluntario.usuario.last_name|slice:":1" }}
+                </div>
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Sin foto de perfil asignada</p>
             {% endif %}
         </div>
 
@@ -23,8 +30,8 @@
             {% csrf_token %}
 
             {% if usuario_form.non_field_errors or voluntario_form.non_field_errors %}
-                <div class="alert alert-danger" style="color: red; margin-bottom: 1rem; border: 1px solid red; padding: 10px;">
-                    <p><strong>Error al guardar:</strong></p>
+                <div class="alert alert-danger">
+                    <p><strong>Error al guardar:</strong> Por favor revise los siguientes errores:</p>
                     {{ usuario_form.non_field_errors }}
                     {{ voluntario_form.non_field_errors }}
                 </div>
@@ -33,37 +40,48 @@
             <div class="form-section">
                 <h2>Datos de Acceso y Contacto</h2>
                 
-                {% for field in usuario_form %}
-                    <div class="form-group">
-                        {{ field.label_tag }}
-                        {{ field }}
-                        {% if field.errors %}
-                            <div class="error-message" style="color: red; font-size: 0.9em; margin-top: 5px;">{{ field.errors|first }}</div>
-                        {% endif %}
-                    </div>
-                {% endfor %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    {% for field in usuario_form %}
+                        <div class="form-group" {% if field.name == 'email' %}style="grid-column: 1 / -1;"{% endif %}>
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="error-message">{{ field.errors|first }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
 
             <div class="form-section">
                 <h2>Información Bomberil y Personal</h2>
 
-                {% for field in voluntario_form %}
-                    <div class="form-group">
-                        {{ field.label_tag }}
-                        {{ field }}
-                        {% if field.errors %}
-                            <div class="error-message" style="color: red; font-size: 0.9em; margin-top: 5px;">{{ field.errors|first }}</div>
-                        {% endif %}
-                        {% if field.help_text %}
-                            <small class="help-text" style="font-size: 0.8em; color: #666; display: block; margin-top: 4px;">{{ field.help_text }}</small>
-                        {% endif %}
-                    </div>
-                {% endfor %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    {% for field in voluntario_form %}
+                        <div class="form-group" 
+                             {% if field.name == 'imagen' or field.name == 'domicilio_calle' %}style="grid-column: 1 / -1;"{% endif %}>
+                            
+                            {{ field.label_tag }}
+                            {{ field }}
+                            
+                            {% if field.errors %}
+                                <div class="error-message">{{ field.errors|first }}</div>
+                            {% endif %}
+                            {% if field.help_text %}
+                                <small class="help-text">{{ field.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
 
             <div class="button-group">
-                <button type="submit" class="btn-primary">Guardar Cambios</button>
-                <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.id %}" class="btn-secondary">Cancelar</a>
+                <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.id %}" class="btn btn-secondary">
+                    <i class="fas fa-times" style="margin-right: 8px;"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save" style="margin-right: 8px;"></i> Guardar Cambios
+                </button>
             </div>
             
         </form>
