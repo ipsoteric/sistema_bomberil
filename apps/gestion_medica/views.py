@@ -42,7 +42,7 @@ class MedicoInicioView(View):
         distribucion_qs = FichaMedica.objects.filter(
             grupo_sanguineo__isnull=False
         ).values('grupo_sanguineo__nombre').annotate(
-            count=Count('id') # Contamos por ID para ser más precisos
+            count=Count('pk') # Contamos por ID para ser más precisos
         ).order_by('-count')
 
         # Calculamos el total sumando los conteos
