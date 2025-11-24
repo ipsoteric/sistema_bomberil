@@ -291,7 +291,7 @@ class VoluntariosModificarView(View):
 class VoluntariosModificarView(View):
     
     def get(self, request, id):
-        voluntario = get_object_or_404(Voluntario.objects.select_related('usuario'), id=id)
+        voluntario = get_object_or_404(Voluntario.objects.select_related('usuario'), usuario__id=id)
         
         if not UsuarioForm or not VoluntarioForm:
              messages.error(request, 'Faltan archivos de formulario (forms.py).')
