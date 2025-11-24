@@ -144,35 +144,12 @@ class VoluntariosVerView(View):
         reconocimientos_prefetch = Prefetch('historial_reconocimientos', queryset=HistorialReconocimiento.objects.all().select_related('tipo_reconocimiento', 'estacion_registra').order_by('-fecha_evento'))
         sanciones_prefetch = Prefetch('historial_sanciones', queryset=HistorialSancion.objects.all().select_related('estacion_registra', 'estacion_evento').order_by('-fecha_evento'))
         
-        voluntario = get_object_or_404(Voluntario.objects.select_related('usuario', 'nacionalidad', 'profesion', 'domicilio_comuna').prefetch_related(active_membresia_prefetch, current_cargo_prefetch, cargos_prefetch, reconocimientos_prefetch, sanciones_prefetch), id=id)
+        voluntario = get_object_or_404(Voluntario.objects.select_related('usuario', 'nacionalidad', 'profesion', 'domicilio_comuna').prefetch_related(active_membresia_prefetch, current_cargo_prefetch, cargos_prefetch, reconocimientos_prefetch, sanciones_prefetch), usuario__id=id)
         
         membresia_activa = voluntario.usuario.membresia_activa_list[0] if voluntario.usuario.membresia_activa_list else None
         cargo_actual = voluntario.cargo_actual_list[0] if voluntario.cargo_actual_list else None
-        
-        # --- Query Principal ---
-        voluntario = get_object_or_404(
-            Voluntario.objects.select_related(
-                'usuario', 'nacionalidad', 'profesion', 'domicilio_comuna'
-            ).prefetch_related(
-                active_membresia_prefetch,
-                current_cargo_prefetch,
-                cargos_prefetch,
-                reconocimientos_prefetch,
-                sanciones_prefetch
-            ),
-            usuario__id=id
-        )
 
-        # === LÓGICA CORREGIDA ===
-        # Extraemos las listas de los atributos pre-cargados
-        membresia_list = voluntario.usuario.membresia_activa_list
-        cargo_list = voluntario.cargo_actual_list
-
-        # Asignamos el primer elemento (si la lista NO está vacía) o None
-        membresia_activa = membresia_list[0] if membresia_list else None
-        cargo_actual = cargo_list[0] if cargo_list else None
-        
-        # --- Preparar Contexto ---
+        # --- Enviamos los 3 formularios al template ---
         context = {
             'voluntario': voluntario,
             'membresia': membresia_activa,
