@@ -205,6 +205,7 @@ class Voluntario(models.Model):
         verbose_name="N° Registro General de Bomberos", 
         max_length=50, null=True, blank=True, unique=True
     )
+    telefono = models.CharField(max_length=9, null=True, blank=True, verbose_name="Teléfono de contacto del voluntario")
     imagen = models.ImageField(upload_to="voluntarios/imagen/main/", null=True, blank=True)
     imagen_thumb_medium = models.ImageField(verbose_name="Thumbnail (600x600)", upload_to="voluntarios/imagen/medium/", blank=True, null=True,editable=False)
     imagen_thumb_small = models.ImageField(verbose_name="Thumbnail (50x50)",upload_to="voluntarios/imagen/small/", blank=True, null=True,editable=False)
