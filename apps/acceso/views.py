@@ -155,6 +155,14 @@ class SeleccionarEstacionView(LoginRequiredMixin, UserPassesTestMixin, View):
         # Inyectamos la sesión directamente.
         request.session['active_estacion_id'] = estacion.id
         request.session['active_estacion_nombre'] = estacion.nombre
+
+        # Obtener el logo de la estación
+        if estacion.logo_thumb_small:
+            request.session['active_estacion_logo'] = estacion.logo_thumb_small.url
+        elif estacion.logo:
+            request.session['active_estacion_logo'] = estacion.logo.url
+        else:
+            request.session['active_estacion_logo'] = None
         
         messages.info(request, f"Modo Administrador: Gestionando {estacion.nombre}")
         return redirect('portal:ruta_inicio')
