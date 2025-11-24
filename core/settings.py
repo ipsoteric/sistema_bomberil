@@ -161,7 +161,7 @@ MODULOS = {
     'gestion_usuarios': 'Usuarios y Permisos',
     'gestion_voluntarios': 'Gestión Voluntarios',
     'gestion_documental': 'Gestión Documental',
-    'portal': 'Bomberil',
+    'portal': 'Portal',
     'acceso': 'Acceso',
     'api': 'api',
     'core_admin': 'Administración del sistema',

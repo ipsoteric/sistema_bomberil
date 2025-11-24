@@ -52,6 +52,15 @@ class LoginView(View):
             # Caso A: Usuario normal (o superuser con membresía). Flujo estándar.
             request.session['active_estacion_id'] = membresia_activa.estacion.id
             request.session['active_estacion_nombre'] = membresia_activa.estacion.nombre
+
+            # Obtener el logo de la estación
+            if membresia_activa.estacion.logo_thumb_small:
+                request.session['active_estacion_logo'] = membresia_activa.estacion.logo_thumb_small.url
+            elif membresia_activa.estacion.logo:
+                request.session['active_estacion_logo'] = membresia_activa.estacion.logo.url
+            else:
+                request.session['active_estacion_logo'] = None
+
             messages.success(request, f"Bienvenido, {user.first_name.title()}!")
             return redirect(reverse('portal:ruta_inicio'))
         

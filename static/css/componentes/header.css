@@ -47,6 +47,7 @@
     width: 40px;
     min-width: 40px;
     max-width: 40px;
+    border-radius: 50%;
 }
 
 .header__titulo {
@@ -60,7 +61,7 @@
     height: 100%;
     align-items: end;
 
-    font-family: 'Raleway';
+    font-family: var(--font-brand);
     font-weight: 300;
 }
 
