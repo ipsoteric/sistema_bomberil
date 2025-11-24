@@ -307,8 +307,9 @@
                 
                 // Construir la URL dinámica para el POST
                 // OJO: Usamos un placeholder '0' en la URL de django y lo reemplazamos por JS
-                var urlBase = "{% url 'core_admin:ruta_restablecer_contraseña' 0 %}";
-                var urlFinal = urlBase.replace('0', userId);
+                var dummyUuid = '00000000-0000-0000-0000-000000000000';
+                var urlBase = "{% url 'core_admin:ruta_restablecer_contraseña' '00000000-0000-0000-0000-000000000000' %}";
+                var urlFinal = urlBase.replace(dummyUuid, userId);
                 
                 document.getElementById('formResetPassword').action = urlFinal;
                 
@@ -337,8 +338,9 @@
                 document.getElementById('modal_finalizar_usuario_nombre').textContent = userName;
                 
                 // Actualizar Action del Form
-                var urlBase = "{% url 'core_admin:ruta_finalizar_membresias_usuario' 0 %}";
-                var urlFinal = urlBase.replace('0', userId);
+                var dummyUuid = '00000000-0000-0000-0000-000000000000';
+                var urlBase = "{% url 'core_admin:ruta_finalizar_membresias_usuario' '00000000-0000-0000-0000-000000000000' %}";
+                var urlFinal = urlBase.replace(dummyUuid, userId);
                 document.getElementById('formFinalizarMembresias').action = urlFinal;
             });
         }
