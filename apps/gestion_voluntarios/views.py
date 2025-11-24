@@ -165,22 +165,36 @@ class VoluntariosVerView(View):
 
 class VoluntarioAgregarCargoView(View):
     def post(self, request, id):
-        voluntario = get_object_or_404(Voluntario, id=id)
+        voluntario = get_object_or_404(Voluntario, usuario__id=id)
         form = HistorialCargoForm(request.POST)
         if form.is_valid():
             try:
-                # Obtenemos la estación del usuario logueado
-                membresia_admin = request.user.membresias.filter(estado='ACTIVO').first()
-                estacion_registra = membresia_admin.estacion if membresia_admin else None
+                estacion_id = request.session.get('active_estacion_id')
+                
+                if not estacion_id:
+                    # Si no hay estación activa (ej: superuser entró directo sin "Switch"), 
+                    # detenemos el proceso para evitar el error de integridad.
+                    messages.error(request, "Error: Debes seleccionar una estación activa para registrar movimientos.")
+                    return redirect('gestion_voluntarios:ruta_ver_voluntario', id=id)
+                
+                estacion_registra = Estacion.objects.get(pk=estacion_id)
                 
                 # Lógica de Bitácora: Cerrar cargo anterior
                 fecha_inicio_nuevo = form.cleaned_data['fecha_inicio']
                 cargo_anterior = HistorialCargo.objects.filter(voluntario=voluntario, fecha_fin__isnull=True).first()
 
+                # Opcional: Validar que solo cerramos el cargo en la MISMA estación si la regla lo exige,
+                # pero generalmente el historial es lineal por persona.
+                cargo_anterior = HistorialCargo.objects.filter(
+                    voluntario=voluntario, 
+                    fecha_fin__isnull=True
+                ).first()
+
                 if cargo_anterior:
                     if fecha_inicio_nuevo < cargo_anterior.fecha_inicio:
-                        messages.error(request, "La fecha del nuevo cargo no puede ser anterior al actual.")
+                        messages.error(request, "La fecha del nuevo cargo no puede ser anterior al inicio del cargo actual.")
                         return redirect('gestion_voluntarios:ruta_ver_voluntario', id=id)
+                    
                     cargo_anterior.fecha_fin = fecha_inicio_nuevo
                     cargo_anterior.save()
 
@@ -201,16 +215,22 @@ class VoluntarioAgregarCargoView(View):
 
 class VoluntarioAgregarReconocimientoView(View):
     def post(self, request, id):
-        voluntario = get_object_or_404(Voluntario, id=id)
+        voluntario = get_object_or_404(Voluntario, usuario__id=id)
         form = HistorialReconocimientoForm(request.POST)
         
         if form.is_valid():
             try:
-                membresia_admin = request.user.membresias.filter(estado='ACTIVO').first()
+                estacion_id = request.session.get('active_estacion_id')
+                
+                if not estacion_id:
+                    messages.error(request, "Error: Debes seleccionar una estación activa para registrar reconocimientos.")
+                    return redirect('gestion_voluntarios:ruta_ver_voluntario', id=id)
+                
+                estacion_registra = Estacion.objects.get(pk=estacion_id)
                 
                 nuevo_reco = form.save(commit=False)
                 nuevo_reco.voluntario = voluntario
-                nuevo_reco.estacion_registra = membresia_admin.estacion if membresia_admin else None
+                nuevo_reco.estacion_registra = estacion_registra
                 nuevo_reco.es_historico = False
                 nuevo_reco.save()
                 
@@ -225,17 +245,23 @@ class VoluntarioAgregarReconocimientoView(View):
 
 class VoluntarioAgregarSancionView(View):
     def post(self, request, id):
-        voluntario = get_object_or_404(Voluntario, id=id)
+        voluntario = get_object_or_404(Voluntario, usuario__id=id)
         # Nota: request.FILES para subir el documento adjunto
         form = HistorialSancionForm(request.POST, request.FILES)
         
         if form.is_valid():
             try:
-                membresia_admin = request.user.membresias.filter(estado='ACTIVO').first()
+                estacion_id = request.session.get('active_estacion_id')
+                
+                if not estacion_id:
+                    messages.error(request, "Error: Debes seleccionar una estación activa para registrar reconocimientos.")
+                    return redirect('gestion_voluntarios:ruta_ver_voluntario', id=id)
+                
+                estacion_registra = Estacion.objects.get(pk=estacion_id)
                 
                 nueva_sancion = form.save(commit=False)
                 nueva_sancion.voluntario = voluntario
-                nueva_sancion.estacion_registra = membresia_admin.estacion if membresia_admin else None
+                nueva_sancion.estacion_registra = estacion_registra
                 nueva_sancion.es_historico = False
                 nueva_sancion.save()
                 
@@ -308,7 +334,7 @@ class VoluntariosModificarView(View):
         return render(request, "gestion_voluntarios/pages/modificar_voluntario.html", context)
 
     def post(self, request, id):
-        voluntario = get_object_or_404(Voluntario.objects.select_related('usuario'), id=id)
+        voluntario = get_object_or_404(Voluntario.objects.select_related('usuario'), usuario__id=id)
         
         # CAMBIO: request.FILES ahora va al voluntario_form (para el campo 'imagen')
         usuario_form = UsuarioForm(request.POST, instance=voluntario.usuario)
@@ -319,7 +345,7 @@ class VoluntariosModificarView(View):
             voluntario_form.save()
             
             messages.success(request, f'Se han guardado los cambios de {voluntario.usuario.get_full_name}.')
-            return redirect('gestion_voluntarios:ruta_ver_voluntario', id=voluntario.id)
+            return redirect('gestion_voluntarios:ruta_ver_voluntario', id=voluntario.usuario.id)
         
         context = {
             'voluntario': voluntario,
