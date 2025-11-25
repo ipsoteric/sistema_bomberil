@@ -1,8 +1,10 @@
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.http import Http404
+from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
 from core.settings import (
     INVENTARIO_UBICACION_ADMIN_NOMBRE as AREA_ADMINISTRATIVA)
+from .models import Activo, LoteInsumo
 
 
 class UbicacionMixin:
@@ -73,3 +75,56 @@ class InventoryStateValidatorMixin:
             return False
             
         return True
+
+
+
+
+class StationInventoryObjectMixin:
+    """
+    Mixin para vistas que operan sobre un ítem de inventario (Activo o Lote).
+    Responsabilidades:
+    1. Leer 'tipo_item' y 'item_id' de la URL.
+    2. Recuperar el objeto asegurando estrictamente la pertenencia a la estación activa.
+    3. Exponer el objeto en self.item y self.tipo_item para la vista.
+    """
+    item = None
+    tipo_item = None
+
+    def dispatch(self, request, *args, **kwargs):
+        # Recuperación robusta del ID de estación 
+        # (Leemos directo de sesión para evitar problemas de orden MRO)
+        estacion_id = request.session.get('active_estacion_id')
+        
+        if not estacion_id:
+            # Si no hay estación, dejamos pasar (BaseEstacionMixin se encargará de redirigir)
+            return super().dispatch(request, *args, **kwargs)
+
+        self.tipo_item = kwargs.get('tipo_item')
+        item_id = kwargs.get('item_id')
+
+        # Lógica Polimórfica Centralizada
+        if self.tipo_item == 'activo':
+            self.item = get_object_or_404(
+                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
+                id=item_id,
+                estacion_id=estacion_id
+            )
+        elif self.tipo_item == 'lote':
+            self.item = get_object_or_404(
+                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
+                id=item_id,
+                compartimento__ubicacion__estacion_id=estacion_id
+            )
+        else:
+            # Si la URL está mal construida o el tipo no existe
+            raise Http404("Tipo de ítem de inventario desconocido.")
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        """Inyecta automáticamente el ítem en el contexto del template."""
+        context = super().get_context_data(**kwargs)
+        context['item'] = self.item
+        context['tipo_item'] = self.tipo_item
+        context['es_lote'] = (self.tipo_item == 'lote')
+        return context
