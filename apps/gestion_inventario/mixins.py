@@ -81,28 +81,29 @@ class InventoryStateValidatorMixin:
 
 class StationInventoryObjectMixin:
     """
-    Mixin para vistas que operan sobre un ítem de inventario (Activo o Lote).
-    Responsabilidades:
-    1. Leer 'tipo_item' y 'item_id' de la URL.
-    2. Recuperar el objeto asegurando estrictamente la pertenencia a la estación activa.
-    3. Exponer el objeto en self.item y self.tipo_item para la vista.
+    Mixin auxiliar para recuperar ítems de inventario (Activos o Lotes)
+    basados en la URL, asegurando pertenencia a la estación.
     """
     item = None
     tipo_item = None
 
-    def dispatch(self, request, *args, **kwargs):
-        # Recuperación robusta del ID de estación 
-        # (Leemos directo de sesión para evitar problemas de orden MRO)
-        estacion_id = request.session.get('active_estacion_id')
-        
+    def get_inventory_item(self):
+        """
+        Método explícito para cargar el ítem.
+        Debe llamarse al inicio del dispatch de la vista.
+        """
+        # Evitar recargar si ya existe
+        if self.item:
+            return self.item
+
+        # Obtener ID de estación de forma segura (evita error MRO)
+        estacion_id = self.request.session.get('active_estacion_id')
         if not estacion_id:
-            # Si no hay estación, dejamos pasar (BaseEstacionMixin se encargará de redirigir)
-            return super().dispatch(request, *args, **kwargs)
+            return None # BaseEstacionMixin se encargará del redirect luego
 
-        self.tipo_item = kwargs.get('tipo_item')
-        item_id = kwargs.get('item_id')
+        self.tipo_item = self.kwargs.get('tipo_item')
+        item_id = self.kwargs.get('item_id')
 
-        # Lógica Polimórfica Centralizada
         if self.tipo_item == 'activo':
             self.item = get_object_or_404(
                 Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
@@ -116,13 +117,13 @@ class StationInventoryObjectMixin:
                 compartimento__ubicacion__estacion_id=estacion_id
             )
         else:
-            # Si la URL está mal construida o el tipo no existe
-            raise Http404("Tipo de ítem de inventario desconocido.")
-
-        return super().dispatch(request, *args, **kwargs)
+            # Tipo desconocido o URL malformada
+            raise Http404("Tipo de ítem desconocido")
+            
+        return self.item
 
     def get_context_data(self, **kwargs):
-        """Inyecta automáticamente el ítem en el contexto del template."""
+        """Inyecta el ítem en el contexto automáticamente."""
         context = super().get_context_data(**kwargs)
         context['item'] = self.item
         context['tipo_item'] = self.tipo_item

@@ -32,7 +32,7 @@ from core.settings import (
 
 from apps.gestion_usuarios.models import Membresia
 from apps.common.mixins import ModuleAccessMixin, EstacionActivaRequiredMixin, BaseEstacionMixin
-from .mixins import UbicacionMixin, InventoryStateValidatorMixin
+from .mixins import UbicacionMixin, InventoryStateValidatorMixin, StationInventoryObjectMixin
 
 from .models import (
     Estacion, 
@@ -2446,88 +2446,52 @@ def get_or_create_anulado_compartment(estacion: Estacion) -> Compartimento:
 
 
 
-class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, View):
+class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, View):
     """
-    Vista para anular una existencia (Activo/Lote) por error de ingreso.
-    Nivel Senior: Gestión polimórfica de items, transacciones atómicas y
-    uso de Mixins para contexto de seguridad.
+    Vista para anular existencia.
+    Usa StationInventoryObjectMixin para cargar el ítem y
+    InventoryStateValidatorMixin para validar reglas de negocio.
     """
     template_name = 'gestion_inventario/pages/anular_existencia.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock"
 
-
     def dispatch(self, request, *args, **kwargs):
-        """
-        Pre-chequeo:
-        1. Verifica estación.
-        2. Carga el ítem.
-        3. Valida reglas de negocio (Estado).
-        """
-        # 1. Obtener ID de estación de la sesión (Raw) para evitar error MRO
-        estacion_id = request.session.get('active_estacion_id')
-        
-        # Si no hay estación, dejamos pasar al super().dispatch, el BaseEstacionMixin
-        # se encargará de rechazar y redirigir.
-        if estacion_id:
-            tipo_item = kwargs.get('tipo_item')
-            item_id = kwargs.get('item_id')
-            
-            # 2. Cargar el ítem (usando el helper adaptado)
-            self.item = self._get_item(tipo_item, item_id, estacion_id)
-            
-            if not self.item:
-                messages.error(request, "El ítem solicitado no existe en tu estación.")
-                return redirect('gestion_inventario:ruta_stock_actual')
+        self.item = self.get_inventory_item()
 
-            # 3. Validar Estado (Regla de Negocio)
-            # Solo se puede anular si está 'DISPONIBLE' (nuevo/limpio).
-            if not self.validate_state(self.item, ['DISPONIBLE']):
-                return redirect('gestion_inventario:ruta_stock_actual')
+        if not self.item:
+            # Si no hay item (o no hay sesión), dejamos pasar para que los mixins de seguridad redirijan
+            # o lanzamos 404. En este flujo, BaseEstacionMixin atrapará la falta de sesión.
+            return super().dispatch(request, *args, **kwargs)
+        
+        # 2. Validamos el estado (Regla de Negocio)
+        # Solo dejamos pasar si está 'DISPONIBLE'
+        if not self.validate_state(self.item, ['DISPONIBLE']):
+            return redirect('gestion_inventario:ruta_stock_actual')
 
         return super().dispatch(request, *args, **kwargs)
 
-    def _get_item(self, tipo_item, item_id, estacion_id):
-        """Recupera el Activo o Lote filtrando por la estación proporcionada."""
-        if tipo_item == 'activo':
-            return get_object_or_404(
-                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
-                id=item_id, 
-                estacion_id=estacion_id
-            )
-        elif tipo_item == 'lote':
-            return get_object_or_404(
-                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
-                id=item_id, 
-                compartimento__ubicacion__estacion_id=estacion_id
-            )
-        return None
-
     def get(self, request, *args, **kwargs):
-        # self.item ya fue cargado y validado en dispatch
+        # El mixin ya inyecta 'item' y 'tipo_item' en get_context_data si usáramos TemplateView.
+        # Como heredamos de View, debemos construir el contexto, pero es trivial.
         context = {
             'item': self.item,
-            'tipo_item': kwargs.get('tipo_item')
+            'tipo_item': self.tipo_item
         }
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
-        # self.item ya fue cargado y validado en dispatch
-        
         try:
             estado_anulado = Estado.objects.get(nombre='ANULADO POR ERROR')
-            # Aquí sí podemos usar self.estacion_activa porque el mixin ya corrió
             compartimento_destino = get_or_create_anulado_compartment(self.estacion_activa)
             compartimento_origen = self.item.compartimento
-            tipo_item = kwargs.get('tipo_item')
 
             with transaction.atomic():
                 # 1. Actualizar Item
                 cantidad_movimiento = 0
-                
-                if tipo_item == 'lote':
-                    cantidad_movimiento = self.item.cantidad * -1 
+                if self.tipo_item == 'lote':
+                    cantidad_movimiento = self.item.cantidad * -1
                     self.item.cantidad = 0
-                else: 
+                else:
                     cantidad_movimiento = -1
                 
                 self.item.estado = estado_anulado
@@ -2541,8 +2505,8 @@ class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
                     estacion=self.estacion_activa,
                     compartimento_origen=compartimento_origen,
                     compartimento_destino=compartimento_destino,
-                    activo=self.item if tipo_item == 'activo' else None,
-                    lote_insumo=self.item if tipo_item == 'lote' else None,
+                    activo=self.item if self.tipo_item == 'activo' else None,
+                    lote_insumo=self.item if self.tipo_item == 'lote' else None,
                     cantidad_movida=cantidad_movimiento,
                     notas="Anulación por error de ingreso."
                 )
@@ -2553,12 +2517,9 @@ class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
             )
             return redirect('gestion_inventario:ruta_stock_actual')
 
-        except Estado.DoesNotExist:
-            messages.error(request, "Error crítico: Estado 'ANULADO POR ERROR' no encontrado.")
         except Exception as e:
-            messages.error(request, f"Error inesperado: {e}")
-        
-        return redirect('gestion_inventario:ruta_stock_actual')
+            messages.error(request, f"Error al anular: {e}")
+            return redirect('gestion_inventario:ruta_stock_actual')
 
 
 
@@ -2567,8 +2528,7 @@ class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
     """
     Vista para ajuste manual de stock de lotes (inventario cíclico).
     Combina FormView (para el formulario de ajuste) con 
-    SingleObjectMixin (para recuperar el Lote de forma segura).
-    Solo permite ajuste si el estado es 'DISPONIBLE'.
+    SingleObjectMixin (para recuperar el Lote de forma segura) y valida estados.
     """
     model = LoteInsumo
     form_class = LoteAjusteForm
@@ -2579,10 +2539,15 @@ class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
 
     def get_queryset(self):
         """Filtra el lote por la estación activa y precarga relaciones."""
+        # --- CORRECCIÓN DE SEGURIDAD MRO ---
+        # Intentamos obtener el ID del atributo (si el mixin ya corrió)
         estacion_id = getattr(self, 'estacion_activa_id', None)
+        
+        # Si no, lo sacamos directo de la sesión (si el mixin aún no corre)
         if not estacion_id:
             estacion_id = self.request.session.get('active_estacion_id')
 
+        # Si no hay sesión, devolvemos vacío (get_object lanzará 404 y luego el mixin redirigirá)
         if not estacion_id:
             return super().get_queryset().none()
         
@@ -2599,7 +2564,7 @@ class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
         Validación Temprana: Cargamos el objeto y verificamos su estado 
         antes de procesar GET o POST.
         """
-        # 1. Recuperar el objeto (SingleObjectMixin lo hace fácil)
+        # 1. Recuperar el objeto (SingleObjectMixin usa get_queryset)
         try:
             self.object = self.get_object()
         except Http404:
@@ -2614,23 +2579,13 @@ class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        # SingleObjectMixin necesita que llamemos a self.get_object() explícitamente
-        self.object = self.get_object()
-        
-        # Validación de Estado
-        if self.object.estado.nombre == 'ANULADO POR ERROR':
-            messages.error(request, "No se puede ajustar un lote anulado.")
-            return redirect('gestion_inventario:ruta_stock_actual')
-            
+        # No necesitamos recargar self.object, ya lo hizo dispatch.
+        # Pero SingleObjectMixin espera que lo llamemos o accedamos a self.object.
+        # Aquí ya self.object existe.
         return super().get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        
-        if self.object.estado.nombre == 'ANULADO POR ERROR':
-            messages.error(request, "No se puede ajustar un lote anulado.")
-            return redirect('gestion_inventario:ruta_stock_actual')
-            
+        # Igual que en get, self.object ya existe gracias a dispatch.
         return super().post(request, *args, **kwargs)
 
     def get_initial(self):
@@ -2654,10 +2609,12 @@ class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
                 self.object.save(update_fields=['cantidad', 'updated_at'])
 
                 # 2. Auditoría
+                # Aquí usamos self.estacion_activa de forma segura porque
+                # form_valid corre DESPUÉS de dispatch, por lo tanto BaseEstacionMixin ya se ejecutó.
                 MovimientoInventario.objects.create(
                     tipo_movimiento=TipoMovimiento.AJUSTE,
                     usuario=self.request.user,
-                    estacion=self.estacion_activa,
+                    estacion=self.estacion_activa, 
                     compartimento_origen=self.object.compartimento,
                     lote_insumo=self.object,
                     cantidad_movida=diferencia,
@@ -2680,69 +2637,34 @@ class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
 
 
 
-class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, FormView):
+class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, FormView):
     """
-    Vista para Dar de Baja una existencia (Activo o LoteInsumo),
-    cambiando su estado y generando un movimiento de SALIDA.
+    Vista para Dar de Baja una existencia.
+    Utiliza StationInventoryObjectMixin para la carga segura del ítem,
+    InventoryStateValidatorMixin para reglas de negocio y transacciones atómicas.
     """
     template_name = 'gestion_inventario/pages/dar_de_baja_existencia.html'
     form_class = BajaExistenciaForm
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock"
     success_url = reverse_lazy('gestion_inventario:ruta_stock_actual')
 
-
     def dispatch(self, request, *args, **kwargs):
-        self.tipo_item = kwargs.get('tipo_item')
-        self.item_id = kwargs.get('item_id')
-        self.item = self._get_item_seguro()
+        # 1. Carga Explícita del Ítem (Mixin)
+        # Si no hay estación, retorna None y deja que BaseEstacionMixin maneje el redirect.
+        self.item = self.get_inventory_item()
         
         if not self.item:
-            return redirect(self.success_url)
+            return super().dispatch(request, *args, **kwargs)
         
-        # USAR EL MIXIN PARA VALIDAR EL ESTADO
-        # Solo se puede dar de baja si está operativo o en mantenimiento.
-        # Estados como 'EN PRÉSTAMO' requieren devolución primero.
+        # 2. Validación de Reglas de Negocio (Estado)
+        # Solo se puede dar de baja lo que está en la estación (operativo o en taller).
+        # No se puede dar de baja lo prestado (debe devolverse primero) ni lo extraviado.
         estados_permitidos = ['DISPONIBLE', 'PENDIENTE REVISIÓN', 'EN REPARACIÓN']
+        
         if not self.validate_state(self.item, estados_permitidos):
             return redirect(self.success_url)
             
         return super().dispatch(request, *args, **kwargs)
-
-
-    def _get_item_seguro(self):
-        """Recupera el Activo o Lote validando estación y estado."""
-        # Usamos self.estacion_activa_id del mixin (disponible tras super().dispatch, 
-        # pero como lo necesitamos antes, accedemos a la sesión o usamos la lógica del mixin manualmente
-        # Para evitar el error MRO anterior, en este caso específico es seguro usar el mixin standard
-        # si movemos la lógica a get_context/form_valid, pero para dispatch temprano:
-        estacion_id = self.request.session.get('active_estacion_id')
-        if not estacion_id:
-            return None # El mixin redirigirá después
-
-        if self.tipo_item == 'activo':
-            item = get_object_or_404(
-                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
-                id=self.item_id, 
-                estacion_id=estacion_id
-            )
-        elif self.tipo_item == 'lote':
-            item = get_object_or_404(
-                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
-                id=self.item_id, 
-                compartimento__ubicacion__estacion_id=estacion_id
-            )
-        else:
-            return None
-        
-        return item
-
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['item'] = self.item
-        context['tipo_item'] = self.tipo_item
-        return context
-
 
     def form_valid(self, form):
         notas = form.cleaned_data['notas']
@@ -2753,8 +2675,9 @@ class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventorySt
             with transaction.atomic():
                 # 1. Actualizar Estado y Cantidad
                 cantidad_movimiento = 0
+                
                 if self.tipo_item == 'lote':
-                    cantidad_movimiento = self.item.cantidad * -1
+                    cantidad_movimiento = self.item.cantidad * -1 # Salida total
                     self.item.cantidad = 0
                 else:
                     cantidad_movimiento = -1
@@ -2766,7 +2689,8 @@ class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventorySt
                 MovimientoInventario.objects.create(
                     tipo_movimiento=TipoMovimiento.SALIDA,
                     usuario=self.request.user,
-                    estacion_id=self.request.session.get('active_estacion_id'), # ID seguro
+                    # Usamos self.estacion_activa con seguridad (el mixin ya corrió)
+                    estacion=self.estacion_activa, 
                     compartimento_origen=self.item.compartimento,
                     activo=self.item if self.tipo_item == 'activo' else None,
                     lote_insumo=self.item if self.tipo_item == 'lote' else None,
@@ -2815,71 +2739,39 @@ def get_or_create_extraviado_compartment(estacion: Estacion) -> Compartimento:
 
 
 
-class ExtraviadoExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, FormView):
+class ExtraviadoExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, FormView):
     """
-    Vista para reportar una existencia como Extraviada (Activo o LoteInsumo),
-    cambiando su estado, moviéndola al limbo y generando un movimiento de SALIDA.
-    ítems operativos o prestados puedan ser marcados como extraviados.
+    Vista para reportar una existencia como extraviada.
+    Utiliza composición de mixins para manejo seguro de items,
+    reglas de negocio y formularios.
     """
     template_name = 'gestion_inventario/pages/extraviado_existencia.html'
     form_class = ExtraviadoExistenciaForm
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock"
     success_url = reverse_lazy('gestion_inventario:ruta_stock_actual')
 
-
     def dispatch(self, request, *args, **kwargs):
-        self.tipo_item = kwargs.get('tipo_item')
-        self.item_id = kwargs.get('item_id')
+        # 1. Carga Explícita del Ítem (Mixin)
+        self.item = self.get_inventory_item()
         
-        # 1. Recuperar Item (usando helper seguro)
-        self.item = self._get_item_seguro()
         if not self.item:
-            return redirect(self.success_url)
+            # Si falla la carga (o no hay sesión), el mixin o la redirección manual actúan
+            return super().dispatch(request, *args, **kwargs) # Dejar que el flujo siga (posiblemente a 404 o redirect)
 
-        # 2. Validar Estado
-        # Se permite reportar extravío si está disponible, en revisión, reparación o incluso prestado.
+        # 2. Validar Estado (Regla de Negocio)
         estados_permitidos = ['DISPONIBLE', 'PENDIENTE REVISIÓN', 'EN REPARACIÓN', 'EN PRÉSTAMO EXTERNO']
         if not self.validate_state(self.item, estados_permitidos):
             return redirect(self.success_url)
 
         return super().dispatch(request, *args, **kwargs)
 
-
-    def _get_item_seguro(self):
-        """Recupera el Activo o Lote validando estación."""
-        # Acceso directo a sesión para evitar problemas MRO en dispatch
-        estacion_id = self.request.session.get('active_estacion_id')
-        if not estacion_id:
-            return None
-
-        if self.tipo_item == 'activo':
-            return get_object_or_404(
-                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
-                id=self.item_id, 
-                estacion_id=estacion_id
-            )
-        elif self.tipo_item == 'lote':
-            return get_object_or_404(
-                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
-                id=self.item_id, 
-                compartimento__ubicacion__estacion_id=estacion_id
-            )
-        return None
-
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['item'] = self.item
-        context['tipo_item'] = self.tipo_item
-        return context
-
+    # NOTA: Eliminamos _get_item_seguro y get_context_data.
+    # StationInventoryObjectMixin ya provee get_context_data inyectando 'item' y 'tipo_item'.
 
     def form_valid(self, form):
         notas = form.cleaned_data['notas']
         try:
-            # Obtenemos recursos necesarios
             estado_extraviado = Estado.objects.get(nombre='EXTRAVIADO')
-            # Usamos self.estacion_activa porque BaseEstacionMixin ya corrió (post-dispatch)
             compartimento_limbo = get_or_create_extraviado_compartment(self.estacion_activa)
             compartimento_origen = self.item.compartimento
 
@@ -3021,11 +2913,11 @@ class ConsumirStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventor
 
 
 
-class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, FormView):
+class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, FormView):
     """
-    Vista para transferir existencias entre compartimentos de la misma estación.
-    Implementa FormView, validación estricta de estados operativos
-    y gestión compleja de fusión de lotes (merge) en transacciones atómicas.
+    Vista para transferir existencias.
+    Utiliza composición de Mixins para delegar la recuperación del ítem,
+    la validación de reglas de negocio y la seguridad de sesión.
     """
     template_name = 'gestion_inventario/pages/transferir_existencia.html'
     form_class = TransferenciaForm
@@ -3033,58 +2925,28 @@ class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, In
     success_url = reverse_lazy('gestion_inventario:ruta_stock_actual')
 
     def dispatch(self, request, *args, **kwargs):
-        self.tipo_item = kwargs.get('tipo_item')
-        self.item_id = kwargs.get('item_id')
+        # 1. Carga Explícita del Ítem (Mixin)
+        self.item = self.get_inventory_item()
         
-        # 1. Cargar Item
-        self.item = self._get_item_seguro()
         if not self.item:
-            return redirect(self.success_url)
+            return super().dispatch(request, *args, **kwargs) # Dejar que BaseEstacionMixin o 404 actúen
 
         # 2. Validar Estado (Regla de Negocio)
-        # Solo se mueven ítems operativos. Si está en reparación o prestado, no se mueve.
+        # Solo se mueven ítems operativos (disponibles o asignados).
         if not self.validate_state(self.item, ['DISPONIBLE', 'ASIGNADO']):
             return redirect(self.success_url)
 
         return super().dispatch(request, *args, **kwargs)
 
-    def _get_item_seguro(self):
-        """Recupera el Activo o Lote validando estación."""
-        estacion_id = self.request.session.get('active_estacion_id')
-        if not estacion_id:
-            return None
-
-        if self.tipo_item == 'activo':
-            return get_object_or_404(
-                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
-                id=self.item_id, 
-                estacion_id=estacion_id
-            )
-        elif self.tipo_item == 'lote':
-            return get_object_or_404(
-                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
-                id=self.item_id, 
-                compartimento__ubicacion__estacion_id=estacion_id
-            )
-        return None
-
     def get_form_kwargs(self):
-        """Pasa el item y la estación al formulario (para filtrar compartimentos)."""
         kwargs = super().get_form_kwargs()
         kwargs['item'] = self.item
-        # Usamos self.estacion_activa (del Mixin) porque dispatch ya validó que existe
-        # Para evitar el error MRO en get_form_kwargs si el mixin corre después,
-        # usamos una estrategia defensiva o aseguramos que BaseEstacionMixin sea el primero en MRO.
-        # (Como BaseEstacionMixin es el primero en la herencia, self.estacion_activa debería estar listo).
+        # self.estacion_activa está garantizada por BaseEstacionMixin
         kwargs['estacion'] = self.estacion_activa 
         return kwargs
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['item'] = self.item
-        context['tipo_item'] = self.tipo_item
-        context['es_lote'] = (self.tipo_item == 'lote')
-        return context
+    # NOTA: Eliminamos get_context_data porque StationInventoryObjectMixin 
+    # ya inyecta 'item', 'tipo_item' y 'es_lote' automáticamente.
 
     def form_valid(self, form):
         compartimento_destino = form.cleaned_data['compartimento_destino']
@@ -3120,7 +2982,6 @@ class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, In
                         }
                     )
                     
-                    # Mover cantidades
                     lote_destino.cantidad += cantidad_a_mover
                     self.item.cantidad -= cantidad_a_mover
                     
@@ -3129,7 +2990,7 @@ class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, In
 
                     msg_item = f"{cantidad_a_mover} u. de {self.item.codigo_lote}"
                     cantidad_movida = cantidad_a_mover
-                    lote_ref = self.item # Vinculamos al origen para trazabilidad
+                    lote_ref = self.item # Vinculamos al origen
                     activo_ref = None
 
                 # Auditoría Común
