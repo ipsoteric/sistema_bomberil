@@ -35,3 +35,41 @@ class UbicacionMixin:
 
         # 3. Si la validación pasa, continuamos con la vista normal
         return super().dispatch(request, *args, **kwargs)
+
+
+
+
+class InventoryStateValidatorMixin:
+    """
+    Mixin para validar reglas de negocio basadas en el estado del ítem.
+    Genera mensajes amigables para el usuario final.
+    """
+    
+    def validate_state(self, item, allowed_states):
+        if isinstance(allowed_states, str):
+            allowed_states = [allowed_states]
+            
+        current_state = item.estado.nombre
+        
+        if current_state not in allowed_states:
+            # Diccionario de mensajes amigables según el estado actual (el obstáculo)
+            errores_amigables = {
+                'ANULADO POR ERROR': "Este registro está anulado y no admite modificaciones.",
+                'DE BAJA': "Este ítem ya fue dado de baja del inventario permanentemente.",
+                'EXTRAVIADO': "No se puede operar sobre un ítem reportado como extraviado.",
+                'EN PRÉSTAMO EXTERNO': "Esta acción no se puede realizar porque el ítem está prestado.",
+                'EN REPARACIÓN': "El ítem se encuentra en mantenimiento/reparación.",
+                'PENDIENTE REVISIÓN': "El ítem debe ser revisado antes de realizar esta acción.",
+                'EN TRÁNSITO': "El ítem está siendo trasladado y no está disponible."
+            }
+            
+            # Mensaje por defecto si el estado no está en la lista
+            msg = errores_amigables.get(
+                current_state, 
+                "El ítem no está disponible para realizar esta operación en este momento."
+            )
+            
+            messages.warning(self.request, msg)
+            return False
+            
+        return True
