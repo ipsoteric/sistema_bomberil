@@ -10,7 +10,7 @@ from django.shortcuts import render, redirect
 from django.views import View
 from django.views.generic import TemplateView, DeleteView, UpdateView, ListView, DetailView, CreateView, FormView
 from django.views.generic.detail import SingleObjectMixin
-from django.http import JsonResponse, HttpResponse, HttpResponseRedirect, Http404
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect, Http404, HttpResponseBadRequest, FileResponse
 from django.db import models
 from django.db.models import Count, Sum, Q, Subquery, OuterRef, ProtectedError, Value, Case, When, CharField, F
 from django.db.models.functions import Coalesce
@@ -3016,153 +3016,138 @@ class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, St
 
 
 
-class CrearPrestamoView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class CrearPrestamoView(BaseEstacionMixin, PermissionRequiredMixin, View):
     """
-    Vista para crear un Préstamo (Cabecera y Detalles)
-    usando un flujo de "scan-first".
+    Vista para crear un Préstamo (Cabecera y Detalles).
+    Manejo híbrido de Formulario + JSON, con lógica transaccional
+    desacoplada y validación de concurrencia robusta.
     """
     template_name = 'gestion_inventario/pages/crear_prestamo.html'
-    login_url = '/acceso/login/'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
 
     def get(self, request, *args, **kwargs):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Seleccione una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        estacion = Estacion.objects.get(id=estacion_id)
-
-        # El GET solo necesita el formulario de cabecera
-        cabecera_form = PrestamoCabeceraForm(estacion=estacion)
-
         context = {
-            'cabecera_form': cabecera_form,
+            'cabecera_form': PrestamoCabeceraForm(estacion=self.estacion_activa),
         }
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Seleccione una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        estacion = Estacion.objects.get(id=estacion_id)
-        
-        cabecera_form = PrestamoCabeceraForm(request.POST, estacion=estacion)
-        
-        # --- Lógica de POST Rediseñada ---
-        # 1. Obtener la lista de ítems escaneados del input oculto
+        cabecera_form = PrestamoCabeceraForm(request.POST, estacion=self.estacion_activa)
         items_json_str = request.POST.get('items_json')
+        
+        # 1. Validación Inicial de JSON
         items_list = []
         if items_json_str:
             try:
                 items_list = json.loads(items_json_str)
             except json.JSONDecodeError:
-                messages.error(request, "Error al procesar la lista de ítems escaneados.")
+                messages.error(request, "Error: Los datos de los ítems están corruptos.")
         
         if not items_list:
-            messages.error(request, "Debe escanear al menos un ítem para el préstamo.")
-            # Forzamos que el formulario de cabecera no sea válido para re-renderizar
-            cabecera_form.add_error(None, "No se escanearon ítems.")
+            cabecera_form.add_error(None, "Debe escanear al menos un ítem.")
 
+        # 2. Proceso Transaccional si todo es válido
         if cabecera_form.is_valid() and items_list:
             try:
-                # Obtenemos los objetos de estado y tipo de movimiento una sola vez
-                estado_prestamo = Estado.objects.get(nombre='EN PRÉSTAMO EXTERNO')
-                estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
-                tipo_mov_prestamo = TipoMovimiento.PRESTAMO
-                
-                with transaction.atomic():
-                    # --- 1. Guardar Destinatario (si es nuevo) ---
-                    destinatario = cabecera_form.cleaned_data.get('destinatario')
-                    if not destinatario:
-                        nuevo_nombre = cabecera_form.cleaned_data.get('nuevo_destinatario_nombre')
-                        nuevo_contacto = cabecera_form.cleaned_data.get('nuevo_destinatario_contacto')
-                        destinatario, _ = Destinatario.objects.get_or_create(
-                            estacion=estacion,
-                            nombre_entidad=nuevo_nombre,
-                            defaults={'telefono_contacto': nuevo_contacto, 'creado_por': request.user}
-                        )
+                prestamo_id = self._procesar_transaccion_prestamo(cabecera_form, items_list)
+                messages.success(request, f"Préstamo #{prestamo_id} creado exitosamente.")
+                return redirect('gestion_inventario:ruta_historial_prestamos')
 
-                    # --- 2. Guardar Cabecera de Préstamo ---
-                    prestamo = cabecera_form.save(commit=False)
-                    prestamo.estacion = estacion
-                    prestamo.usuario_responsable = request.user
-                    prestamo.destinatario = destinatario
-                    prestamo.save()
-
-                    # --- 3. Procesar Lista de Ítems (del JSON) ---
-                    for item_data in items_list:
-                        producto_nombre = item_data['nombre']
-                        notas_prestamo = cabecera_form.cleaned_data['notas_prestamo']
-                        
-                        if item_data['tipo'] == 'activo':
-                            # Re-validar el Activo en el momento del POST (seguridad)
-                            activo = Activo.objects.select_for_update().get(
-                                id=item_data['id'], 
-                                estado=estado_disponible
-                            )
-                            
-                            PrestamoDetalle.objects.create(prestamo=prestamo, activo=activo, cantidad_prestada=1)
-                            activo.estado = estado_prestamo
-                            activo.save(update_fields=['estado', 'updated_at'])
-                            
-                            MovimientoInventario.objects.create(
-                                tipo_movimiento=tipo_mov_prestamo,
-                                usuario=request.user,
-                                estacion=estacion,
-                                compartimento_origen=activo.compartimento,
-                                activo=activo,
-                                cantidad_movida=-1,
-                                notas=f"Préstamo a {destinatario.nombre_entidad}. {notas_prestamo}"
-                            )
-                        
-                        elif item_data['tipo'] == 'lote':
-                            cantidad = int(item_data['cantidad_prestada'])
-                            
-                            # Re-validar el Lote en el momento del POST (seguridad)
-                            lote = LoteInsumo.objects.select_for_update().get(
-                                id=item_data['id'],
-                                estado=estado_disponible,
-                                cantidad__gte=cantidad # Asegurarse que el stock aún existe
-                            )
-                            
-                            PrestamoDetalle.objects.create(prestamo=prestamo, lote=lote, cantidad_prestada=cantidad)
-                            lote.cantidad -= cantidad
-                            lote.save(update_fields=['cantidad', 'updated_at'])
-                            
-                            MovimientoInventario.objects.create(
-                                tipo_movimiento=tipo_mov_prestamo,
-                                usuario=request.user,
-                                estacion=estacion,
-                                compartimento_origen=lote.compartimento,
-                                lote_insumo=lote,
-                                cantidad_movida=cantidad * -1,
-                                notas=f"Préstamo a {destinatario.nombre_entidad}. {notas_prestamo}"
-                            )
-
-                messages.success(request, f"Préstamo #{prestamo.id} creado exitosamente.")
-                # TODO: Redirigir a la futura página de historial de préstamos
-                return redirect('gestion_inventario:ruta_historial_prestamos') 
-
-            except (Estado.DoesNotExist, TipoMovimiento.DoesNotExist):
-                messages.error(request, "Error crítico de configuración: Faltan Estados o Tipos de Movimiento.")
             except (Activo.DoesNotExist, LoteInsumo.DoesNotExist):
-                messages.error(request, "Error de concurrencia: Uno de los ítems escaneados ya no está disponible. Revise la lista y vuelva a intentarlo.")
+                messages.error(request, "Error de concurrencia: Un ítem ya no está disponible.")
             except Exception as e:
-                messages.error(request, f"Error inesperado al guardar el préstamo: {e}")
-
+                messages.error(request, f"Error inesperado: {e}")
         else:
-            messages.warning(request, "Por favor, corrija los errores en el formulario.")
-        
+            messages.warning(request, "Por favor, corrija los errores del formulario.")
+
+        # Fallback: Renderizar con errores
         context = {
             'cabecera_form': cabecera_form,
-            # No pasamos 'items_list' de vuelta porque el JS lo maneja,
-            # pero sí es útil para depurar si falla el POST
-            'items_json_error': request.POST.get('items_json', '[]') 
+            'items_json_error': items_json_str # Para que el JS intente recuperar el estado
         }
         return render(request, self.template_name, context)
+
+    @transaction.atomic
+    def _procesar_transaccion_prestamo(self, form, items_list):
+        """Orquesta la creación del préstamo, detalles y movimientos."""
+        
+        # A. Preparar Datos Base
+        destinatario = self._get_or_create_destinatario(form)
+        estado_prestamo = Estado.objects.get(nombre='EN PRÉSTAMO EXTERNO')
+        estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
+        
+        # B. Crear Cabecera
+        prestamo = form.save(commit=False)
+        prestamo.estacion = self.estacion_activa
+        prestamo.usuario_responsable = self.request.user
+        prestamo.destinatario = destinatario
+        prestamo.save()
+
+        # C. Procesar Ítems
+        notas = form.cleaned_data['notas_prestamo']
+        
+        for item_data in items_list:
+            if item_data['tipo'] == 'activo':
+                self._procesar_item_activo(prestamo, item_data, notas, estado_disponible, estado_prestamo, destinatario)
+            elif item_data['tipo'] == 'lote':
+                self._procesar_item_lote(prestamo, item_data, notas, estado_disponible, destinatario)
+        
+        return prestamo.id
+
+    def _get_or_create_destinatario(self, form):
+        """Busca o crea el destinatario según los datos del form."""
+        destinatario = form.cleaned_data.get('destinatario')
+        if not destinatario:
+            destinatario, _ = Destinatario.objects.get_or_create(
+                estacion=self.estacion_activa,
+                nombre_entidad=form.cleaned_data.get('nuevo_destinatario_nombre'),
+                defaults={
+                    'telefono_contacto': form.cleaned_data.get('nuevo_destinatario_contacto'),
+                    'creado_por': self.request.user
+                }
+            )
+        return destinatario
+
+    def _procesar_item_activo(self, prestamo, data, notas, estado_disp, estado_prest, destinatario):
+        """Procesa un activo individual."""
+        # select_for_update bloquea la fila para evitar race conditions
+        activo = Activo.objects.select_for_update().get(id=data['id'], estado=estado_disp)
+        
+        PrestamoDetalle.objects.create(prestamo=prestamo, activo=activo, cantidad_prestada=1)
+        
+        activo.estado = estado_prest
+        activo.save(update_fields=['estado', 'updated_at'])
+        
+        self._crear_movimiento(activo.compartimento, activo, None, -1, destinatario, notas)
+
+    def _procesar_item_lote(self, prestamo, data, notas, estado_disp, destinatario):
+        """Procesa un lote individual."""
+        cantidad = int(data['cantidad_prestada'])
+        lote = LoteInsumo.objects.select_for_update().get(
+            id=data['id'], 
+            estado=estado_disp, 
+            cantidad__gte=cantidad
+        )
+        
+        PrestamoDetalle.objects.create(prestamo=prestamo, lote=lote, cantidad_prestada=cantidad)
+        
+        lote.cantidad -= cantidad
+        lote.save(update_fields=['cantidad', 'updated_at'])
+        
+        self._crear_movimiento(lote.compartimento, None, lote, -1 * cantidad, destinatario, notas)
+
+    def _crear_movimiento(self, compartimento, activo, lote, cantidad, destinatario, notas):
+        """Helper genérico para movimientos."""
+        MovimientoInventario.objects.create(
+            tipo_movimiento=TipoMovimiento.PRESTAMO,
+            usuario=self.request.user,
+            estacion=self.estacion_activa,
+            compartimento_origen=compartimento,
+            activo=activo,
+            lote_insumo=lote,
+            cantidad_movida=cantidad,
+            notas=f"Préstamo a {destinatario.nombre_entidad}. {notas}"
+        )
 
 
 
@@ -3226,123 +3211,91 @@ class BuscarItemPrestamoJson(LoginRequiredMixin, ModuleAccessMixin, PermissionRe
 
 
 
-class HistorialPrestamosView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class HistorialPrestamosView(BaseEstacionMixin, PermissionRequiredMixin, ListView):
     """
-    Vista (basada en View) para mostrar el historial de préstamos externos
-    de la estación activa del usuario.
+    Vista para listar el historial de préstamos.
+    Utiliza ListView genérica y BaseEstacionMixin para obtener 
+    la estación directamente de la sesión, eliminando consultas redundantes a Membresía.
     """
+    model = Prestamo
     template_name = 'gestion_inventario/pages/historial_prestamos.html'
+    context_object_name = 'prestamos' # O 'page_obj' si tu template usa la paginación genérica
     paginate_by = 25
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_prestamos"
 
-    def get(self, request, *args, **kwargs):
-        # 1. Obtener la estación activa del usuario (vía Membresia)
-        try:
-            membresia_activa = Membresia.objects.select_related('estacion').get(
-                usuario=request.user, 
-                estado=Membresia.Estado.ACTIVO
-            )
-            estacion_usuario = membresia_activa.estacion
-        except Membresia.DoesNotExist:
-            messages.error(request, "No tienes una membresía activa asignada.")
-            return redirect('portal:home') # Redirige al portal
-
-        # 2. Queryset base (optimizada)
-        base_queryset = Prestamo.objects.filter(
-            estacion=estacion_usuario
+    def get_queryset(self):
+        """
+        Construye el queryset filtrado por estación y parámetros GET.
+        """
+        # 1. Base: Filtrar por estación de la sesión (Sin consultar Membresia)
+        qs = super().get_queryset().filter(
+            estacion=self.estacion_activa
         ).select_related(
             'destinatario', 'usuario_responsable'
         ).order_by('-fecha_prestamo')
 
-        # 3. Instanciar y procesar el formulario de filtro
-        filter_form = PrestamoFilterForm(request.GET, estacion=estacion_usuario)
+        # 2. Inicializar formulario de filtros con los datos GET
+        # Guardamos el form en self para pasarlo luego al contexto
+        self.filter_form = PrestamoFilterForm(self.request.GET, estacion=self.estacion_activa)
 
-        if filter_form.is_valid():
-            cleaned_data = filter_form.cleaned_data
+        # 3. Aplicar filtros si el formulario es válido
+        if self.filter_form.is_valid():
+            data = self.filter_form.cleaned_data
             
-            if cleaned_data.get('destinatario'):
-                base_queryset = base_queryset.filter(
-                    destinatario=cleaned_data['destinatario']
-                )
+            if data.get('destinatario'):
+                qs = qs.filter(destinatario=data['destinatario'])
             
-            if cleaned_data.get('estado'):
-                base_queryset = base_queryset.filter(
-                    estado=cleaned_data['estado']
-                )
+            if data.get('estado'):
+                qs = qs.filter(estado=data['estado'])
             
-            if cleaned_data.get('start_date'):
-                base_queryset = base_queryset.filter(
-                    fecha_prestamo__gte=cleaned_data['start_date']
-                )
+            if data.get('start_date'):
+                qs = qs.filter(fecha_prestamo__gte=data['start_date'])
 
-            if cleaned_data.get('end_date'):
-                # Ajustamos la fecha de fin para incluir el día completo
-                end_date = cleaned_data['end_date'] + datetime.timedelta(days=1)
-                base_queryset = base_queryset.filter(
-                    fecha_prestamo__lt=end_date
-                )
+            if data.get('end_date'):
+                # Incluir todo el día final
+                end_date = data['end_date'] + datetime.timedelta(days=1)
+                qs = qs.filter(fecha_prestamo__lt=end_date)
         
-        # 4. Paginación manual
-        paginator = Paginator(base_queryset, self.paginate_by)
-        page_number = request.GET.get('page')
-        try:
-            page_obj = paginator.get_page(page_number)
-        except PageNotAnInteger:
-            page_obj = paginator.get_page(1)
-        except EmptyPage:
-            page_obj = paginator.get_page(paginator.num_pages)
+        return qs
 
-        # 5. Construir el contexto
-        context = {
-            'page_obj': page_obj,
-            'is_paginated': paginator.num_pages > 1,
-            'filter_form': filter_form,
-            'params': request.GET.urlencode() # Para mantener filtros en paginación
-        }
-        
-        return render(request, self.template_name, context)
+    def get_context_data(self, **kwargs):
+        """Inyecta el formulario y parámetros de paginación."""
+        context = super().get_context_data(**kwargs)
+        context['filter_form'] = self.filter_form
+        # Preservar filtros al cambiar de página
+        context['params'] = self.request.GET.urlencode()
+        return context
 
 
 
 
-class GestionarDevolucionView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class GestionarDevolucionView(BaseEstacionMixin, PermissionRequiredMixin, View):
     """
-    Vista (basada en View) para gestionar la devolución de un préstamo.
-    Muestra los detalles del préstamo y procesa el registro de devoluciones.
+    Vista para gestionar devoluciones de préstamos.
+    Descompone la lógica de devolución masiva en servicios
+    transaccionales, optimiza queries y asegura la integridad del stock.
     """
     template_name = 'gestion_inventario/pages/gestionar_devolucion.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
 
-    def get_estacion_activa(self):
-        """Helper para obtener la estación activa del usuario."""
-        try:
-            membresia_activa = Membresia.objects.select_related('estacion').get(
-                usuario=self.request.user, 
-                estado=Membresia.Estado.ACTIVO
-            )
-            return membresia_activa.estacion
-        except Membresia.DoesNotExist:
-            return None
-
-    def get(self, request, *args, **kwargs):
-        """Muestra los detalles del préstamo y sus ítems."""
-        estacion = self.get_estacion_activa()
-        if not estacion:
-            messages.error(request, "No tienes una membresía activa asignada.")
-            return redirect('portal:home')
-
-        prestamo_id = kwargs.get('prestamo_id')
-        prestamo = get_object_or_404(
-            Prestamo.objects.select_related('destinatario', 'usuario_responsable'), 
-            id=prestamo_id, 
-            estacion=estacion
+    def get_prestamo_seguro(self, prestamo_id):
+        """Obtiene el préstamo asegurando pertenencia a la estación."""
+        return get_object_or_404(
+            Prestamo.objects.select_related('destinatario', 'usuario_responsable'),
+            id=prestamo_id,
+            estacion_id=self.estacion_activa_id
         )
 
+    def get(self, request, prestamo_id):
+        prestamo = self.get_prestamo_seguro(prestamo_id)
+        
+        # Optimización: Traer detalles con productos relacionados
         items_prestados = prestamo.items_prestados.select_related(
             'activo__producto__producto_global', 
             'lote__producto__producto_global'
         ).order_by('id')
 
+        # Cálculo en memoria para la UI
         for item in items_prestados:
             item.cantidad_pendiente = item.cantidad_prestada - item.cantidad_devuelta
 
@@ -3352,333 +3305,299 @@ class GestionarDevolucionView(LoginRequiredMixin, ModuleAccessMixin, PermissionR
         }
         return render(request, self.template_name, context)
 
-    @transaction.atomic
-    def post(self, request, *args, **kwargs):
-        """Procesa el formulario de registro de devoluciones."""
-        estacion = self.get_estacion_activa()
-        if not estacion:
-            messages.error(request, "Acción no permitida.")
-            return redirect('portal:home')
+    def post(self, request, prestamo_id):
+        prestamo = self.get_prestamo_seguro(prestamo_id)
 
-        prestamo_id = kwargs.get('prestamo_id')
-        prestamo = get_object_or_404(Prestamo, id=prestamo_id, estacion=estacion)
-        
-        # No procesar si ya está completado
         if prestamo.estado == Prestamo.EstadoPrestamo.COMPLETADO:
             messages.warning(request, "Este préstamo ya ha sido completado.")
             return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
 
-        items_prestados = prestamo.items_prestados.select_related('activo', 'lote').all()
-        
         try:
-            # Obtenemos los estados que necesitaremos para la lógica
-            estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
-            estado_prestamo = Estado.objects.get(nombre='EN PRÉSTAMO EXTERNO')
-        except Estado.DoesNotExist as e:
-            messages.error(request, f"Error de configuración: No se encontró el estado '{e}'. Contacte al administrador.")
-            return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
-
-        items_procesados_con_exito = 0
-        errores_validacion = False
-
-        detalles_a_actualizar = []
-        movimientos_a_crear = []
-        stock_a_actualizar = [] # Guardamos (item, tipo_item)
-
-        # 1. Fase de Validación
-        for detalle in items_prestados:
-            cantidad_pendiente = detalle.cantidad_prestada - detalle.cantidad_devuelta
-            if cantidad_pendiente <= 0:
-                continue
-
-            try:
-                if detalle.activo:
-                    # Para Activos, es un checkbox (valor '1' si se marca)
-                    input_name = f'cantidad-devolver-{detalle.id}'
-                    cantidad_a_devolver = int(request.POST.get(input_name, 0))
-                else:
-                    # Para Lotes, es un campo numérico
-                    input_name = f'cantidad-devolver-{detalle.id}'
-                    cantidad_a_devolver = int(request.POST.get(input_name, 0))
-            
-            except (ValueError, TypeError):
-                messages.error(request, f"Se recibió un valor inválido para el ítem {detalle.codigo_item}.")
-                errores_validacion = True
-                continue # Saltar al siguiente ítem
-
-            if cantidad_a_devolver < 0:
-                messages.error(request, f"La cantidad a devolver no puede ser negativa ({detalle.codigo_item}).")
-                errores_validacion = True
-            elif cantidad_a_devolver > cantidad_pendiente:
-                messages.error(request, f"No puede devolver {cantidad_a_devolver} para el ítem {detalle.codigo_item}. Máximo pendiente: {cantidad_pendiente}.")
-                errores_validacion = True
-            
-            if cantidad_a_devolver > 0 and not errores_validacion:
-                detalles_a_actualizar.append((detalle, cantidad_a_devolver))
-
-        if errores_validacion:
-            # Si hubo algún error, no procesamos nada
-            return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
-        
-        if not detalles_a_actualizar:
-            messages.warning(request, "No se ingresaron cantidades para devolver.")
-            return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
-
-        # 2. Fase de Procesamiento (dentro del @transaction.atomic)
-        total_items_completados = 0
-        for detalle in items_prestados:
-            if (detalle.cantidad_prestada - detalle.cantidad_devuelta) == 0:
-                total_items_completados += 1
-
-        for detalle, cantidad_devuelta in detalles_a_actualizar:
-            # 1. Actualizar el detalle del préstamo
-            detalle.cantidad_devuelta += cantidad_devuelta
-            
-            # 2. Actualizar Stock
-            if detalle.activo:
-                activo = detalle.activo
-                activo.estado = estado_disponible
-                stock_a_actualizar.append(activo)
+            with transaction.atomic():
+                resultado = self._procesar_devoluciones(request, prestamo)
                 
-                movimiento = MovimientoInventario(
-                    tipo_movimiento=TipoMovimiento.DEVOLUCION,
-                    fecha_hora=timezone.now(),
-                    usuario=request.user,
-                    estacion=estacion,
-                    activo=activo,
-                    cantidad_movida=1, # Siempre 1 para activos
-                    compartimento_destino=activo.compartimento, # Vuelve a su "hogar"
-                    notas=f"Devolución Préstamo Folio #{prestamo.id}"
-                )
-                movimientos_a_crear.append(movimiento)
+                if resultado['procesados'] > 0:
+                    messages.success(request, f"Se registraron {resultado['procesados']} devoluciones correctamente.")
+                else:
+                    messages.warning(request, "No se registraron devoluciones (revise las cantidades).")
 
-            elif detalle.lote:
-                lote = detalle.lote
-                lote.cantidad += cantidad_devuelta # Añadimos el stock de vuelta al lote original
-                stock_a_actualizar.append(lote)
+        except Exception as e:
+            messages.error(request, f"Error al procesar devolución: {e}")
 
-                movimiento = MovimientoInventario(
-                    tipo_movimiento=TipoMovimiento.DEVOLUCION,
-                    fecha_hora=timezone.now(),
-                    usuario=request.user,
-                    estacion=estacion,
-                    lote_insumo=lote,
-                    cantidad_movida=cantidad_devuelta, # Positivo
-                    compartimento_destino=lote.compartimento, # Vuelve a su lote "hogar"
-                    notas=f"Devolución Préstamo Folio #{prestamo.id}"
-                )
-                movimientos_a_crear.append(movimiento)
-            
-            if detalle.cantidad_devuelta == detalle.cantidad_prestada:
-                total_items_completados += 1
-            
-            detalle.save()
-            items_procesados_con_exito += 1
-
-        # 3. Actualizar Estado del Préstamo
-        if total_items_completados == items_prestados.count():
-            prestamo.estado = Prestamo.EstadoPrestamo.COMPLETADO
-        elif items_procesados_con_exito > 0:
-            prestamo.estado = Prestamo.EstadoPrestamo.DEVUELTO_PARCIAL
-        
-        prestamo.save()
-
-        # 4. Guardar cambios de stock y movimientos (Bulk)
-        # (Nota: bulk_update es más eficiente si ya existían, pero save() es más simple y activa signals)
-        for item in stock_a_actualizar:
-            item.save()
-        
-        MovimientoInventario.objects.bulk_create(movimientos_a_crear)
-
-        messages.success(request, f"Se registraron {items_procesados_con_exito} devoluciones correctamente.")
         return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
 
+    def _procesar_devoluciones(self, request, prestamo):
+        """Orquesta la lógica de devolución de ítems."""
+        items_prestados = prestamo.items_prestados.select_related('activo', 'lote').all()
+        estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
+        
+        movimientos_bulk = []
+        items_actualizados_count = 0
+        
+        total_items_prestamo = len(items_prestados)
+        total_items_completados = 0
+
+        for detalle in items_prestados:
+            pendiente = detalle.cantidad_prestada - detalle.cantidad_devuelta
+            if pendiente <= 0:
+                total_items_completados += 1
+                continue
+
+            # Extraer cantidad del POST de forma segura
+            try:
+                cantidad_a_devolver = int(request.POST.get(f'cantidad-devolver-{detalle.id}', 0))
+            except ValueError:
+                continue # Ignorar valores basura
+
+            if cantidad_a_devolver <= 0 or cantidad_a_devolver > pendiente:
+                continue # Ignorar cantidades inválidas
+
+            # 1. Actualizar Detalle
+            detalle.cantidad_devuelta += cantidad_a_devolver
+            detalle.save()
+            items_actualizados_count += 1
+
+            if detalle.cantidad_devuelta == detalle.cantidad_prestada:
+                total_items_completados += 1
+
+            # 2. Actualizar Stock y Generar Movimiento
+            movimiento = self._restaurar_stock(detalle, cantidad_a_devolver, estado_disponible, prestamo.id)
+            movimientos_bulk.append(movimiento)
+
+        # 3. Guardar Movimientos en Lote (Eficiencia)
+        if movimientos_bulk:
+            MovimientoInventario.objects.bulk_create(movimientos_bulk)
+
+        # 4. Actualizar Estado del Préstamo
+        self._actualizar_estado_prestamo(prestamo, total_items_completados, total_items_prestamo)
+
+        return {'procesados': items_actualizados_count}
+
+    def _restaurar_stock(self, detalle, cantidad, estado_disp, prestamo_id):
+        """Restaura el stock (Activo o Lote) y retorna el objeto Movimiento (sin guardar)."""
+        movimiento = MovimientoInventario(
+            tipo_movimiento=TipoMovimiento.DEVOLUCION,
+            usuario=self.request.user,
+            estacion=self.estacion_activa,
+            cantidad_movida=cantidad, # Positivo (Entrada)
+            notas=f"Devolución Préstamo Folio #{prestamo_id}",
+            fecha_hora=timezone.now()
+        )
+
+        if detalle.activo:
+            activo = detalle.activo
+            activo.estado = estado_disp
+            activo.save(update_fields=['estado', 'updated_at'])
+            
+            movimiento.activo = activo
+            movimiento.compartimento_destino = activo.compartimento
+            # Nota: cantidad_movida para activos siempre es 1 en lógica, pero aquí usamos la recibida por consistencia
+
+        elif detalle.lote:
+            lote = detalle.lote
+            lote.cantidad += cantidad
+            lote.save(update_fields=['cantidad', 'updated_at'])
+            
+            movimiento.lote_insumo = lote
+            movimiento.compartimento_destino = lote.compartimento
+
+        return movimiento
+
+    def _actualizar_estado_prestamo(self, prestamo, completados, total):
+        """Calcula y guarda el nuevo estado del préstamo."""
+        nuevo_estado = None
+        if completados == total:
+            nuevo_estado = Prestamo.EstadoPrestamo.COMPLETADO
+        elif completados > 0 or any(i.cantidad_devuelta > 0 for i in prestamo.items_prestados.all()):
+             # Si hay al menos algo devuelto (aunque no ítems completos), es parcial
+             if prestamo.estado != Prestamo.EstadoPrestamo.DEVUELTO_PARCIAL:
+                 nuevo_estado = Prestamo.EstadoPrestamo.DEVUELTO_PARCIAL
+        
+        if nuevo_estado:
+            prestamo.estado = nuevo_estado
+            prestamo.save(update_fields=['estado', 'updated_at'])
 
 
 
-class DestinatarioListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+
+class DestinatarioListView(BaseEstacionMixin, PermissionRequiredMixin, ListView):
     """
-    Lista todos los destinatarios (para préstamos) de la estación activa.
-    Obtiene la estación desde la sesión.
+    Vista para listar Destinatarios.
+    Nivel Senior: Utiliza ListView genérica para manejar paginación estándar y
+    BaseEstacionMixin para seguridad de contexto (filtro por estación activa).
     """
+    model = Destinatario
     template_name = 'gestion_inventario/pages/lista_destinatarios.html'
     paginate_by = 25
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_prestamos"
+    context_object_name = 'destinatarios'
 
-    def get(self, request, *args, **kwargs):
-        # --- CORRECCIÓN ---
-        # Obtener la estación activa desde la SESIÓN
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Error: No se ha seleccionado una estación activa.")
-            return redirect('portal:ruta_inicio')
-        # Filtra por la estación de la sesión
-        base_queryset = Destinatario.objects.filter(estacion_id=estacion_id).order_by('nombre_entidad')
-        # --- FIN CORRECCIÓN ---
+    def get_queryset(self):
+        """
+        Construye el queryset:
+        1. Filtra estrictamente por la estación activa.
+        2. Aplica filtros de búsqueda (q) si existen.
+        """
+        # 1. Filtro Base de Seguridad (Usamos self.estacion_activa_id del mixin)
+        qs = super().get_queryset().filter(
+            estacion_id=self.estacion_activa_id
+        ).order_by('nombre_entidad')
 
-        filter_form = DestinatarioFilterForm(request.GET)
+        # 2. Inicializamos el form aquí para usarlo en el filtro
+        self.filter_form = DestinatarioFilterForm(self.request.GET)
 
-        if filter_form.is_valid():
-            q = filter_form.cleaned_data.get('q')
+        # 3. Lógica de Búsqueda
+        if self.filter_form.is_valid():
+            q = self.filter_form.cleaned_data.get('q')
             if q:
-                base_queryset = base_queryset.filter(
+                qs = qs.filter(
                     Q(nombre_entidad__icontains=q) |
                     Q(rut_entidad__icontains=q) |
                     Q(nombre_contacto__icontains=q)
                 )
+        return qs
 
-        # Paginación
-        paginator = Paginator(base_queryset, self.paginate_by)
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
-
-        context = {
-            'page_obj': page_obj,
-            'is_paginated': paginator.num_pages > 1,
-            'filter_form': filter_form,
-            'params': request.GET.urlencode()
-        }
-        return render(request, self.template_name, context)
-
-
-
-
-class DestinatarioCreateView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    """
-    Crea un nuevo destinatario.
-    Asigna la estación activa desde la SESIÓN.
-    """
-    template_name = 'gestion_inventario/pages/form_destinatario.html'
-    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
-
-    def get(self, request, *args, **kwargs):
-        form = DestinatarioForm()
-        context = {
-            'form': form,
-            'titulo': 'Crear Nuevo Destinatario'
-        }
-        return render(request, self.template_name, context)
-
-    def post(self, request, *args, **kwargs):
-        # --- CORRECCIÓN ---
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Acción no permitida. No hay estación activa.")
-            return redirect('portal:ruta_inicio')
-        # --- FIN CORRECCIÓN ---
+    def get_context_data(self, **kwargs):
+        """
+        Inyecta datos auxiliares al contexto.
+        """
+        context = super().get_context_data(**kwargs)
         
-        form = DestinatarioForm(request.POST)
-        if form.is_valid():
-            try:
-                destinatario = form.save(commit=False)
-                # --- CORRECCIÓN ---
-                # Asigna el ID de la estación desde la sesión
-                destinatario.estacion_id = estacion_id
-                # --- FIN CORRECCIÓN ---
-                destinatario.creado_por = request.user
-                destinatario.save()
-                messages.success(request, f"Destinatario '{destinatario.nombre_entidad}' creado con éxito.")
-                return redirect('gestion_inventario:ruta_lista_destinatarios')
-            except IntegrityError:
-                messages.error(request, f"Ya existe un destinatario con el nombre '{form.cleaned_data['nombre_entidad']}' en esta estación.")
-                form.add_error('nombre_entidad', 'Este nombre ya está en uso.')
+        # Pasamos el formulario para mantener el estado del input en el HTML
+        context['filter_form'] = self.filter_form
         
-        context = {
-            'form': form,
-            'titulo': 'Crear Nuevo Destinatario'
-        }
-        return render(request, self.template_name, context)
+        # Pasamos los parámetros GET para mantener el filtro al cambiar de página
+        context['params'] = self.request.GET.urlencode()
+        
+        return context
 
 
 
 
-class DestinatarioEditView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class DestinatarioCreateView(BaseEstacionMixin, PermissionRequiredMixin, CreateView):
     """
-    Edita un destinatario existente.
-    Verifica la pertenencia usando la estación de la SESIÓN.
+    Vista para crear un nuevo destinatario.
+    Implementa CreateView genérica, inyección automática de dependencias
+    (estación/usuario) y manejo robusto de integridad referencial.
     """
-    template_name = 'gestion_inventario/pages/form_destinatario.html'
-    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
     model = Destinatario
+    form_class = DestinatarioForm
+    template_name = 'gestion_inventario/pages/form_destinatario.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
+    success_url = reverse_lazy('gestion_inventario:ruta_lista_destinatarios')
 
-    def get(self, request, *args, **kwargs):
-        # --- CORRECCIÓN ---
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Acción no permitida.")
-            return redirect('portal:ruta_inicio')
-        
-        destinatario_id = kwargs.get('destinatario_id')
-        # get_object_or_404 asegura que solo editen los de su estación (usando el ID de sesión)
-        destinatario = get_object_or_404(Destinatario, id=destinatario_id, estacion_id=estacion_id)
-        # --- FIN CORRECCIÓN ---
-        
-        form = DestinatarioForm(instance=destinatario)
-        context = {
-            'form': form,
-            'titulo': f"Editar Destinatario: {destinatario.nombre_entidad}",
-            'destinatario': destinatario
-        }
-        return render(request, self.template_name, context)
+    def get_context_data(self, **kwargs):
+        """Añade el título al contexto para reutilizar la plantilla."""
+        context = super().get_context_data(**kwargs)
+        context['titulo'] = 'Crear Nuevo Destinatario'
+        return context
 
-    def post(self, request, *args, **kwargs):
-        # --- CORRECCIÓN ---
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Acción no permitida.")
-            return redirect('portal:home')
+    def form_valid(self, form):
+        """
+        Asigna la estación activa y el usuario creador antes de persistir.
+        """
+        # Inyección de dependencias (BaseEstacionMixin garantiza self.estacion_activa)
+        form.instance.estacion = self.estacion_activa
+        form.instance.creado_por = self.request.user
+
+        try:
+            # super().form_valid() guarda el objeto y redirige
+            response = super().form_valid(form)
+            
+            messages.success(
+                self.request, 
+                f"Destinatario '{self.object.nombre_entidad}' creado con éxito."
+            )
+            return response
+
+        except IntegrityError:
+            # Manejo de duplicados (unique_together: nombre + estacion)
+            nombre = form.cleaned_data.get('nombre_entidad')
+            messages.error(self.request, f"Ya existe un destinatario llamado '{nombre}' en esta estación.")
+            form.add_error('nombre_entidad', 'Este nombre ya está en uso.')
+            return self.form_invalid(form)
         
-        destinatario_id = kwargs.get('destinatario_id')
-        # V-lida de nuevo en el POST por seguridad
-        destinatario = get_object_or_404(Destinatario, id=destinatario_id, estacion_id=estacion_id)
-        # --- FIN CORRECCIÓN ---
-        
-        form = DestinatarioForm(request.POST, instance=destinatario)
-        
-        if form.is_valid():
-            try:
-                form.save()
-                messages.success(request, f"Destinatario '{destinatario.nombre_entidad}' actualizado con éxito.")
-                return redirect('gestion_inventario:ruta_lista_destinatarios')
-            except IntegrityError:
-                messages.error(request, f"Ya existe otro destinatario con el nombre '{form.cleaned_data['nombre_entidad']}'.")
-                form.add_error('nombre_entidad', 'Este nombre ya está en uso.')
-        
-        context = {
-            'form': form,
-            'titulo': f"Editar Destinatario: {destinatario.nombre_entidad}",
-            'destinatario': destinatario
-        }
-        return render(request, self.template_name, context)
+        except Exception as e:
+            messages.error(self.request, f"Error inesperado al crear destinatario: {e}")
+            return self.form_invalid(form)
 
 
 
 
-class MovimientoInventarioListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class DestinatarioEditView(BaseEstacionMixin, PermissionRequiredMixin, UpdateView):
     """
-    Muestra una lista paginada y filtrable de todos los 
-    movimientos de inventario de la estación activa.
+    Vista para editar un destinatario existente.
+    Utiliza UpdateView para simplificar el ciclo de vida (GET/POST),
+    asegurando la propiedad mediante filtrado de queryset y manejo robusto de errores.
     """
+    model = Destinatario
+    form_class = DestinatarioForm
+    template_name = 'gestion_inventario/pages/form_destinatario.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
+    
+    # Configuración para que UpdateView encuentre el objeto por 'destinatario_id'
+    pk_url_kwarg = 'destinatario_id'
+    context_object_name = 'destinatario'
+    success_url = reverse_lazy('gestion_inventario:ruta_lista_destinatarios')
+
+    def get_queryset(self):
+        """
+        Restringe la edición: Solo destinatarios que pertenecen a la estación activa.
+        """
+        return super().get_queryset().filter(estacion_id=self.estacion_activa_id)
+
+    def get_context_data(self, **kwargs):
+        """Añade el título dinámico al contexto."""
+        context = super().get_context_data(**kwargs)
+        context['titulo'] = f"Editar Destinatario: {self.object.nombre_entidad}"
+        return context
+
+    def form_valid(self, form):
+        """
+        Guarda los cambios manejando posibles conflictos de unicidad.
+        """
+        try:
+            # super().form_valid() intenta guardar el objeto y redirigir
+            response = super().form_valid(form)
+            
+            messages.success(
+                self.request, 
+                f"Destinatario '{self.object.nombre_entidad}' actualizado con éxito."
+            )
+            return response
+
+        except IntegrityError:
+            # Captura si el nuevo nombre entra en conflicto con otro existente en la misma estación
+            nombre = form.cleaned_data.get('nombre_entidad')
+            messages.error(self.request, f"Ya existe otro destinatario con el nombre '{nombre}'.")
+            form.add_error('nombre_entidad', 'Este nombre ya está en uso.')
+            return self.form_invalid(form)
+            
+        except Exception as e:
+            messages.error(self.request, f"Error inesperado al actualizar: {e}")
+            return self.form_invalid(form)
+
+
+
+
+class MovimientoInventarioListView(BaseEstacionMixin, PermissionRequiredMixin, ListView):
+    """
+    Vista de Historial de Movimientos.
+    Implementa ListView genérica con filtrado dinámico avanzado,
+    paginación automática y optimización de consultas SQL (select_related).
+    """
+    model = MovimientoInventario
     template_name = 'gestion_inventario/pages/historial_movimientos.html'
-    login_url = '/acceso/login/'
-    paginate_by = 50 # 50 movimientos por página
+    context_object_name = 'movimientos'
+    paginate_by = 50
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_historial_movimientos"
 
-    def get(self, request):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        try:
-            estacion = Estacion.objects.get(id=estacion_id)
-        except Estacion.DoesNotExist:
-            messages.error(request, "Estación activa no encontrada.")
-            return redirect('gestion_inventario:ruta_inicio')
-
-        # Consulta base (optimizada con select_related)
-        movimientos_list = MovimientoInventario.objects.filter(
-            estacion=estacion
+    def get_queryset(self):
+        """
+        Construye el queryset base filtrado por estación y optimizado.
+        """
+        qs = super().get_queryset().filter(
+            estacion=self.estacion_activa
         ).select_related(
             'usuario', 
             'proveedor_origen', 
@@ -3686,191 +3605,204 @@ class MovimientoInventarioListView(LoginRequiredMixin, ModuleAccessMixin, Permis
             'compartimento_destino__ubicacion', 
             'activo__producto__producto_global', 
             'lote_insumo__producto__producto_global'
-        ).order_by('-fecha_hora') # El 'ordering' de tu Meta
+        ).order_by('-fecha_hora')
 
-        # Inicializar formulario de filtros (pasamos la estación)
-        filter_form = MovimientoFilterForm(request.GET, estacion=estacion)
+        # Inicializar el formulario con GET params para filtrar
+        self.filter_form = MovimientoFilterForm(self.request.GET, estacion=self.estacion_activa)
         
-        # Aplicar filtros si el formulario es válido (o si hay datos GET)
-        if request.GET:
-            # Filtro de Búsqueda (q)
-            q = request.GET.get('q')
-            if q:
-                movimientos_list = movimientos_list.filter(
-                    Q(activo__producto__producto_global__nombre_oficial__icontains=q) |
-                    Q(lote_insumo__producto__producto_global__nombre_oficial__icontains=q) |
-                    Q(activo__codigo_activo__icontains=q) |
-                    Q(lote_insumo__codigo_lote__icontains=q) |
-                    Q(notas__icontains=q)
-                ).distinct()
-
-            # Filtro por Tipo de Movimiento
-            tipo = request.GET.get('tipo_movimiento')
-            if tipo:
-                movimientos_list = movimientos_list.filter(tipo_movimiento=tipo)
-
-            # Filtro por Usuario
-            usuario_id = request.GET.get('usuario')
-            if usuario_id:
-                movimientos_list = movimientos_list.filter(usuario_id=usuario_id)
-
-            # Filtro por Fecha
-            fecha_inicio = request.GET.get('fecha_inicio')
-            if fecha_inicio:
-                movimientos_list = movimientos_list.filter(fecha_hora__gte=fecha_inicio)
+        if self.filter_form.is_valid():
+            qs = self._apply_filters(qs, self.filter_form.cleaned_data)
             
-            fecha_fin = request.GET.get('fecha_fin')
-            if fecha_fin:
-                movimientos_list = movimientos_list.filter(fecha_hora__lte=fecha_fin)
+        return qs
 
-        # Paginación
-        paginator = Paginator(movimientos_list, self.paginate_by)
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
+    def _apply_filters(self, qs, data):
+        """Aplica filtros dinámicos al queryset."""
+        q = data.get('q')
+        if q:
+            qs = qs.filter(
+                Q(activo__producto__producto_global__nombre_oficial__icontains=q) |
+                Q(lote_insumo__producto__producto_global__nombre_oficial__icontains=q) |
+                Q(activo__codigo_activo__icontains=q) |
+                Q(lote_insumo__codigo_lote__icontains=q) |
+                Q(notas__icontains=q)
+            ).distinct()
 
-        context = {
-            'filter_form': filter_form,
-            'movimientos': page_obj,
-            'page_obj': page_obj, # Para la plantilla de paginación
-        }
-        return render(request, self.template_name, context)
+        if data.get('tipo_movimiento'):
+            qs = qs.filter(tipo_movimiento=data['tipo_movimiento'])
+
+        if data.get('usuario'):
+            qs = qs.filter(usuario=data['usuario'])
+
+        if data.get('fecha_inicio'):
+            qs = qs.filter(fecha_hora__gte=data['fecha_inicio'])
+        
+        if data.get('fecha_fin'):
+            # Ajuste para incluir el final del día si es fecha (no datetime)
+            qs = qs.filter(fecha_hora__lte=data['fecha_fin'])
+            
+        return qs
+
+    def get_context_data(self, **kwargs):
+        """Inyecta el formulario de filtros al contexto."""
+        context = super().get_context_data(**kwargs)
+        context['filter_form'] = self.filter_form
+        # Mantiene los filtros en la paginación
+        context['params'] = self.request.GET.urlencode()
+        return context
 
 
 
 
-class GenerarQRView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class GenerarQRView(BaseEstacionMixin, PermissionRequiredMixin, View):
     """
-    Esta vista no renderiza HTML.
-    Genera una imagen QR basada en el 'codigo' proporcionado
-    y la devuelve como una respuesta de imagen PNG.
+    Genera un código QR dinámico en formato PNG.
+    Nivel Senior: Implementa FileResponse para manejo eficiente de binarios
+    y cabeceras HTTP de Cache-Control para reducir carga en el servidor.
     """
-
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_stock"
     
     def get(self, request, *args, **kwargs):
-        # 1. Obtenemos el código de la URL
         codigo = kwargs.get('codigo')
+        
+        # 1. Validación de Entrada
         if not codigo:
-            # Si no hay código, devolvemos un error
-            return HttpResponse("Código no proporcionado.", status=400)
+            return HttpResponseBadRequest("Error: Código no proporcionado.")
 
-        # 2. Configurar y generar el QR en memoria
-        qr = qrcode.QRCode(
-            version=1, # Tamaño simple
-            error_correction=qrcode.constants.ERROR_CORRECT_L, # Nivel de corrección bajo (QR más simple)
-            box_size=10, # Tamaño de cada "pixel" del QR
-            border=4,  # Borde blanco
-        )
-        
-        # 3. Añadir el dato (el ID, ej: "E1-ACT-00123")
-        qr.add_data(codigo)
-        qr.make(fit=True)
+        try:
+            # 2. Configuración del QR (Optimizada)
+            # box_size=10 genera una imagen de buen tamaño para impresión sin ser enorme
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_M, # 'M' es mejor balance para lectura/daño
+                box_size=10,
+                border=2, # Borde más fino ahorra espacio
+            )
+            qr.add_data(codigo)
+            qr.make(fit=True)
 
-        # 4. Crear la imagen PNG
-        img = qr.make_image(fill_color="black", back_color="white")
-        
-        # 5. Guardar la imagen en un buffer de memoria (un "archivo falso")
-        buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
-        
-        # 6. Devolver la imagen como una respuesta HTTP
-        # Limpiamos el buffer y devolvemos su contenido
-        buffer.seek(0)
-        return HttpResponse(buffer.getvalue(), content_type="image/png")
+            # 3. Generación de Imagen en Memoria
+            img = qr.make_image(fill_color="black", back_color="white")
+            
+            buffer = io.BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0) # Rebobinar el buffer para lectura
+
+            # 4. Respuesta Optimizada (FileResponse + Caching)
+            response = FileResponse(buffer, content_type="image/png")
+            
+            # HEADER CLAVE: Cachear por 1 año (31536000s). 
+            # El QR de un código específico es inmutable; si el código cambia, la URL cambia.
+            response['Cache-Control'] = 'public, max-age=31536000, immutable'
+            
+            return response
+
+        except Exception as e:
+            # En caso de error en la librería qrcode
+            return HttpResponseBadRequest(f"Error generando QR: {e}")
 
 
 
 
-class ImprimirEtiquetasView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class ImprimirEtiquetasView(BaseEstacionMixin, PermissionRequiredMixin, TemplateView):
     """
-    Muestra una página diseñada para imprimir etiquetas QR
-    para Activos y Lotes.
-    
-    Maneja dos modos:
-    1. Específico: Recibe IDs por GET (ej: ?activos=1,2&lotes=3)
-    2. Masivo: Muestra filtros para seleccionar qué imprimir
+    Vista para imprimir etiquetas QR.
+    Implementa TemplateView, maneja correctamente UUIDs en la URL
+    y separa la lógica de filtrado (Directa vs Masiva).
     """
     template_name = 'gestion_inventario/pages/imprimir_etiquetas.html'
-    login_url = '/acceso/login/'
     permission_required = "gestion_usuarios.accion_gestion_inventario_imprimir_etiquetas_qr"
 
-    def get_context_data(self, request, estacion_id):
-        """Prepara el contexto de la vista (filtros y querysets)"""
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         
-        # --- Obtener IDs de la URL (Modo Específico) ---
-        activos_ids_str = request.GET.get('activos')
-        lotes_ids_str = request.GET.get('lotes')
-        
+        # Detectar modo: ¿Vienen IDs en la URL?
+        activos_ids_str = self.request.GET.get('activos')
+        lotes_ids_str = self.request.GET.get('lotes')
         impresion_directa = bool(activos_ids_str or lotes_ids_str)
-        
-        activos_queryset = Activo.objects.none()
-        lotes_queryset = LoteInsumo.objects.none()
-        
+
         if impresion_directa:
-            # MODO 1: IMPRESIÓN ESPECÍFICA (Post-Recepción o Individual)
-            activos_ids = []
-            if activos_ids_str:
-                activos_ids = [int(id) for id in activos_ids_str.split(',') if id.isdigit()]
-            
-            lotes_ids = []
-            if lotes_ids_str:
-                lotes_ids = [int(id) for id in lotes_ids_str.split(',') if id.isdigit()]
-
-            activos_queryset = Activo.objects.filter(
-                estacion_id=estacion_id,
-                id__in=activos_ids
-            )
-            lotes_queryset = LoteInsumo.objects.filter(
-                compartimento__ubicacion__estacion_id=estacion_id,
-                id__in=lotes_ids
-            )
-            
-            filter_form = None
-
+            context.update(self._get_impresion_directa(activos_ids_str, lotes_ids_str))
         else:
-            # MODO 2: IMPRESIÓN MASIVA (Con Filtros)
-            estacion_obj = Estacion.objects.get(id=estacion_id)
-            filter_form = EtiquetaFilterForm(request.GET, estacion=estacion_obj)
-            
-            # Query base (solo ítems operativos)
-            activos_queryset = Activo.objects.filter(
-                estacion_id=estacion_id
-            ).exclude(estado__nombre__in=['ANULADO POR ERROR', 'DE BAJA', 'EXTRAVIADO'])
-            
-            lotes_queryset = LoteInsumo.objects.filter(
-                compartimento__ubicacion__estacion_id=estacion_id,
-                cantidad__gt=0 # Solo lotes con stock
-            ).exclude(estado__nombre__in=['ANULADO POR ERROR', 'DE BAJA', 'EXTRAVIADO'])
+            context.update(self._get_impresion_masiva())
 
-            # Aplicar filtros
-            if filter_form.is_valid():
-                ubicacion = filter_form.cleaned_data.get('ubicacion')
-                if ubicacion:
-                    activos_queryset = activos_queryset.filter(compartimento__ubicacion=ubicacion)
-                    lotes_queryset = lotes_queryset.filter(compartimento__ubicacion=ubicacion)
+        context['impresion_directa'] = impresion_directa
+        # Calculamos total sumando la longitud de los querysets ya obtenidos
+        context['total_items'] = len(context['activos']) + len(context['lotes'])
+        
+        return context
 
-        # Optimizar querysets
-        activos_queryset = activos_queryset.select_related(
+    def _parse_uuids(self, id_string):
+        """Convierte una cadena separada por comas en una lista de UUIDs válidos."""
+        valid_uuids = []
+        if not id_string:
+            return valid_uuids
+            
+        for item in id_string.split(','):
+            try:
+                # Validamos si es un UUID real
+                uuid_obj = uuid.UUID(item.strip())
+                valid_uuids.append(uuid_obj)
+            except ValueError:
+                continue # Ignoramos basura en la URL
+        return valid_uuids
+
+    def _get_impresion_directa(self, activos_str, lotes_str):
+        """Lógica para MODO 1: Imprimir IDs específicos."""
+        activos_ids = self._parse_uuids(activos_str)
+        lotes_ids = self._parse_uuids(lotes_str)
+
+        activos_qs = Activo.objects.filter(
+            estacion_id=self.estacion_activa_id,
+            id__in=activos_ids
+        ).select_related(
+            'producto__producto_global', 'compartimento__ubicacion'
+        ).order_by('codigo_activo')
+
+        lotes_qs = LoteInsumo.objects.filter(
+            compartimento__ubicacion__estacion_id=self.estacion_activa_id,
+            id__in=lotes_ids
+        ).select_related(
+            'producto__producto_global', 'compartimento__ubicacion'
+        ).order_by('codigo_lote')
+
+        return {
+            'activos': activos_qs,
+            'lotes': lotes_qs,
+            'filter_form': None
+        }
+
+    def _get_impresion_masiva(self):
+        """Lógica para MODO 2: Filtrar stock existente."""
+        # Filtro Base: Solo operativos
+        activos_qs = Activo.objects.filter(
+            estacion_id=self.estacion_activa_id
+        ).exclude(estado__nombre__in=['ANULADO POR ERROR', 'DE BAJA', 'EXTRAVIADO'])
+        
+        lotes_qs = LoteInsumo.objects.filter(
+            compartimento__ubicacion__estacion_id=self.estacion_activa_id,
+            cantidad__gt=0
+        ).exclude(estado__nombre__in=['ANULADO POR ERROR', 'DE BAJA', 'EXTRAVIADO'])
+
+        # Aplicar Filtros de Formulario
+        filter_form = EtiquetaFilterForm(self.request.GET, estacion=self.estacion_activa)
+        
+        if filter_form.is_valid():
+            ubicacion = filter_form.cleaned_data.get('ubicacion')
+            if ubicacion:
+                activos_qs = activos_qs.filter(compartimento__ubicacion=ubicacion)
+                lotes_qs = lotes_qs.filter(compartimento__ubicacion=ubicacion)
+
+        # Optimización final
+        activos_qs = activos_qs.select_related(
             'producto__producto_global', 'compartimento__ubicacion'
         ).order_by('codigo_activo')
         
-        lotes_queryset = lotes_queryset.select_related(
+        lotes_qs = lotes_qs.select_related(
             'producto__producto_global', 'compartimento__ubicacion'
         ).order_by('codigo_lote')
-        
-        return {
-            'activos': activos_queryset,
-            'lotes': lotes_queryset,
-            'filter_form': filter_form,
-            'impresion_directa': impresion_directa,
-            'total_items': len(activos_queryset) + len(lotes_queryset)
-        }
 
-    def get(self, request, *args, **kwargs):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Estación no seleccionada.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        context = self.get_context_data(request, estacion_id)
-        return render(request, self.template_name, context)
+        return {
+            'activos': activos_qs,
+            'lotes': lotes_qs,
+            'filter_form': filter_form
+        }
