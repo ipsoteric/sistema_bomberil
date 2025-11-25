@@ -111,7 +111,7 @@ urlpatterns = [
     # Recepción de stock
     path('recepcion-stock/', RecepcionStockView.as_view(), name='ruta_recepcion_stock'),
     # Añadir Stock a Compartimento
-    path('compartimentos/<uuid:compartimento_id>/añadir-stock/', AgregarStockACompartimentoView.as_view(), name='ruta_agregar_stock_compartimento'),
+    path('compartimentos/<uuid:compartimento_id>/anadir-stock/', AgregarStockACompartimentoView.as_view(), name='ruta_agregar_stock_compartimento'),
 
     # Anular existencia
     path('existencia/<str:tipo_item>/<uuid:item_id>/anular/', AnularExistenciaView.as_view(), name='ruta_anular_existencia'),

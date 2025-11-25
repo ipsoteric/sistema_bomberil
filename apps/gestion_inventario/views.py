@@ -8,8 +8,9 @@ from django.utils import timezone
 from django.db import IntegrityError, transaction
 from django.shortcuts import render, redirect
 from django.views import View
-from django.views.generic import TemplateView, DeleteView, UpdateView, ListView, DetailView, CreateView
-from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
+from django.views.generic import TemplateView, DeleteView, UpdateView, ListView, DetailView, CreateView, FormView
+from django.views.generic.detail import SingleObjectMixin
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect, Http404
 from django.db import models
 from django.db.models import Count, Sum, Q, Subquery, OuterRef, ProtectedError, Value, Case, When, CharField, F
 from django.db.models.functions import Coalesce
@@ -31,7 +32,7 @@ from core.settings import (
 
 from apps.gestion_usuarios.models import Membresia
 from apps.common.mixins import ModuleAccessMixin, EstacionActivaRequiredMixin, BaseEstacionMixin
-from apps.gestion_inventario.mixins import UbicacionMixin
+from .mixins import UbicacionMixin, InventoryStateValidatorMixin
 
 from .models import (
     Estacion, 
@@ -1952,153 +1953,52 @@ class ContactoPersonalizadoEditarView(BaseEstacionMixin, PermissionRequiredMixin
 
 
 
-class StockActualListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class StockActualListView(BaseEstacionMixin, PermissionRequiredMixin, TemplateView):
     """
-    Vista para mostrar, filtrar y buscar en el stock actual
-    de Activos (serializados) y Lotes de Insumo (fungibles).
+    Vista unificada del stock actual (Activos + Lotes).
+    Utiliza TemplateView como orquestador, delegando la complejidad
+    de consultas híbridas, filtrado y ordenamiento en memoria a métodos especializados.
     """
     template_name = 'gestion_inventario/pages/stock_actual.html'
-    login_url = '/acceso/login/' # Ajusta si es necesario
-    paginate_by = 25
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_stock"
+    paginate_by = 25
 
-    def get(self, request, *args, **kwargs):
-        context = {}
-
-        # 1. Obtener la Estación Activa desde la SESIÓN
-        estacion_id = request.session.get("active_estacion_id")
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa. Por favor, seleccione una.")
-            # Redirige a la página principal del inventario (o al portal)
-            return redirect('gestion_inventario:ruta_inicio') 
+        # 1. Captura de parámetros (limpieza)
+        params = self.request.GET
+        self.query = params.get('q', '')
+        self.tipo_producto = params.get('tipo', '')
+        self.ubicacion_id = params.get('ubicacion', '')
+        self.estado_id = params.get('estado', '')
+        self.fecha_desde = params.get('fecha_desde', '')
+        self.fecha_hasta = params.get('fecha_hasta', '')
+        self.sort_by = params.get('sort', 'vencimiento_asc')
 
-        try:
-            # Obtenemos el objeto Estacion basado en el ID de la sesión
-            estacion_usuario = Estacion.objects.get(id=estacion_id)
-        except Estacion.DoesNotExist:
-            messages.error(request, "La estación activa seleccionada no es válida o fue eliminada.")
-            request.session["active_estacion_id"] = None # Limpiamos la sesión
-            return redirect('gestion_inventario:ruta_inicio')
-        
-
-        # 2. Obtener parámetros de filtro de la URL (GET)
-        query = request.GET.get('q', '')
-        tipo_producto = request.GET.get('tipo', '')
-        ubicacion_id = request.GET.get('ubicacion', '')
-        estado_id = request.GET.get('estado', '')
-        fecha_desde = request.GET.get('fecha_desde', '')
-        fecha_hasta = request.GET.get('fecha_hasta', '')
-        sort_by = request.GET.get('sort', 'vencimiento_asc')
-
+        # 2. Configuración de fechas para annotations
         today = timezone.now().date()
         warning_date = today + datetime.timedelta(days=90)
-
-        # 3. Obtener querysets base, filtrados por la ESTACIÓN ACTIVA
-        # Añadir anotaciones de vencimiento
-        activos_qs = Activo.objects.filter(estacion=estacion_usuario).select_related(
-            'producto__producto_global', 'compartimento__ubicacion', 'estado'
-        ).annotate(
-            vencimiento_final=Coalesce('fecha_expiracion', 'fin_vida_util_calculada'),
-            estado_vencimiento=Case(
-                When(vencimiento_final__isnull=True, then=Value('no_aplica')),
-                When(vencimiento_final__lt=today, then=Value('vencido')),
-                When(vencimiento_final__lt=warning_date, then=Value('proximo')),
-                default=Value('ok'),
-                output_field=CharField()
-            )
-        )
         
-        lotes_qs = LoteInsumo.objects.filter(producto__estacion=estacion_usuario).select_related(
-            'producto__producto_global', 'compartimento__ubicacion'
-        ).annotate(
-            estado_vencimiento=Case(
-                When(fecha_expiracion__isnull=True, then=Value('no_aplica')),
-                When(fecha_expiracion__lt=today, then=Value('vencido')),
-                When(fecha_expiracion__lt=warning_date, then=Value('proximo')),
-                default=Value('ok'),
-                output_field=CharField()
-            )
+        self.vencimiento_annotation = Case(
+            When(vencimiento_final__isnull=True, then=Value('no_aplica')),
+            When(vencimiento_final__lt=today, then=Value('vencido')),
+            When(vencimiento_final__lt=warning_date, then=Value('proximo')),
+            default=Value('ok'),
+            output_field=CharField()
         )
 
-        # 4. Aplicar filtros de búsqueda (query 'q')
-        if query:
-            search_query_base = (
-                Q(producto__producto_global__nombre_oficial__icontains=query) |
-                Q(producto__sku__icontains=query) |
-                Q(producto__producto_global__marca__nombre__icontains=query) |
-                Q(producto__producto_global__modelo__icontains=query)
-            )
-            activos_qs = activos_qs.filter(
-                search_query_base | 
-                Q(codigo_activo__icontains=query) | 
-                Q(numero_serie_fabricante__icontains=query)
-            )
-            lotes_qs = lotes_qs.filter(
-                search_query_base | 
-                Q(numero_lote_fabricante__icontains=query)
-            )
+        # 3. Obtención de QuerySets
+        activos_qs = self._get_activos_queryset()
+        lotes_qs = self._get_lotes_queryset()
 
-        if fecha_desde:
-            activos_qs = activos_qs.filter(fecha_recepcion__gte=fecha_desde)
-            lotes_qs = lotes_qs.filter(fecha_recepcion__gte=fecha_desde)
-        if fecha_hasta:
-            activos_qs = activos_qs.filter(fecha_recepcion__lte=fecha_hasta)
-            lotes_qs = lotes_qs.filter(fecha_recepcion__lte=fecha_hasta)
+        # 4. Combinación y Ordenamiento (Strategy)
+        stock_list = self._combinar_y_ordenar(activos_qs, lotes_qs)
 
-        # 5. Aplicar filtro de Estado (SOLO APLICA A Activo)
-        if estado_id:
-            activos_qs = activos_qs.filter(estado__id=estado_id)
-            if tipo_producto != 'activo':
-                lotes_qs = lotes_qs.none()
-
-        # 6. Aplicar filtro de Ubicación
-        if ubicacion_id:
-            activos_qs = activos_qs.filter(compartimento__ubicacion__id=ubicacion_id)
-            lotes_qs = lotes_qs.filter(compartimento__ubicacion__id=ubicacion_id)
+        # 5. Paginación Manual (Necesaria porque es una lista, no un queryset)
+        paginator = Paginator(stock_list, self.paginate_by)
+        page_number = params.get('page')
         
-        # 7. Combinar listas según el filtro 'tipo'
-        stock_items_list = []
-        if tipo_producto == 'activo':
-            stock_items_list = list(activos_qs)
-        elif tipo_producto == 'insumo':
-            stock_items_list = list(lotes_qs)
-        else:
-            stock_items_list = list(chain(activos_qs, lotes_qs))
-
-        # 8. Ordenar la lista combinada
-        # Helper para obtener la clave de ordenamiento correcta
-        def get_sort_key(item, sort_field):
-            if sort_field == 'vencimiento':
-                if hasattr(item, 'vencimiento_final'): # Es un Activo
-                    return item.vencimiento_final
-                elif hasattr(item, 'fecha_expiracion'): # Es un Lote
-                    return item.fecha_expiracion
-            elif sort_field == 'fecha':
-                return getattr(item, 'fecha_recepcion', None)
-            elif sort_field == 'nombre':
-                return getattr(item.producto.producto_global, 'nombre_oficial', '')
-            return None
-        
-        reverse_sort = sort_by.endswith('_desc') 
-        sort_field = sort_by.replace('_desc', '').replace('_asc', '')
-
-        if sort_field == 'vencimiento':
-            # Para vencimiento ASC, los Nones (no vencen) van al final
-            default_date = datetime.date.max
-            stock_items_list.sort(key=lambda x: get_sort_key(x, 'vencimiento') or default_date, reverse=reverse_sort)
-        
-        elif sort_field == 'fecha':
-            # Para fecha DESC (default original), los Nones van al final
-            default_date = datetime.date.min if reverse_sort else datetime.date.max 
-            stock_items_list.sort(key=lambda x: get_sort_key(x, 'fecha') or default_date, reverse=reverse_sort)
-        
-        elif sort_field == 'nombre':
-            stock_items_list.sort(key=lambda x: get_sort_key(x, 'nombre'), reverse=reverse_sort)
-
-        # 9. Paginación
-        paginator = Paginator(stock_items_list, self.paginate_by)
-        page_number = request.GET.get('page')
         try:
             page_obj = paginator.page(page_number)
         except PageNotAnInteger:
@@ -2106,297 +2006,410 @@ class StockActualListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequi
         except EmptyPage:
             page_obj = paginator.page(paginator.num_pages)
 
-        # 10. Preparar contexto para la plantilla
-        context = {
+        # 6. Contexto Final
+        context.update({
             'page_obj': page_obj,
-            'stock_items': page_obj.object_list, # Esta es la lista que itera tu plantilla
-            'todas_las_ubicaciones': Ubicacion.objects.filter(estacion=estacion_usuario),
+            'stock_items': page_obj.object_list,
+            'todas_las_ubicaciones': Ubicacion.objects.filter(estacion=self.estacion_activa),
             'todos_los_estados': Estado.objects.all(),
-            'current_q': query,
-            'current_tipo': tipo_producto,
-            'current_ubicacion': ubicacion_id,
-            'current_estado': estado_id,
-            'current_fecha_desde': fecha_desde,
-            'current_fecha_hasta': fecha_hasta,
-            'current_sort': sort_by,
-        }
+            # Mantener estado de filtros en UI
+            'current_q': self.query,
+            'current_tipo': self.tipo_producto,
+            'current_ubicacion': self.ubicacion_id,
+            'current_estado': self.estado_id,
+            'current_fecha_desde': self.fecha_desde,
+            'current_fecha_hasta': self.fecha_hasta,
+            'current_sort': self.sort_by,
+        })
+        return context
+
+    def _get_activos_queryset(self):
+        """Construye y filtra el queryset de Activos."""
+        if self.tipo_producto == 'insumo':
+            return Activo.objects.none()
+
+        qs = Activo.objects.filter(estacion=self.estacion_activa).select_related(
+            'producto__producto_global', 'compartimento__ubicacion', 'estado'
+        ).annotate(
+            vencimiento_final=Coalesce('fecha_expiracion', 'fin_vida_util_calculada'),
+            estado_vencimiento=self.vencimiento_annotation
+        )
+
+        # Filtro específico de Activos (búsqueda)
+        if self.query:
+            qs = qs.filter(
+                self._get_base_search_q() | 
+                Q(codigo_activo__icontains=self.query) | 
+                Q(numero_serie_fabricante__icontains=self.query)
+            )
         
-        return render(request, self.template_name, context)
+        # Filtro específico de Activos (Estado)
+        if self.estado_id:
+            qs = qs.filter(estado__id=self.estado_id)
+
+        return self._aplicar_filtros_comunes(qs)
+
+    def _get_lotes_queryset(self):
+        """Construye y filtra el queryset de Lotes."""
+        if self.tipo_producto == 'activo':
+            return LoteInsumo.objects.none()
+            
+        # Si hay filtro de estado específico (que no sea operativo/disponible), 
+        # los lotes suelen filtrarse diferente o excluirse si no aplica.
+        # Asumiremos la lógica original: si hay estado_id y no es activo, lotes vacíos
+        if self.estado_id and self.tipo_producto != 'activo':
+             # Aquí mantengo tu lógica original: el filtro de estado parecía solo para activos
+             # Si quisieras filtrar lotes por estado, lo añadirías aquí.
+             # Por ahora, retornamos vacío para ser fiel a tu código previo si hay estado_id
+             return LoteInsumo.objects.none()
+
+        qs = LoteInsumo.objects.filter(producto__estacion=self.estacion_activa).select_related(
+            'producto__producto_global', 'compartimento__ubicacion'
+        ).annotate(
+            # Alias para unificar nombre de campo con Activo
+            vencimiento_final=F('fecha_expiracion'), 
+            estado_vencimiento=Case(
+                When(fecha_expiracion__isnull=True, then=Value('no_aplica')),
+                When(fecha_expiracion__lt=timezone.now().date(), then=Value('vencido')),
+                # ... repetimos lógica o la ajustamos si es idéntica
+                default=Value('ok'),
+                output_field=CharField()
+            )
+        )
+
+        if self.query:
+            qs = qs.filter(
+                self._get_base_search_q() | 
+                Q(numero_lote_fabricante__icontains=self.query)
+            )
+
+        return self._aplicar_filtros_comunes(qs)
+
+    def _get_base_search_q(self):
+        """Retorna el objeto Q base para búsqueda en ProductoGlobal (común)."""
+        return (
+            Q(producto__producto_global__nombre_oficial__icontains=self.query) |
+            Q(producto__sku__icontains=self.query) |
+            Q(producto__producto_global__marca__nombre__icontains=self.query) |
+            Q(producto__producto_global__modelo__icontains=self.query)
+        )
+
+    def _aplicar_filtros_comunes(self, qs):
+        """Aplica filtros compartidos (Ubicación, Fechas)."""
+        if self.ubicacion_id:
+            qs = qs.filter(compartimento__ubicacion__id=self.ubicacion_id)
+        
+        if self.fecha_desde:
+            qs = qs.filter(fecha_recepcion__gte=self.fecha_desde)
+        
+        if self.fecha_hasta:
+            qs = qs.filter(fecha_recepcion__lte=self.fecha_hasta)
+            
+        return qs
+
+    def _combinar_y_ordenar(self, activos, lotes):
+        """Combina querysets y aplica ordenamiento en memoria (Python)."""
+        full_list = list(chain(activos, lotes))
+        
+        reverse = self.sort_by.endswith('_desc')
+        key_name = self.sort_by.replace('_desc', '').replace('_asc', '')
+
+        # Funciones lambda para manejo seguro de None en ordenamiento
+        sort_strategies = {
+            'vencimiento': lambda x: getattr(x, 'vencimiento_final', datetime.date.max) or datetime.date.max,
+            'fecha': lambda x: getattr(x, 'fecha_recepcion', datetime.date.min) or datetime.date.min,
+            'nombre': lambda x: getattr(x.producto.producto_global, 'nombre_oficial', ''),
+        }
+
+        strategy = sort_strategies.get(key_name)
+        if strategy:
+            full_list.sort(key=strategy, reverse=reverse)
+            
+        return full_list
 
 
 
 
-class RecepcionStockView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class RecepcionStockView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista transaccional compleja para recepción de stock.
+    Descompone la lógica monolítica en métodos de servicio privados,
+    maneja formsets dinámicos y encapsula la creación polimórfica (Activo/Lote).
+    """
     template_name = 'gestion_inventario/pages/recepcion_stock.html'
-    login_url = '/acceso/login/'
     permission_required = "gestion_usuarios.accion_gestion_inventario_recepcionar_stock"
 
     def get(self, request, *args, **kwargs):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Seleccione una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
+        cabecera_form = RecepcionCabeceraForm(estacion=self.estacion_activa)
+        detalle_formset = RecepcionDetalleFormSet(
+            form_kwargs={'estacion': self.estacion_activa}, 
+            prefix='detalles'
+        )
         
-        try:
-            estacion = Estacion.objects.get(id=estacion_id)
-        except Estacion.DoesNotExist:
-            messages.error(request, "Estación no válida.")
-            return redirect('gestion_inventario:ruta_inicio')
-
-        cabecera_form = RecepcionCabeceraForm(estacion=estacion)
-        # Pasamos la estación al formset para que filtre los selects
-        detalle_formset = RecepcionDetalleFormSet(form_kwargs={'estacion': estacion}, prefix='detalles')
-
-        # --- MEJORA: Crear el JSON con los datos del producto ---
-        # (Esto es necesario para tu requisito de 'es_expirable')
-        productos = Producto.objects.filter(estacion=estacion)
-        product_data = {}
-        for producto in productos:
-            product_data[producto.id] = {
-                'es_serializado': producto.es_serializado,
-                'es_expirable': producto.es_expirable
-            }
-        # -----------------------------------------------------
-
         context = {
             'cabecera_form': cabecera_form,
             'detalle_formset': detalle_formset,
-            'product_data_json': json.dumps(product_data)
+            'product_data_json': self._get_product_data_json()
         }
         return render(request, self.template_name, context)
 
-
     def post(self, request, *args, **kwargs):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Seleccione una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        try:
-            estacion = Estacion.objects.get(id=estacion_id)
-        except Estacion.DoesNotExist:
-             messages.error(request, "Estación no válida.")
-             return redirect('gestion_inventario:ruta_inicio')
-
-        cabecera_form = RecepcionCabeceraForm(request.POST, estacion=estacion)
-        detalle_formset = RecepcionDetalleFormSet(request.POST, form_kwargs={'estacion': estacion}, prefix='detalles')
+        cabecera_form = RecepcionCabeceraForm(request.POST, estacion=self.estacion_activa)
+        detalle_formset = RecepcionDetalleFormSet(
+            request.POST, 
+            form_kwargs={'estacion': self.estacion_activa}, 
+            prefix='detalles'
+        )
 
         if cabecera_form.is_valid() and detalle_formset.is_valid():
             try:
-                # Obtener estado DISPONIBLE
-                estado_disponible_id = Estado.objects.get(nombre='DISPONIBLE', tipo_estado__nombre='OPERATIVO').id
-                nuevos_activos_ids = []
-                nuevos_lotes_ids = []
-
-                # Usamos una transacción para asegurar que todo se guarde o nada
-                with transaction.atomic():
-                    proveedor = cabecera_form.cleaned_data['proveedor']
-                    fecha_recepcion = cabecera_form.cleaned_data['fecha_recepcion']
-                    notas_cabecera = cabecera_form.cleaned_data['notas']
-
-                    for form in detalle_formset:
-                        if form.cleaned_data and not form.cleaned_data.get('DELETE'):
-                            producto = form.cleaned_data['producto']
-                            compartimento = form.cleaned_data['compartimento_destino']
-                            costo = form.cleaned_data.get('costo_unitario') # Opcional
-
-                            # Actualizar costo en ProductoLocal si se ingresó uno nuevo
-                            if costo is not None and producto.costo_compra != costo:
-                                producto.costo_compra = costo
-                                producto.save(update_fields=['costo_compra'])
-
-                            if producto.es_serializado:
-                                # Crear un Activo
-                                activo = Activo.objects.create(
-                                    producto=producto,
-                                    estacion=estacion,
-                                    compartimento=compartimento,
-                                    proveedor=proveedor, # Proveedor de la cabecera
-                                    estado_id=estado_disponible_id,
-                                    # codigo_activo=form.cleaned_data.get('codigo_activo'),
-                                    numero_serie_fabricante=form.cleaned_data.get('numero_serie'),
-                                    fecha_fabricacion=form.cleaned_data.get('fecha_fabricacion'),
-                                    fecha_recepcion=fecha_recepcion, # Usamos fecha recepción como puesta en servicio inicial
-                                    # fecha_expiracion=form.cleaned_data.get('fecha_expiracion_activo') # Si tuvieras expira en Activo
-                                )
-                                # Registrar Movimiento para el Activo
-                                MovimientoInventario.objects.create(
-                                    tipo_movimiento=TipoMovimiento.ENTRADA,
-                                    usuario=request.user,
-                                    estacion=estacion,
-                                    proveedor_origen=proveedor,
-                                    compartimento_destino=compartimento,
-                                    activo=activo,
-                                    cantidad_movida=1, # Siempre 1 para activos
-                                    notas=notas_cabecera
-                                )
-                                nuevos_activos_ids.append(activo.id) # <-- Capturar ID
-                            else:
-                                # Crear o actualizar un LoteInsumo
-                                # Aquí podrías buscar un lote existente con mismas características 
-                                # (producto, compartimento, lote, vencimiento) y sumar cantidad,
-                                # o crear siempre uno nuevo. Crearemos uno nuevo por simplicidad.
-                                cantidad = form.cleaned_data['cantidad']
-                                lote = LoteInsumo.objects.create(
-                                    producto=producto,
-                                    compartimento=compartimento,
-                                    cantidad=cantidad,
-                                    numero_lote_fabricante=form.cleaned_data.get('numero_lote'),
-                                    fecha_expiracion=form.cleaned_data.get('fecha_vencimiento'),
-                                    fecha_recepcion=fecha_recepcion
-                                )
-                                # Registrar Movimiento para el Lote
-                                MovimientoInventario.objects.create(
-                                    tipo_movimiento=TipoMovimiento.ENTRADA,
-                                    usuario=request.user,
-                                    estacion=estacion,
-                                    proveedor_origen=proveedor,
-                                    compartimento_destino=compartimento,
-                                    lote_insumo=lote,
-                                    cantidad_movida=cantidad,
-                                    notas=notas_cabecera
-                                )
-                                nuevos_lotes_ids.append(lote.id) # <-- Capturar ID
-                                
-                messages.success(request, "Recepción de stock guardada correctamente.")
-                
-                # --- LÓGICA DE REDIRECCIÓN ---
-                if nuevos_activos_ids or nuevos_lotes_ids:
-                    # Si se crearon ítems, redirigir a la vista de impresión
-                    query_params = []
-                    if nuevos_activos_ids:
-                        query_params.append(f"activos={','.join(map(str, nuevos_activos_ids))}")
-                    if nuevos_lotes_ids:
-                        query_params.append(f"lotes={','.join(map(str, nuevos_lotes_ids))}")
-                    
-                    return redirect(f"{reverse('gestion_inventario:ruta_imprimir_etiquetas')}?{'&'.join(query_params)}")
-                else:
-                    # Si no se creó nada (ej. solo forms borrados), ir al stock
-                    return redirect('gestion_inventario:ruta_stock_actual')
-                
+                # Delegamos la lógica transaccional a un método dedicado
+                redirect_url = self._procesar_recepcion(cabecera_form, detalle_formset)
+                return HttpResponseRedirect(redirect_url)
 
             except Exception as e:
-                # Si algo falla dentro de la transacción, se revierte todo
-                messages.error(request, f"Error al guardar la recepción: {e}")
-
+                messages.error(request, f"Error crítico al guardar la recepción: {e}")
+                # Fallthrough para renderizar el formulario con el error
         else:
-            # Si los formularios no son válidos, renderizar de nuevo con errores
             messages.warning(request, "Por favor, corrija los errores en el formulario.")
-        
+
         context = {
             'cabecera_form': cabecera_form,
             'detalle_formset': detalle_formset,
-            'product_data_json': self.get(request).context_data['product_data_json']
+            'product_data_json': self._get_product_data_json()
         }
         return render(request, self.template_name, context)
 
-
-
-
-class AgregarStockACompartimentoView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    """
-    Vista para añadir stock (Activos o Lotes) directamente
-    a un compartimento específico.
-    """
-    template_name = 'gestion_inventario/pages/agregar_stock_compartimento.html'
-    login_url = '/acceso/login/'
-    permission_required = "gestion_usuarios.accion_gestion_inventario_recepcionar_stock"
-    model = Compartimento
-
-    def get_context_data(self, request, compartimento_id, **kwargs):
-        """Helper para construir el contexto básico."""
-        estacion_id = request.session.get('active_estacion_id')
+    @transaction.atomic
+    def _procesar_recepcion(self, cabecera_form, detalle_formset):
+        """
+        Método transaccional que orquesta la creación de Activos/Lotes y Movimientos.
+        Retorna la URL de redirección final.
+        """
+        proveedor = cabecera_form.cleaned_data['proveedor']
+        fecha_recepcion = cabecera_form.cleaned_data['fecha_recepcion']
+        notas = cabecera_form.cleaned_data['notas']
         
-        compartimento = get_object_or_404(
-            Compartimento.objects.select_related('ubicacion'),
-            id=compartimento_id,
-            ubicacion__estacion_id=estacion_id
+        # Obtener estado UNA SOLA VEZ para toda la transacción
+        estado_disponible = Estado.objects.get(nombre='DISPONIBLE', tipo_estado__nombre='OPERATIVO')
+
+        nuevos_ids = {'activos': [], 'lotes': []}
+
+        for form in detalle_formset:
+            if not form.cleaned_data or form.cleaned_data.get('DELETE'):
+                continue
+
+            data = form.cleaned_data
+            producto = data['producto']
+            
+            # Actualización de costos (Side-effect intencional)
+            costo = data.get('costo_unitario')
+            if costo is not None and producto.costo_compra != costo:
+                producto.costo_compra = costo
+                producto.save(update_fields=['costo_compra'])
+
+            # Dispatch polimórfico
+            if producto.es_serializado:
+                item_id = self._crear_activo(data, proveedor, fecha_recepcion, notas, estado_disponible)
+                nuevos_ids['activos'].append(item_id)
+            else:
+                item_id = self._crear_lote(data, proveedor, fecha_recepcion, notas, estado_disponible)
+                nuevos_ids['lotes'].append(item_id)
+
+        messages.success(self.request, "Recepción de stock guardada correctamente.")
+        return self._construir_url_redireccion(nuevos_ids)
+
+    def _crear_activo(self, data, proveedor, fecha, notas, estado):
+        """Helper para crear un Activo y su movimiento."""
+        activo = Activo.objects.create(
+            producto=data['producto'],
+            estacion=self.estacion_activa,
+            compartimento=data['compartimento_destino'],
+            proveedor=proveedor,
+            estado=estado,
+            numero_serie_fabricante=data.get('numero_serie'),
+            fecha_fabricacion=data.get('fecha_fabricacion'),
+            fecha_recepcion=fecha
+        )
+        
+        MovimientoInventario.objects.create(
+            tipo_movimiento=TipoMovimiento.ENTRADA,
+            usuario=self.request.user,
+            estacion=self.estacion_activa,
+            proveedor_origen=proveedor,
+            compartimento_destino=data['compartimento_destino'],
+            activo=activo,
+            cantidad_movida=1,
+            notas=notas
+        )
+        return activo.id
+
+    def _crear_lote(self, data, proveedor, fecha, notas, estado):
+        """Helper para crear un Lote y su movimiento."""
+        lote = LoteInsumo.objects.create(
+            producto=data['producto'],
+            compartimento=data['compartimento_destino'],
+            cantidad=data['cantidad'],
+            numero_lote_fabricante=data.get('numero_lote'),
+            fecha_expiracion=data.get('fecha_vencimiento'),
+            fecha_recepcion=fecha,
+            estado=estado
         )
 
-        context = {
-            'compartimento': compartimento,
-            'activo_form': kwargs.get(
-                'activo_form', 
-                ActivoSimpleCreateForm(
-                    initial={'compartimento': compartimento}, 
-                    estacion_id=estacion_id
-                )
-            ),
-            'lote_form': kwargs.get(
-                'lote_form', 
-                LoteInsumoSimpleCreateForm(
-                    initial={'compartimento': compartimento}, 
-                    estacion_id=estacion_id
-                )
-            )
-        }
-        return context
+        MovimientoInventario.objects.create(
+            tipo_movimiento=TipoMovimiento.ENTRADA,
+            usuario=self.request.user,
+            estacion=self.estacion_activa,
+            proveedor_origen=proveedor,
+            compartimento_destino=data['compartimento_destino'],
+            lote_insumo=lote,
+            cantidad_movida=data['cantidad'],
+            notas=notas
+        )
+        return lote.id
+
+    def _construir_url_redireccion(self, ids_dict):
+        """Construye la URL final (Impresión o Stock) según resultados."""
+        if not ids_dict['activos'] and not ids_dict['lotes']:
+             return reverse('gestion_inventario:ruta_stock_actual')
+
+        base_url = reverse('gestion_inventario:ruta_imprimir_etiquetas')
+        params = []
+        if ids_dict['activos']:
+            params.append(f"activos={','.join(map(str, ids_dict['activos']))}")
+        if ids_dict['lotes']:
+            params.append(f"lotes={','.join(map(str, ids_dict['lotes']))}")
+        
+        return f"{base_url}?{'&'.join(params)}"
+
+    def _get_product_data_json(self):
+        """
+        Método auxiliar para obtener los datos del producto.
+        Reutilizable en GET y POST sin causar errores de recursión.
+        """
+        # Optimizamos usando .values() para no instanciar objetos pesados
+        productos = Producto.objects.filter(estacion=self.estacion_activa).values(
+            'id', 'es_serializado', 'es_expirable'
+        )
+        # Convertimos a diccionario {id: data}
+        data = {p['id']: {'es_serializado': p['es_serializado'], 'es_expirable': p['es_expirable']} for p in productos}
+        return json.dumps(data)
+
+
+
+
+class AgregarStockACompartimentoView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para ingreso rápido de stock en compartimento.
+    Gestiona transacciones atómicas, cumple reglas de negocio
+    (creación de movimientos) y maneja estados de UI (tabs) ante errores.
+    """
+    template_name = 'gestion_inventario/pages/agregar_stock_compartimento.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_recepcionar_stock"
+
+    def get_compartimento(self, compartimento_id):
+        return get_object_or_404(
+            Compartimento.objects.select_related('ubicacion'),
+            id=compartimento_id,
+            ubicacion__estacion_id=self.estacion_activa_id
+        )
 
     def get(self, request, compartimento_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        context = self.get_context_data(request, compartimento_id)
+        context = {
+            'compartimento': self.get_compartimento(compartimento_id),
+            'activo_form': ActivoSimpleCreateForm(estacion_id=self.estacion_activa_id),
+            'lote_form': LoteInsumoSimpleCreateForm(estacion_id=self.estacion_activa_id),
+            'active_tab': 'activo'
+        }
         return render(request, self.template_name, context)
 
     def post(self, request, compartimento_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        # Identificamos qué formulario se envió
+        compartimento = self.get_compartimento(compartimento_id)
         action = request.POST.get('action')
+
+        data = request.POST.copy()
+        data['compartimento'] = compartimento.id
         
-        # Pasamos el 'estacion_id' al constructor del form
-        activo_form = ActivoSimpleCreateForm(request.POST, estacion_id=estacion_id)
-        lote_form = LoteInsumoSimpleCreateForm(request.POST, estacion_id=estacion_id)
+        # Ahora inicializamos los forms con 'data' (que ya trae el ID del compartimento)
+        activo_form = ActivoSimpleCreateForm(data, estacion_id=self.estacion_activa_id)
+        lote_form = LoteInsumoSimpleCreateForm(data, estacion_id=self.estacion_activa_id)
+
+        try:
+            if action == 'add_activo':
+                if activo_form.is_valid():
+                    self._procesar_activo(activo_form, compartimento)
+                    return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento.id)
+                else:
+                    messages.error(request, f"Error al crear Activo: {activo_form.errors}")
+                    active_tab = 'activo'
+
+            elif action == 'add_insumo':
+                if lote_form.is_valid():
+                    self._procesar_lote(lote_form, compartimento)
+                    return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento.id)
+                else:
+                    messages.error(request, f"Error al crear Lote: {lote_form.errors}")
+                    active_tab = 'insumo'
+            else:
+                messages.error(request, "Acción desconocida.")
+                active_tab = 'activo'
+
+        except Exception as e:
+            messages.error(request, f"Error al guardar: {e}")
+            active_tab = 'activo' if action == 'add_activo' else 'insumo'
+
+        # Renderizar con errores
+        context = {
+            'compartimento': compartimento,
+            'activo_form': activo_form,
+            'lote_form': lote_form,
+            'active_tab': active_tab
+        }
+        return render(request, self.template_name, context)
+
+    @transaction.atomic
+    def _procesar_activo(self, form, compartimento):
+        # 1. Crear Activo (Sin asignar código manual)
+        activo = form.save(commit=False)
+        activo.estacion = self.estacion_activa
+        activo.compartimento = compartimento
+        activo.estado = Estado.objects.get(nombre='DISPONIBLE')
         
-        if action == 'add_activo':
-            if activo_form.is_valid():
+        # OJO: No tocamos activo.codigo_activo. 
+        # Al ser nuevo, el modelo lo generará en el save().
+        activo.save()
 
-                try:
-                    # Buscamos el estado 'DISPONIBLE' (ID 1 según tu SQL)
-                    estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
-                except Estado.DoesNotExist:
-                    # Error crítico si el estado no existe en la BD
-                    messages.error(request, "Error crítico: No se encontró el estado 'DISPONIBLE'. Contacte al administrador.")
-                    context = self.get_context_data(request, compartimento_id, activo_form=activo_form)
-                    context['active_tab'] = 'activo'
-                    return render(request, self.template_name, context)
-                
-                # Hacemos commit=False para añadir la estación
-                activo = activo_form.save(commit=False)
-                # El modelo Activo REQUIERE una estacion_id
-                activo.estacion_id = estacion_id 
-                activo.estado = estado_disponible
-                activo.save()
-                
-                messages.success(request, f"Activo '{activo.producto.producto_global.nombre_oficial}' añadido correctamente.")
-                return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento_id)
-            else:
-                messages.error(request, "Error al añadir el Activo. Revisa los campos.")
-                context = self.get_context_data(request, compartimento_id, activo_form=activo_form)
-                context['active_tab'] = 'activo' # Para reabrir la pestaña correcta
-                return render(request, self.template_name, context)
+        # 2. Crear Movimiento
+        MovimientoInventario.objects.create(
+            tipo_movimiento=TipoMovimiento.ENTRADA,
+            usuario=self.request.user,
+            estacion=self.estacion_activa,
+            compartimento_destino=compartimento,
+            activo=activo,
+            cantidad_movida=1,
+            notas="Ingreso rápido directo."
+        )
+        messages.success(self.request, f"Activo '{activo.producto.producto_global.nombre_oficial}' añadido.")
 
-        elif action == 'add_insumo':
-            if lote_form.is_valid():
-                # El modelo LoteInsumo no tiene 'estacion_id', se guarda directo
-                lote = lote_form.save()
-                messages.success(request, f"Lote de '{lote.producto.producto_global.nombre_oficial}' (x{lote.cantidad}) añadido correctamente.")
-                return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento_id)
-            else:
-                messages.error(request, "Error al añadir el Lote. Revisa los campos.")
-                context = self.get_context_data(request, compartimento_id, lote_form=lote_form)
-                context['active_tab'] = 'insumo' # Para reabrir la pestaña correcta
-                return render(request, self.template_name, context)
+    @transaction.atomic
+    def _procesar_lote(self, form, compartimento):
+        # 1. Crear Lote
+        lote = form.save(commit=False)
+        lote.compartimento = compartimento
+        lote.estado = Estado.objects.get(nombre='DISPONIBLE')
+        lote.save()
 
-        # Si 'action' no es válido, redirigir
-        return redirect('gestion_inventario:ruta_detalle_compartimento', compartimento_id=compartimento_id)
-
+        # 2. Crear Movimiento
+        MovimientoInventario.objects.create(
+            tipo_movimiento=TipoMovimiento.ENTRADA,
+            usuario=self.request.user,
+            estacion=self.estacion_activa,
+            compartimento_destino=compartimento,
+            lote_insumo=lote,
+            cantidad_movida=lote.cantidad,
+            notas=f"Ingreso rápido lote: {lote.numero_lote_fabricante or 'S/N'}"
+        )
+        messages.success(self.request, f"Lote añadido: {lote.cantidad} u.")
 
 
 
@@ -2433,332 +2446,346 @@ def get_or_create_anulado_compartment(estacion: Estacion) -> Compartimento:
 
 
 
-class AnularExistenciaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, View):
     """
-    Vista para anular un registro de existencia (Activo o LoteInsumo)
-    que fue ingresado por error.
+    Vista para anular una existencia (Activo/Lote) por error de ingreso.
+    Nivel Senior: Gestión polimórfica de items, transacciones atómicas y
+    uso de Mixins para contexto de seguridad.
     """
     template_name = 'gestion_inventario/pages/anular_existencia.html'
-    login_url = '/acceso/login/'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock"
 
-    def _get_item_and_check_permission(self, estacion_id, tipo_item, item_id):
+
+    def dispatch(self, request, *args, **kwargs):
         """
-        Función helper para obtener el Activo o Lote y verificar pertenencia.
+        Pre-chequeo:
+        1. Verifica estación.
+        2. Carga el ítem.
+        3. Valida reglas de negocio (Estado).
         """
-        item = None
+        # 1. Obtener ID de estación de la sesión (Raw) para evitar error MRO
+        estacion_id = request.session.get('active_estacion_id')
+        
+        # Si no hay estación, dejamos pasar al super().dispatch, el BaseEstacionMixin
+        # se encargará de rechazar y redirigir.
+        if estacion_id:
+            tipo_item = kwargs.get('tipo_item')
+            item_id = kwargs.get('item_id')
+            
+            # 2. Cargar el ítem (usando el helper adaptado)
+            self.item = self._get_item(tipo_item, item_id, estacion_id)
+            
+            if not self.item:
+                messages.error(request, "El ítem solicitado no existe en tu estación.")
+                return redirect('gestion_inventario:ruta_stock_actual')
+
+            # 3. Validar Estado (Regla de Negocio)
+            # Solo se puede anular si está 'DISPONIBLE' (nuevo/limpio).
+            if not self.validate_state(self.item, ['DISPONIBLE']):
+                return redirect('gestion_inventario:ruta_stock_actual')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def _get_item(self, tipo_item, item_id, estacion_id):
+        """Recupera el Activo o Lote filtrando por la estación proporcionada."""
         if tipo_item == 'activo':
-            item = get_object_or_404(
-                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
+            return get_object_or_404(
+                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
                 id=item_id, 
                 estacion_id=estacion_id
             )
         elif tipo_item == 'lote':
-            item = get_object_or_404(
-                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
+            return get_object_or_404(
+                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
                 id=item_id, 
                 compartimento__ubicacion__estacion_id=estacion_id
             )
-        return item
+        return None
 
-    def get(self, request, tipo_item, item_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-
-        item = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
-        if not item:
-            messages.error(request, "El tipo de ítem especificado no es válido.")
-            return redirect('gestion_inventario:ruta_stock_actual')
-        
-        if item.estado.nombre == 'ANULADO POR ERROR':
-            messages.warning(request, "Esta existencia ya se encuentra anulada.")
-            return redirect('gestion_inventario:ruta_stock_actual')
-
+    def get(self, request, *args, **kwargs):
+        # self.item ya fue cargado y validado en dispatch
         context = {
-            'item': item,
-            'tipo_item': tipo_item
+            'item': self.item,
+            'tipo_item': kwargs.get('tipo_item')
         }
         return render(request, self.template_name, context)
 
-    def post(self, request, tipo_item, item_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
+    def post(self, request, *args, **kwargs):
+        # self.item ya fue cargado y validado en dispatch
         
         try:
-            estacion_obj = Estacion.objects.get(id=estacion_id)
-        except Estacion.DoesNotExist:
-            messages.error(request, "Estación activa no encontrada.")
-            return redirect('gestion_inventario:ruta_inicio')
-
-        item = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
-        if not item:
-            messages.error(request, "El tipo de ítem especificado no es válido.")
-            return redirect('gestion_inventario:ruta_stock_actual')
-
-        try:
-            # Obtenemos los objetos necesarios para la anulación
             estado_anulado = Estado.objects.get(nombre='ANULADO POR ERROR')
-            compartimento_anulado_limbo = get_or_create_anulado_compartment(estacion_obj)
-            
-            # Guardamos el compartimento original para el Movimiento
-            compartimento_original = item.compartimento
+            # Aquí sí podemos usar self.estacion_activa porque el mixin ya corrió
+            compartimento_destino = get_or_create_anulado_compartment(self.estacion_activa)
+            compartimento_origen = self.item.compartimento
+            tipo_item = kwargs.get('tipo_item')
 
-        except Estado.DoesNotExist:
-            messages.error(request, "Error crítico: No se encontró el estado 'ANULADO POR ERROR'. Contacte al administrador.")
-            return redirect('gestion_inventario:ruta_stock_actual')
-        except Exception as e:
-            messages.error(request, f"Error de configuración al buscar compartimento 'Stock Anulado': {e}")
-            return redirect('gestion_inventario:ruta_stock_actual')
-
-        try:
             with transaction.atomic():
-                cantidad_a_mover = 0 # Para el movimiento
-                
-                # 1. Actualizar el ítem
-                item.estado = estado_anulado
-                item.compartimento = compartimento_anulado_limbo # <-- ¡El cambio clave!
+                # 1. Actualizar Item
+                cantidad_movimiento = 0
                 
                 if tipo_item == 'lote':
-                    cantidad_a_mover = item.cantidad * -1 # Negativo para ajuste
-                    item.cantidad = 0
-                else: # tipo_item == 'activo'
-                    cantidad_a_mover = -1
-
-                item.save()
+                    cantidad_movimiento = self.item.cantidad * -1 
+                    self.item.cantidad = 0
+                else: 
+                    cantidad_movimiento = -1
                 
-                # 2. Crear el MovimientoInventario (como discutimos)
+                self.item.estado = estado_anulado
+                self.item.compartimento = compartimento_destino
+                self.item.save()
+
+                # 2. Auditoría
                 MovimientoInventario.objects.create(
                     tipo_movimiento=TipoMovimiento.AJUSTE,
                     usuario=request.user,
-                    estacion=estacion_obj,
-                    compartimento_origen=compartimento_original, # De dónde salió
-                    compartimento_destino=compartimento_anulado_limbo, # A dónde fue
-                    activo=item if tipo_item == 'activo' else None,
-                    lote_insumo=item if tipo_item == 'lote' else None,
-                    cantidad_movida=cantidad_a_mover,
-                    notas=f"Registro anulado por error de ingreso. Movido desde '{compartimento_original.nombre}'."
+                    estacion=self.estacion_activa,
+                    compartimento_origen=compartimento_origen,
+                    compartimento_destino=compartimento_destino,
+                    activo=self.item if tipo_item == 'activo' else None,
+                    lote_insumo=self.item if tipo_item == 'lote' else None,
+                    cantidad_movida=cantidad_movimiento,
+                    notas="Anulación por error de ingreso."
                 )
 
-            messages.success(request, f"La existencia '{item.producto.producto_global.nombre_oficial}' ha sido anulada y movida a 'Registros Administrativos'.")
+            messages.success(
+                request, 
+                f"'{self.item.producto.producto_global.nombre_oficial}' anulado correctamente."
+            )
             return redirect('gestion_inventario:ruta_stock_actual')
+
+        except Estado.DoesNotExist:
+            messages.error(request, "Error crítico: Estado 'ANULADO POR ERROR' no encontrado.")
+        except Exception as e:
+            messages.error(request, f"Error inesperado: {e}")
+        
+        return redirect('gestion_inventario:ruta_stock_actual')
+
+
+
+
+class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, SingleObjectMixin, FormView):
+    """
+    Vista para ajuste manual de stock de lotes (inventario cíclico).
+    Combina FormView (para el formulario de ajuste) con 
+    SingleObjectMixin (para recuperar el Lote de forma segura).
+    Solo permite ajuste si el estado es 'DISPONIBLE'.
+    """
+    model = LoteInsumo
+    form_class = LoteAjusteForm
+    template_name = 'gestion_inventario/pages/ajustar_stock_lote.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno"
+    pk_url_kwarg = 'lote_id'
+    context_object_name = 'lote'
+
+    def get_queryset(self):
+        """Filtra el lote por la estación activa y precarga relaciones."""
+        estacion_id = getattr(self, 'estacion_activa_id', None)
+        if not estacion_id:
+            estacion_id = self.request.session.get('active_estacion_id')
+
+        if not estacion_id:
+            return super().get_queryset().none()
+        
+        return super().get_queryset().filter(
+            compartimento__ubicacion__estacion_id=estacion_id
+        ).select_related(
+            'producto__producto_global', 
+            'compartimento__ubicacion',
+            'estado'
+        )
+    
+    def dispatch(self, request, *args, **kwargs):
+        """
+        Validación Temprana: Cargamos el objeto y verificamos su estado 
+        antes de procesar GET o POST.
+        """
+        # 1. Recuperar el objeto (SingleObjectMixin lo hace fácil)
+        try:
+            self.object = self.get_object()
+        except Http404:
+            messages.error(request, "Lote no encontrado en tu estación.")
+            return redirect('gestion_inventario:ruta_stock_actual')
+
+        # 2. USAR EL MIXIN PARA VALIDAR EL ESTADO
+        # Regla: Solo 'DISPONIBLE' permite ajustes de conteo.
+        if not self.validate_state(self.object, ['DISPONIBLE']):
+            return redirect('gestion_inventario:ruta_stock_actual')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        # SingleObjectMixin necesita que llamemos a self.get_object() explícitamente
+        self.object = self.get_object()
+        
+        # Validación de Estado
+        if self.object.estado.nombre == 'ANULADO POR ERROR':
+            messages.error(request, "No se puede ajustar un lote anulado.")
+            return redirect('gestion_inventario:ruta_stock_actual')
+            
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        
+        if self.object.estado.nombre == 'ANULADO POR ERROR':
+            messages.error(request, "No se puede ajustar un lote anulado.")
+            return redirect('gestion_inventario:ruta_stock_actual')
+            
+        return super().post(request, *args, **kwargs)
+
+    def get_initial(self):
+        """Pre-llena el formulario con la cantidad actual."""
+        return {'nueva_cantidad_fisica': self.object.cantidad}
+
+    def form_valid(self, form):
+        nueva_cantidad = form.cleaned_data['nueva_cantidad_fisica']
+        notas = form.cleaned_data['notas']
+        cantidad_previa = self.object.cantidad
+        diferencia = nueva_cantidad - cantidad_previa
+
+        if diferencia == 0:
+            messages.warning(self.request, "No se realizó ningún cambio.")
+            return redirect(self.get_success_url())
+
+        try:
+            with transaction.atomic():
+                # 1. Actualizar Lote
+                self.object.cantidad = nueva_cantidad
+                self.object.save(update_fields=['cantidad', 'updated_at'])
+
+                # 2. Auditoría
+                MovimientoInventario.objects.create(
+                    tipo_movimiento=TipoMovimiento.AJUSTE,
+                    usuario=self.request.user,
+                    estacion=self.estacion_activa,
+                    compartimento_origen=self.object.compartimento,
+                    lote_insumo=self.object,
+                    cantidad_movida=diferencia,
+                    notas=notas
+                )
+            
+            messages.success(
+                self.request, 
+                f"Stock ajustado: {cantidad_previa} -> {nueva_cantidad}."
+            )
+            return super().form_valid(form)
 
         except Exception as e:
-            messages.error(request, f"Ocurrió un error inesperado al anular: {e}")
-            return redirect('gestion_inventario:ruta_stock_actual')
+            messages.error(self.request, f"Error crítico: {e}")
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse('gestion_inventario:ruta_stock_actual')
 
 
 
 
-class AjustarStockLoteView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    """
-    Vista para ajustar la cantidad de un LoteInsumo y crear
-    un MovimientoInventario de tipo AJUSTE.
-    """
-    template_name = 'gestion_inventario/pages/ajustar_stock_lote.html'
-    login_url = '/acceso/login/'
-    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno"
-
-    def _get_lote_and_check_permission(self, estacion_id, lote_id):
-        """ Helper para obtener el Lote y verificar permisos """
-        lote = get_object_or_404(
-            LoteInsumo.objects.select_related(
-                'producto__producto_global', 
-                'compartimento__ubicacion',
-                'estado'
-            ),
-            id=lote_id, 
-            compartimento__ubicacion__estacion_id=estacion_id
-        )
-        
-        if lote.estado.nombre == 'ANULADO POR ERROR':
-            messages.error(self.request, "No se puede ajustar un lote que ha sido anulado.")
-            return None
-        
-        return lote
-
-    def get(self, request, lote_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-
-        lote = self._get_lote_and_check_permission(estacion_id, lote_id)
-        if not lote:
-            return redirect('gestion_inventario:ruta_stock_actual')
-        
-        form = LoteAjusteForm(initial={'nueva_cantidad_fisica': lote.cantidad})
-        context = {'lote': lote, 'form': form}
-        return render(request, self.template_name, context)
-
-    def post(self, request, lote_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        lote = self._get_lote_and_check_permission(estacion_id, lote_id)
-        if not lote:
-            return redirect('gestion_inventario:ruta_stock_actual')
-
-        form = LoteAjusteForm(request.POST)
-
-        if form.is_valid():
-            nueva_cantidad = form.cleaned_data['nueva_cantidad_fisica']
-            notas = form.cleaned_data['notas']
-            cantidad_actual = lote.cantidad
-            
-            # Cálculo de la diferencia
-            cantidad_movida = nueva_cantidad - cantidad_actual # (Ej: 48 - 50 = -2)
-            
-            if cantidad_movida == 0:
-                messages.warning(request, "No se realizó ningún cambio (la cantidad es la misma).")
-                return redirect('gestion_inventario:ruta_stock_actual')
-
-            try:
-                with transaction.atomic():
-                    # 1. Actualizar la cantidad del lote
-                    lote.cantidad = nueva_cantidad
-                    lote.save(update_fields=['cantidad', 'updated_at'])
-
-                    # 2. Crear el registro de Movimiento (la auditoría)
-                    MovimientoInventario.objects.create(
-                        tipo_movimiento=TipoMovimiento.AJUSTE,
-                        usuario=request.user,
-                        estacion_id=estacion_id,
-                        compartimento_origen=lote.compartimento, # Lugar del ajuste
-                        lote_insumo=lote,
-                        cantidad_movida=cantidad_movida, # Guardamos la diferencia (ej: -2)
-                        notas=notas # Guardamos el motivo
-                    )
-                
-                messages.success(request, f"Stock del lote {lote.codigo_lote} ajustado a {nueva_cantidad}.")
-                return redirect('gestion_inventario:ruta_stock_actual')
-                
-            except Exception as e:
-                messages.error(request, f"Error al guardar el ajuste: {e}")
-        
-        context = {'lote': lote, 'form': form}
-        return render(request, self.template_name, context)
-
-
-
-
-class BajaExistenciaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, FormView):
     """
     Vista para Dar de Baja una existencia (Activo o LoteInsumo),
     cambiando su estado y generando un movimiento de SALIDA.
     """
     template_name = 'gestion_inventario/pages/dar_de_baja_existencia.html'
-    login_url = '/acceso/login/'
+    form_class = BajaExistenciaForm
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock"
+    success_url = reverse_lazy('gestion_inventario:ruta_stock_actual')
 
-    def _get_item_and_check_permission(self, estacion_id, tipo_item, item_id):
-        """ Helper para obtener el ítem y verificar estado """
-        item = None
-        if tipo_item == 'activo':
+
+    def dispatch(self, request, *args, **kwargs):
+        self.tipo_item = kwargs.get('tipo_item')
+        self.item_id = kwargs.get('item_id')
+        self.item = self._get_item_seguro()
+        
+        if not self.item:
+            return redirect(self.success_url)
+        
+        # USAR EL MIXIN PARA VALIDAR EL ESTADO
+        # Solo se puede dar de baja si está operativo o en mantenimiento.
+        # Estados como 'EN PRÉSTAMO' requieren devolución primero.
+        estados_permitidos = ['DISPONIBLE', 'PENDIENTE REVISIÓN', 'EN REPARACIÓN']
+        if not self.validate_state(self.item, estados_permitidos):
+            return redirect(self.success_url)
+            
+        return super().dispatch(request, *args, **kwargs)
+
+
+    def _get_item_seguro(self):
+        """Recupera el Activo o Lote validando estación y estado."""
+        # Usamos self.estacion_activa_id del mixin (disponible tras super().dispatch, 
+        # pero como lo necesitamos antes, accedemos a la sesión o usamos la lógica del mixin manualmente
+        # Para evitar el error MRO anterior, en este caso específico es seguro usar el mixin standard
+        # si movemos la lógica a get_context/form_valid, pero para dispatch temprano:
+        estacion_id = self.request.session.get('active_estacion_id')
+        if not estacion_id:
+            return None # El mixin redirigirá después
+
+        if self.tipo_item == 'activo':
             item = get_object_or_404(
-                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
-                id=item_id, 
+                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
+                id=self.item_id, 
                 estacion_id=estacion_id
             )
-        elif tipo_item == 'lote':
+        elif self.tipo_item == 'lote':
             item = get_object_or_404(
-                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
-                id=item_id, 
+                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
+                id=self.item_id, 
                 compartimento__ubicacion__estacion_id=estacion_id
             )
-        
-        if item and (item.estado.nombre == 'ANULADO POR ERROR' or item.estado.nombre == 'DE BAJA'):
-            messages.warning(self.request, "Esta existencia ya no está operativa y no se puede dar de baja.")
+        else:
             return None
-            
+        
         return item
 
-    def get(self, request, tipo_item, item_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
 
-        item = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
-        if not item:
-            return redirect('gestion_inventario:ruta_stock_actual')
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['item'] = self.item
+        context['tipo_item'] = self.tipo_item
+        return context
+
+
+    def form_valid(self, form):
+        notas = form.cleaned_data['notas']
         
-        form = BajaExistenciaForm()
-        context = {
-            'item': item,
-            'tipo_item': tipo_item,
-            'form': form
-        }
-        return render(request, self.template_name, context)
-
-    def post(self, request, tipo_item, item_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-
-        item = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
-        if not item:
-            return redirect('gestion_inventario:ruta_stock_actual')
-
-        form = BajaExistenciaForm(request.POST)
-
-        if form.is_valid():
-            notas = form.cleaned_data['notas']
+        try:
+            estado_baja = Estado.objects.get(nombre='DE BAJA')
             
-            try:
-                estado_de_baja = Estado.objects.get(nombre='DE BAJA')
-            except Estado.DoesNotExist:
-                messages.error(request, "Error crítico: No se encontró el estado 'DE BAJA'. Contacte al administrador.")
-                return redirect('gestion_inventario:ruta_stock_actual')
+            with transaction.atomic():
+                # 1. Actualizar Estado y Cantidad
+                cantidad_movimiento = 0
+                if self.tipo_item == 'lote':
+                    cantidad_movimiento = self.item.cantidad * -1
+                    self.item.cantidad = 0
+                else:
+                    cantidad_movimiento = -1
+                
+                self.item.estado = estado_baja
+                self.item.save()
 
-            try:
-                with transaction.atomic():
-                    cantidad_a_mover = 0 # Para el movimiento
-                    
-                    # 1. Actualizar el ítem
-                    item.estado = estado_de_baja
-                    
-                    if tipo_item == 'lote':
-                        # Para lotes, registramos la cantidad restante y la ponemos a 0
-                        cantidad_a_mover = item.cantidad * -1 # Negativo para salida
-                        item.cantidad = 0
-                    else: # tipo_item == 'activo'
-                        cantidad_a_mover = -1
+                # 2. Auditoría (Movimiento)
+                MovimientoInventario.objects.create(
+                    tipo_movimiento=TipoMovimiento.SALIDA,
+                    usuario=self.request.user,
+                    estacion_id=self.request.session.get('active_estacion_id'), # ID seguro
+                    compartimento_origen=self.item.compartimento,
+                    activo=self.item if self.tipo_item == 'activo' else None,
+                    lote_insumo=self.item if self.tipo_item == 'lote' else None,
+                    cantidad_movida=cantidad_movimiento,
+                    notas=f"Baja: {notas}"
+                )
 
-                    item.save()
-                    
-                    # 2. Crear el MovimientoInventario de SALIDA
-                    MovimientoInventario.objects.create(
-                        tipo_movimiento=TipoMovimiento.SALIDA,
-                        usuario=request.user,
-                        estacion_id=estacion_id,
-                        compartimento_origen=item.compartimento, # De dónde salió
-                        activo=item if tipo_item == 'activo' else None,
-                        lote_insumo=item if tipo_item == 'lote' else None,
-                        cantidad_movida=cantidad_a_mover,
-                        notas=notas # El motivo de la baja
-                    )
+            messages.success(
+                self.request, 
+                f"'{self.item.producto.producto_global.nombre_oficial}' dado de baja correctamente."
+            )
+            return super().form_valid(form)
 
-                messages.success(request, f"La existencia '{item.producto.producto_global.nombre_oficial}' ha sido dada de baja.")
-                return redirect('gestion_inventario:ruta_stock_actual')
-
-            except Exception as e:
-                messages.error(request, f"Ocurrió un error inesperado al dar de baja: {e}")
-                return redirect('gestion_inventario:ruta_stock_actual')
-
-        # Si el formulario (notas) no es válido
-        context = {
-            'item': item,
-            'tipo_item': tipo_item,
-            'form': form
-        }
-        return render(request, self.template_name, context)
+        except Estado.DoesNotExist:
+            messages.error(self.request, "Error crítico: Estado 'DE BAJA' no encontrado.")
+            return self.form_invalid(form)
+        except Exception as e:
+            messages.error(self.request, f"Error al procesar la baja: {e}")
+            return self.form_invalid(form)
 
 
 
@@ -2788,372 +2815,342 @@ def get_or_create_extraviado_compartment(estacion: Estacion) -> Compartimento:
 
 
 
-class ExtraviadoExistenciaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class ExtraviadoExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, FormView):
     """
     Vista para reportar una existencia como Extraviada (Activo o LoteInsumo),
     cambiando su estado, moviéndola al limbo y generando un movimiento de SALIDA.
+    ítems operativos o prestados puedan ser marcados como extraviados.
     """
     template_name = 'gestion_inventario/pages/extraviado_existencia.html'
-    login_url = '/acceso/login/'
+    form_class = ExtraviadoExistenciaForm
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock"
+    success_url = reverse_lazy('gestion_inventario:ruta_stock_actual')
 
-    def _get_item_and_check_permission(self, estacion_id, tipo_item, item_id):
-        """ Helper para obtener el ítem y verificar estado """
-        item = None
-        if tipo_item == 'activo':
-            item = get_object_or_404(
-                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
-                id=item_id, 
+
+    def dispatch(self, request, *args, **kwargs):
+        self.tipo_item = kwargs.get('tipo_item')
+        self.item_id = kwargs.get('item_id')
+        
+        # 1. Recuperar Item (usando helper seguro)
+        self.item = self._get_item_seguro()
+        if not self.item:
+            return redirect(self.success_url)
+
+        # 2. Validar Estado
+        # Se permite reportar extravío si está disponible, en revisión, reparación o incluso prestado.
+        estados_permitidos = ['DISPONIBLE', 'PENDIENTE REVISIÓN', 'EN REPARACIÓN', 'EN PRÉSTAMO EXTERNO']
+        if not self.validate_state(self.item, estados_permitidos):
+            return redirect(self.success_url)
+
+        return super().dispatch(request, *args, **kwargs)
+
+
+    def _get_item_seguro(self):
+        """Recupera el Activo o Lote validando estación."""
+        # Acceso directo a sesión para evitar problemas MRO en dispatch
+        estacion_id = self.request.session.get('active_estacion_id')
+        if not estacion_id:
+            return None
+
+        if self.tipo_item == 'activo':
+            return get_object_or_404(
+                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
+                id=self.item_id, 
                 estacion_id=estacion_id
             )
-        elif tipo_item == 'lote':
-            item = get_object_or_404(
-                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
-                id=item_id, 
+        elif self.tipo_item == 'lote':
+            return get_object_or_404(
+                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
+                id=self.item_id, 
                 compartimento__ubicacion__estacion_id=estacion_id
             )
-        
-        # Comprobamos todos los estados no operativos
-        if item and item.estado.nombre in ['ANULADO POR ERROR', 'DE BAJA', 'EXTRAVIADO']:
-            messages.warning(self.request, "Esta existencia ya no está operativa y no se puede reportar como extraviada.")
-            return None
-            
-        return item
+        return None
 
-    def get(self, request, tipo_item, item_id):
-        estacion_id = request.session.get('active_estacion_id')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['item'] = self.item
+        context['tipo_item'] = self.tipo_item
+        return context
+
+
+    def form_valid(self, form):
+        notas = form.cleaned_data['notas']
+        try:
+            # Obtenemos recursos necesarios
+            estado_extraviado = Estado.objects.get(nombre='EXTRAVIADO')
+            # Usamos self.estacion_activa porque BaseEstacionMixin ya corrió (post-dispatch)
+            compartimento_limbo = get_or_create_extraviado_compartment(self.estacion_activa)
+            compartimento_origen = self.item.compartimento
+
+            with transaction.atomic():
+                # 1. Actualizar Item
+                cantidad_movimiento = 0
+                if self.tipo_item == 'lote':
+                    cantidad_movimiento = self.item.cantidad * -1
+                    self.item.cantidad = 0
+                else:
+                    cantidad_movimiento = -1
+                
+                self.item.estado = estado_extraviado
+                self.item.compartimento = compartimento_limbo
+                self.item.save()
+
+                # 2. Auditoría
+                MovimientoInventario.objects.create(
+                    tipo_movimiento=TipoMovimiento.SALIDA,
+                    usuario=self.request.user,
+                    estacion=self.estacion_activa,
+                    compartimento_origen=compartimento_origen,
+                    compartimento_destino=compartimento_limbo,
+                    activo=self.item if self.tipo_item == 'activo' else None,
+                    lote_insumo=self.item if self.tipo_item == 'lote' else None,
+                    cantidad_movida=cantidad_movimiento,
+                    notas=f"Extravío reportado: {notas}"
+                )
+
+            messages.success(
+                self.request, 
+                f"'{self.item.producto.producto_global.nombre_oficial}' reportado como extraviado."
+            )
+            return super().form_valid(form)
+
+        except Estado.DoesNotExist:
+            messages.error(self.request, "Error crítico: Estado 'EXTRAVIADO' no encontrado.")
+            return self.form_invalid(form)
+        except Exception as e:
+            messages.error(self.request, f"Error inesperado: {e}")
+            return self.form_invalid(form)
+
+
+
+
+class ConsumirStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, SingleObjectMixin, FormView):
+    """
+    Vista para registrar consumo de stock (Salida por uso interno).
+    Utiliza FormView, valida reglas de negocio (estados permitidos)
+    y gestiona transacciones atómicas.
+    """
+    model = LoteInsumo
+    form_class = LoteConsumirForm
+    template_name = 'gestion_inventario/pages/consumir_stock_lote.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno"
+    pk_url_kwarg = 'lote_id'
+    context_object_name = 'lote'
+    success_url = reverse_lazy('gestion_inventario:ruta_stock_actual')
+
+    def get_queryset(self):
+        """Filtra el lote por la estación activa de forma segura."""
+        # Obtener ID de estación de la sesión para evitar error MRO antes del mixin
+        estacion_id = self.request.session.get('active_estacion_id')
         if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
+            return super().get_queryset().none()
 
-        item = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
-        if not item:
-            return redirect('gestion_inventario:ruta_stock_actual')
-        
-        form = ExtraviadoExistenciaForm()
-        context = {
-            'item': item,
-            'tipo_item': tipo_item,
-            'form': form
-        }
-        return render(request, self.template_name, context)
+        return super().get_queryset().filter(
+            compartimento__ubicacion__estacion_id=estacion_id
+        ).select_related(
+            'producto__producto_global', 
+            'compartimento__ubicacion',
+            'estado'
+        )
 
-    def post(self, request, tipo_item, item_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
+    def dispatch(self, request, *args, **kwargs):
+        # 1. Cargar Objeto
+        try:
+            self.object = self.get_object()
+        except Http404:
+            messages.error(request, "Lote no encontrado o no pertenece a tu estación.")
+            return redirect(self.success_url)
+
+        # 2. Validar Estado (Regla de Negocio)
+        if not self.validate_state(self.object, ['DISPONIBLE', 'EN PRÉSTAMO EXTERNO']):
+            return redirect(self.success_url)
+
+        # 3. Validar Stock > 0
+        if self.object.cantidad <= 0:
+            messages.warning(request, "Este lote no tiene stock disponible para consumir.")
+            return redirect(self.success_url)
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        """Pasa el objeto lote al formulario (necesario para validaciones custom)."""
+        kwargs = super().get_form_kwargs()
+        kwargs['lote'] = self.object
+        return kwargs
+    
+    def get_initial(self):
+        return {'cantidad_a_consumir': 1}
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['lote'] = self.object
+        return context
+
+    def form_valid(self, form):
+        cantidad_consumida = form.cleaned_data['cantidad_a_consumir']
+        notas = form.cleaned_data['notas']
         
         try:
-            estacion_obj = Estacion.objects.get(id=estacion_id)
-        except Estacion.DoesNotExist:
-            messages.error(request, "Estación activa no encontrada.")
-            return redirect('gestion_inventario:ruta_inicio')
+            with transaction.atomic():
+                # 1. Actualizar Lote
+                self.object.cantidad -= cantidad_consumida
+                self.object.save(update_fields=['cantidad', 'updated_at'])
 
-        item = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
-        if not item:
-            return redirect('gestion_inventario:ruta_stock_actual')
-
-        form = ExtraviadoExistenciaForm(request.POST)
-
-        if form.is_valid():
-            notas = form.cleaned_data['notas']
+                # 2. Auditoría (Salida)
+                MovimientoInventario.objects.create(
+                    tipo_movimiento=TipoMovimiento.SALIDA,
+                    usuario=self.request.user,
+                    estacion_id=self.request.session.get('active_estacion_id'),
+                    compartimento_origen=self.object.compartimento,
+                    lote_insumo=self.object,
+                    cantidad_movida=cantidad_consumida * -1, # Negativo
+                    notas=notas
+                )
             
-            try:
-                estado_extraviado = Estado.objects.get(nombre='EXTRAVIADO')
-                # Usamos el nuevo helper
-                compartimento_limbo = get_or_create_extraviado_compartment(estacion_obj)
-                compartimento_original = item.compartimento
-            except Estado.DoesNotExist:
-                messages.error(request, "Error crítico: No se encontró el estado 'EXTRAVIADO'. Contacte al administrador.")
-                return redirect('gestion_inventario:ruta_stock_actual')
-            except Exception as e:
-                messages.error(request, f"Error de configuración al buscar compartimento 'Stock Extraviado': {e}")
-                return redirect('gestion_inventario:ruta_stock_actual')
-
-            try:
-                with transaction.atomic():
-                    cantidad_a_mover = 0
-                    
-                    # 1. Actualizar el ítem
-                    item.estado = estado_extraviado
-                    item.compartimento = compartimento_limbo # Mover al limbo
-                    
-                    if tipo_item == 'lote':
-                        cantidad_a_mover = item.cantidad * -1
-                        item.cantidad = 0
-                    else: # tipo_item == 'activo'
-                        cantidad_a_mover = -1
-
-                    item.save()
-                    
-                    # 2. Crear el MovimientoInventario de SALIDA (tu suposición era correcta)
-                    MovimientoInventario.objects.create(
-                        tipo_movimiento=TipoMovimiento.SALIDA,
-                        usuario=request.user,
-                        estacion_id=estacion_id,
-                        compartimento_origen=compartimento_original,
-                        compartimento_destino=compartimento_limbo, # Destino administrativo
-                        activo=item if tipo_item == 'activo' else None,
-                        lote_insumo=item if tipo_item == 'lote' else None,
-                        cantidad_movida=cantidad_a_mover,
-                        notas=f"Reportado como extraviado. {notas}" # Motivo del extravío
-                    )
-
-                messages.success(request, f"La existencia '{item.producto.producto_global.nombre_oficial}' ha sido reportada como extraviada.")
-                return redirect('gestion_inventario:ruta_stock_actual')
-
-            except Exception as e:
-                messages.error(request, f"Ocurrió un error inesperado: {e}")
-                return redirect('gestion_inventario:ruta_stock_actual')
-
-        # Si el formulario (notas) no es válido
-        context = {
-            'item': item,
-            'tipo_item': tipo_item,
-            'form': form
-        }
-        return render(request, self.template_name, context)
-
-
-
-
-class ConsumirStockLoteView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    """
-    Vista para consumir una cantidad de un LoteInsumo y crear
-    un MovimientoInventario de tipo SALIDA.
-    """
-    template_name = 'gestion_inventario/pages/consumir_stock_lote.html'
-    login_url = '/acceso/login/'
-    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno"
-
-    def _get_lote_and_check_permission(self, estacion_id, lote_id):
-        """ Helper para obtener el Lote y verificar permisos de consumo """
-        lote = get_object_or_404(
-            LoteInsumo.objects.select_related(
-                'producto__producto_global', 
-                'compartimento__ubicacion',
-                'estado'
-            ),
-            id=lote_id, 
-            compartimento__ubicacion__estacion_id=estacion_id
-        )
-        
-        # Solo se puede consumir de lotes 'Disponibles' o 'Asignados'
-        if lote.estado.nombre not in ['DISPONIBLE', 'ASIGNADO']:
-            messages.error(self.request, f"No se puede consumir de un lote que está '{lote.estado.nombre}'.")
-            return None
-        
-        if lote.cantidad <= 0:
-            messages.warning(self.request, "Este lote ya no tiene stock para consumir.")
-            return None
-        
-        return lote
-
-    def get(self, request, lote_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-
-        lote = self._get_lote_and_check_permission(estacion_id, lote_id)
-        if not lote:
-            return redirect('gestion_inventario:ruta_stock_actual')
-        
-        # Pasamos el lote al form para la validación
-        form = LoteConsumirForm(lote=lote, initial={'cantidad_a_consumir': 1})
-        context = {'lote': lote, 'form': form}
-        return render(request, self.template_name, context)
-
-    def post(self, request, lote_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        lote = self._get_lote_and_check_permission(estacion_id, lote_id)
-        if not lote:
-            return redirect('gestion_inventario:ruta_stock_actual')
-
-        form = LoteConsumirForm(request.POST, lote=lote) # Pasar el lote
-
-        if form.is_valid():
-            cantidad_consumida = form.cleaned_data['cantidad_a_consumir']
-            notas = form.cleaned_data['notas']
+            messages.success(
+                self.request, 
+                f"Se consumieron {cantidad_consumida} unidades del lote {self.object.codigo_lote}."
+            )
+            return super().form_valid(form)
             
-            try:
-                with transaction.atomic():
-                    # 1. Actualizar la cantidad del lote
-                    nueva_cantidad = lote.cantidad - cantidad_consumida
-                    lote.cantidad = nueva_cantidad
-                    lote.save(update_fields=['cantidad', 'updated_at'])
-
-                    # 2. Crear el registro de Movimiento (SALIDA)
-                    MovimientoInventario.objects.create(
-                        tipo_movimiento=TipoMovimiento.SALIDA,
-                        usuario=request.user,
-                        estacion_id=estacion_id,
-                        compartimento_origen=lote.compartimento, # Lugar del consumo
-                        lote_insumo=lote,
-                        cantidad_movida=cantidad_consumida * -1, # Negativo
-                        notas=notas
-                    )
-                
-                messages.success(request, f"Se consumieron {cantidad_consumida} unidades del lote {lote.codigo_lote}.")
-                return redirect('gestion_inventario:ruta_stock_actual')
-                
-            except Exception as e:
-                messages.error(request, f"Error al guardar el consumo: {e}")
-        
-        context = {'lote': lote, 'form': form}
-        return render(request, self.template_name, context)
+        except Exception as e:
+            messages.error(self.request, f"Error al guardar el consumo: {e}")
+            return self.form_invalid(form)
 
 
 
 
-class TransferenciaExistenciaView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, FormView):
     """
-    Mueve una existencia (Activo o Lote) de un compartimento a otro
-    dentro de la misma estación, generando un movimiento de TRANSFERENCIA_INTERNA.
+    Vista para transferir existencias entre compartimentos de la misma estación.
+    Implementa FormView, validación estricta de estados operativos
+    y gestión compleja de fusión de lotes (merge) en transacciones atómicas.
     """
     template_name = 'gestion_inventario/pages/transferir_existencia.html'
-    login_url = '/acceso/login/'
+    form_class = TransferenciaForm
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno"
+    success_url = reverse_lazy('gestion_inventario:ruta_stock_actual')
 
-    def _get_item_and_check_permission(self, estacion_id, tipo_item, item_id):
-        """ Helper para obtener el ítem y verificar estado """
-        item = None
-        if tipo_item == 'activo':
-            item = get_object_or_404(
-                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
-                id=item_id, 
+    def dispatch(self, request, *args, **kwargs):
+        self.tipo_item = kwargs.get('tipo_item')
+        self.item_id = kwargs.get('item_id')
+        
+        # 1. Cargar Item
+        self.item = self._get_item_seguro()
+        if not self.item:
+            return redirect(self.success_url)
+
+        # 2. Validar Estado (Regla de Negocio)
+        # Solo se mueven ítems operativos. Si está en reparación o prestado, no se mueve.
+        if not self.validate_state(self.item, ['DISPONIBLE', 'ASIGNADO']):
+            return redirect(self.success_url)
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def _get_item_seguro(self):
+        """Recupera el Activo o Lote validando estación."""
+        estacion_id = self.request.session.get('active_estacion_id')
+        if not estacion_id:
+            return None
+
+        if self.tipo_item == 'activo':
+            return get_object_or_404(
+                Activo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
+                id=self.item_id, 
                 estacion_id=estacion_id
             )
-        elif tipo_item == 'lote':
-            item = get_object_or_404(
-                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento__ubicacion'),
-                id=item_id, 
+        elif self.tipo_item == 'lote':
+            return get_object_or_404(
+                LoteInsumo.objects.select_related('producto__producto_global', 'estado', 'compartimento'),
+                id=self.item_id, 
                 compartimento__ubicacion__estacion_id=estacion_id
             )
-        
-        if item and item.estado.nombre not in ['DISPONIBLE', 'ASIGNADO']:
-            messages.error(self.request, f"No se puede mover un ítem con estado '{item.estado.nombre}'.")
-            return None
-            
-        return item
+        return None
 
-    def get(self, request, tipo_item, item_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
-        
-        estacion_obj = Estacion.objects.get(id=estacion_id)
-        item = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
-        if not item:
-            return redirect('gestion_inventario:ruta_stock_actual')
-        
-        # Pasamos el item y la estacion al formulario para que filtre el queryset
-        form = TransferenciaForm(item=item, estacion=estacion_obj)
-        
-        context = {
-            'item': item,
-            'tipo_item': tipo_item,
-            'form': form,
-            'es_lote': (tipo_item == 'lote') # Para la plantilla
-        }
-        return render(request, self.template_name, context)
+    def get_form_kwargs(self):
+        """Pasa el item y la estación al formulario (para filtrar compartimentos)."""
+        kwargs = super().get_form_kwargs()
+        kwargs['item'] = self.item
+        # Usamos self.estacion_activa (del Mixin) porque dispatch ya validó que existe
+        # Para evitar el error MRO en get_form_kwargs si el mixin corre después,
+        # usamos una estrategia defensiva o aseguramos que BaseEstacionMixin sea el primero en MRO.
+        # (Como BaseEstacionMixin es el primero en la herencia, self.estacion_activa debería estar listo).
+        kwargs['estacion'] = self.estacion_activa 
+        return kwargs
 
-    def post(self, request, tipo_item, item_id):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "No se ha seleccionado una estación activa.")
-            return redirect('gestion_inventario:ruta_inicio')
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['item'] = self.item
+        context['tipo_item'] = self.tipo_item
+        context['es_lote'] = (self.tipo_item == 'lote')
+        return context
+
+    def form_valid(self, form):
+        compartimento_destino = form.cleaned_data['compartimento_destino']
+        compartimento_origen = self.item.compartimento
+        notas = form.cleaned_data['notas']
         
-        estacion_obj = Estacion.objects.get(id=estacion_id)
-        item_origen = self._get_item_and_check_permission(estacion_id, tipo_item, item_id)
-        if not item_origen:
-            return redirect('gestion_inventario:ruta_stock_actual')
-
-        form = TransferenciaForm(request.POST, item=item_origen, estacion=estacion_obj)
-
-        if form.is_valid():
-            compartimento_destino = form.cleaned_data['compartimento_destino']
-            compartimento_origen = item_origen.compartimento
-            notas = form.cleaned_data['notas']
-            
-            try:
-                with transaction.atomic():
+        try:
+            with transaction.atomic():
+                if self.tipo_item == 'activo':
+                    # --- LÓGICA ACTIVOS ---
+                    self.item.compartimento = compartimento_destino
+                    self.item.save(update_fields=['compartimento', 'updated_at'])
                     
-                    if tipo_item == 'activo':
-                        # --- LÓGICA PARA ACTIVOS (SIMPLE) ---
-                        item_origen.compartimento = compartimento_destino
-                        item_origen.save(update_fields=['compartimento', 'updated_at'])
-                        
-                        MovimientoInventario.objects.create(
-                            tipo_movimiento=TipoMovimiento.TRANSFERENCIA_INTERNA,
-                            usuario=request.user,
-                            estacion=estacion_obj,
-                            compartimento_origen=compartimento_origen,
-                            compartimento_destino=compartimento_destino,
-                            activo=item_origen,
-                            cantidad_movida=1, # Siempre 1 para activos
-                            notas=notas
-                        )
-                        msg_item_nombre = item_origen.codigo_activo
+                    msg_item = self.item.codigo_activo
+                    cantidad_movida = 1
+                    lote_ref = None
+                    activo_ref = self.item
+
+                else:
+                    # --- LÓGICA LOTES (MERGE/SPLIT) ---
+                    cantidad_a_mover = form.cleaned_data['cantidad']
                     
-                    else:
-                        # --- LÓGICA PARA LOTES (COMPLEJA) ---
-                        cantidad_a_mover = form.cleaned_data['cantidad']
-                        
-                        # 1. Buscar o crear un lote idéntico en el destino
-                        # Un lote es "idéntico" si comparte:
-                        # producto, lote_fabricante, fecha_expiracion y estado
-                        lote_destino, created = LoteInsumo.objects.get_or_create(
-                            producto=item_origen.producto,
-                            compartimento=compartimento_destino,
-                            numero_lote_fabricante=item_origen.numero_lote_fabricante,
-                            fecha_expiracion=item_origen.fecha_expiracion,
-                            estado=item_origen.estado, # Mover a un lote en el mismo estado
-                            defaults={
-                                'cantidad': 0,
-                                'fecha_recepcion': item_origen.fecha_recepcion 
-                            }
-                        )
-                        
-                        # 2. Mover la cantidad
-                        lote_destino.cantidad += cantidad_a_mover
-                        item_origen.cantidad -= cantidad_a_mover
-                        
-                        lote_destino.save()
-                        item_origen.save() # Guardamos el origen (con cantidad reducida)
+                    # Buscar/Crear lote destino (Merge)
+                    lote_destino, created = LoteInsumo.objects.get_or_create(
+                        producto=self.item.producto,
+                        compartimento=compartimento_destino,
+                        numero_lote_fabricante=self.item.numero_lote_fabricante,
+                        fecha_expiracion=self.item.fecha_expiracion,
+                        estado=self.item.estado,
+                        defaults={
+                            'cantidad': 0,
+                            'fecha_recepcion': self.item.fecha_recepcion 
+                        }
+                    )
+                    
+                    # Mover cantidades
+                    lote_destino.cantidad += cantidad_a_mover
+                    self.item.cantidad -= cantidad_a_mover
+                    
+                    lote_destino.save()
+                    self.item.save()
 
-                        # 3. Crear el movimiento (lo vinculamos al Lote de Origen)
-                        MovimientoInventario.objects.create(
-                            tipo_movimiento=TipoMovimiento.TRANSFERENCIA_INTERNA,
-                            usuario=request.user,
-                            estacion=estacion_obj,
-                            compartimento_origen=compartimento_origen,
-                            compartimento_destino=compartimento_destino,
-                            lote_insumo=item_origen, # Vinculado al lote de origen
-                            cantidad_movida=cantidad_a_mover, # Cantidad que se movió
-                            notas=f"Transferidos {cantidad_a_mover} de {item_origen.codigo_lote} a {lote_destino.codigo_lote}. {notas}"
-                        )
-                        msg_item_nombre = f"{cantidad_a_mover} unidades de {item_origen.codigo_lote}"
+                    msg_item = f"{cantidad_a_mover} u. de {self.item.codigo_lote}"
+                    cantidad_movida = cantidad_a_mover
+                    lote_ref = self.item # Vinculamos al origen para trazabilidad
+                    activo_ref = None
 
-                messages.success(request, f"Se transfirió {msg_item_nombre} a '{compartimento_destino.nombre}'.")
-                return redirect('gestion_inventario:ruta_stock_actual')
-                
-            except Exception as e:
-                messages.error(request, f"Error al procesar la transferencia: {e}")
-        
-        context = {
-            'item': item_origen,
-            'tipo_item': tipo_item,
-            'form': form,
-            'es_lote': (tipo_item == 'lote')
-        }
-        return render(request, self.template_name, context)
+                # Auditoría Común
+                MovimientoInventario.objects.create(
+                    tipo_movimiento=TipoMovimiento.TRANSFERENCIA_INTERNA,
+                    usuario=self.request.user,
+                    estacion=self.estacion_activa,
+                    compartimento_origen=compartimento_origen,
+                    compartimento_destino=compartimento_destino,
+                    activo=activo_ref,
+                    lote_insumo=lote_ref,
+                    cantidad_movida=cantidad_movida,
+                    notas=notas
+                )
+
+            messages.success(self.request, f"Se transfirió {msg_item} a '{compartimento_destino.nombre}'.")
+            return super().form_valid(form)
+
+        except Exception as e:
+            messages.error(self.request, f"Error crítico al transferir: {e}")
+            return self.form_invalid(form)
 
 
 
