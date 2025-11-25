@@ -1570,429 +1570,384 @@ class ProductoLocalDetalleView(BaseEstacionMixin, PermissionRequiredMixin, Detai
 
 
 
-class ProveedorListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class ProveedorListView(BaseEstacionMixin, PermissionRequiredMixin, ListView):
     """
-    Muestra una lista paginada de todos los Proveedores globales.
-    Permite filtrar por nombre/RUT, Región y Comuna.
-
-    MODIFICADO: El filtro de ubicación (Región/Comuna) ahora busca en
-    el Contacto Principal Y en todos los Contactos Personalizados.
+    Vista para listar Proveedores.
+    Implementa ListView genérica, preservando la optimización de 
+    Subquery para conteos y separando la lógica de filtrado compleja (OR lógico 
+    entre contactos principales y personalizados).
     """
-    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_proveedores"
+    model = Proveedor
     template_name = 'gestion_inventario/pages/lista_proveedores.html'
+    context_object_name = 'proveedores'
     paginate_by = 15
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_proveedores"
 
-    def get(self, request, *args, **kwargs):
-        search_query = request.GET.get('q', None)
-        region_id_str = request.GET.get('region', None)
-        comuna_id_str = request.GET.get('comuna', None)
-        page_number = request.GET.get('page')
-
-        # --- SUBQUERY para contar TOTAL de contactos ---
-        # Esto evita que los JOINS del filtro (más abajo) contaminen el conteo.
+    def get_queryset(self):
+        """
+        Construye el queryset.
+        1. Anota el conteo de contactos sin overhead de JOINS (Subquery).
+        2. Aplica filtros de búsqueda y ubicación (cruzando relaciones).
+        """
+        # --- 1. Optimización: Conteo vía Subquery ---
+        # Calculamos el conteo en una subquery aislada para que los filtros posteriores
+        # no afecten la agrupación ni generen filas duplicadas prematuramente.
         total_contactos_subquery = ContactoProveedor.objects.filter(
             proveedor_id=OuterRef('pk')
         ).values('proveedor_id').annotate(
             c=Count('pk')
         ).values('c')
 
-        # --- QUERYSET BASE MEJORADO ---
-        queryset = Proveedor.objects.select_related(
+        qs = super().get_queryset().select_related(
             'contacto_principal__comuna__region'
         ).annotate(
-            # Usamos Coalesce para asegurar 0 en lugar de None si no hay contactos
             contactos_count=Coalesce(
                 Subquery(total_contactos_subquery, output_field=models.IntegerField()),
                 0
             )
         ).order_by('nombre')
 
-        # --- LÓGICA DE FILTRADO (Búsqueda por Nombre/RUT) ---
+        # --- 2. Filtros (GET) ---
+        search_query = self.request.GET.get('q')
+        region_id = self.request.GET.get('region')
+        comuna_id = self.request.GET.get('comuna')
+
+        # Filtro: Búsqueda Texto
         if search_query:
-            queryset = queryset.filter(
+            clean_rut = search_query.replace('-', '').replace('.', '')
+            qs = qs.filter(
                 Q(nombre__icontains=search_query) |
-                Q(rut__icontains=search_query.replace('-', '').replace('.', ''))
+                Q(rut__icontains=clean_rut)
             )
-        
-        # --- LÓGICA DE FILTRADO (Ubicación) ---
-        
-        # Creamos un objeto Q para los filtros de ubicación
+
+        # Filtro: Ubicación (Lógica Compleja OR)
         location_filters = Q()
 
-        region_id = None
-        if region_id_str and region_id_str.isdigit():
-            region_id = int(region_id_str)
-            # Filtra por región principal O región de contactos personalizados
+        if region_id and region_id.isdigit():
+            # Busca en el contacto principal O en la lista de contactos adicionales
             location_filters.add(
-                Q(contacto_principal__comuna__region_id=region_id) |
-                Q(contactos__comuna__region_id=region_id),
+                Q(contacto_principal__comuna__region_id=int(region_id)) |
+                Q(contactos__comuna__region_id=int(region_id)),
                 Q.AND
             )
 
-        comuna_id = None
-        if comuna_id_str and comuna_id_str.isdigit():
-            comuna_id = int(comuna_id_str)
-            # Filtra por comuna principal O comuna de contactos personalizados
+        if comuna_id and comuna_id.isdigit():
             location_filters.add(
-                Q(contacto_principal__comuna_id=comuna_id) |
-                Q(contactos__comuna_id=comuna_id),
+                Q(contacto_principal__comuna_id=int(comuna_id)) |
+                Q(contactos__comuna_id=int(comuna_id)),
                 Q.AND
             )
         
-        # Aplicamos los filtros de ubicación si existen
         if location_filters:
-            # Usamos .distinct() para evitar duplicados si un proveedor
-            # coincide tanto en el principal como en el personalizado.
-            queryset = queryset.filter(location_filters).distinct()
+            # .distinct() es obligatorio aquí porque filtrar por 'contactos' (M2M/Reverse FK)
+            # puede multiplicar las filas del proveedor.
+            qs = qs.filter(location_filters).distinct()
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        """
+        Prepara los datos auxiliares para los selectores de filtro.
+        """
+        context = super().get_context_data(**kwargs)
         
-        # ... (El resto de la vista: obtener datos para filtros, paginación y contexto se mantiene igual) ...
-        all_regiones = Region.objects.order_by('nombre')
-        comunas_para_filtro = Comuna.objects.none()
-        if region_id:
-            comunas_para_filtro = Comuna.objects.filter(region_id=region_id).order_by('nombre')
+        # Listas para filtros
+        context['all_regiones'] = Region.objects.order_by('nombre')
         
-        params = request.GET.copy()
+        # Carga dinámica de comunas si hay región seleccionada
+        region_id = self.request.GET.get('region')
+        if region_id and region_id.isdigit():
+            context['comunas_para_filtro'] = Comuna.objects.filter(
+                region_id=int(region_id)
+            ).order_by('nombre')
+        else:
+            context['comunas_para_filtro'] = Comuna.objects.none()
+
+        # Estado de la UI
+        context['current_search'] = self.request.GET.get('q', '')
+        context['current_region_id'] = region_id or ''
+        context['current_comuna_id'] = self.request.GET.get('comuna', '')
+
+        # Preservar filtros en paginación
+        params = self.request.GET.copy()
         if 'page' in params:
             del params['page']
-        query_params = params.urlencode()
+        context['query_params'] = params.urlencode()
         
-        paginator = Paginator(queryset, self.paginate_by)
-        page_obj = paginator.get_page(page_number)
-        
-        context = {
-            'proveedores': page_obj,
-            'page_obj': page_obj,
-            'all_regiones': all_regiones,
-            'comunas_para_filtro': comunas_para_filtro,
-            'current_search': search_query or "",
-            'current_region_id': region_id_str or "",
-            'current_comuna_id': comuna_id_str or "",
-        }
-        
-        return render(request, self.template_name, context)
+        return context
 
 
 
 
-class ProveedorCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class ProveedorCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
+    """
+    Vista para crear un Proveedor y su Contacto Principal simultáneamente.
+    Manejo de múltiples formularios con transacción atómica
+    y uso estricto de mixins para contexto y seguridad.
+    """
     template_name = 'gestion_inventario/pages/crear_proveedor.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_proveedores"
+    success_url = reverse_lazy('gestion_inventario:ruta_lista_proveedores')
 
     def get(self, request, *args, **kwargs):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Debes tener una estación activa para crear proveedores.")
-            return redirect('portal:ruta_inicio')
-
-        proveedor_form = ProveedorForm()
-        contacto_form = ContactoProveedorForm()
-        
+        """Inicializa los formularios vacíos."""
         context = {
-            'proveedor_form': proveedor_form,
-            'contacto_form': contacto_form
+            'proveedor_form': ProveedorForm(),
+            'contacto_form': ContactoProveedorForm()
         }
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Tu sesión ha expirado o no tienes una estación activa.")
-            return redirect('portal:ruta_inicio')
-            
-        estacion = get_object_or_404(Estacion, pk=estacion_id)
-
+        """
+        Procesa ambos formularios. Si ambos son válidos, delega a forms_valid.
+        """
         proveedor_form = ProveedorForm(request.POST)
         contacto_form = ContactoProveedorForm(request.POST)
 
         if proveedor_form.is_valid() and contacto_form.is_valid():
-            try:
-                # Usamos una transacción para asegurar que todo se guarde o nada se guarde.
-                with transaction.atomic():
-                    # 1. Guardar el Proveedor
-                    proveedor = proveedor_form.save(commit=False)
-                    proveedor.estacion_creadora = estacion
-                    proveedor.save()
+            return self.forms_valid(proveedor_form, contacto_form)
+        else:
+            return self.forms_invalid(proveedor_form, contacto_form)
 
-                    # 2. Guardar el Contacto y vincularlo al Proveedor
-                    contacto = contacto_form.save(commit=False)
-                    contacto.proveedor = proveedor
-                    contacto.save()
+    def forms_valid(self, proveedor_form, contacto_form):
+        """
+        Maneja la lógica transaccional de guardado cuando los datos son correctos.
+        """
+        try:
+            with transaction.atomic():
+                # 1. Guardar el Proveedor (sin contacto principal aún)
+                proveedor = proveedor_form.save(commit=False)
+                # self.estacion_activa viene garantizada por BaseEstacionMixin
+                proveedor.estacion_creadora = self.estacion_activa 
+                proveedor.save()
 
-                    # 3. Actualizar el Proveedor para asignarle su Contacto Principal
-                    proveedor.contacto_principal = contacto
-                    proveedor.save()
-                
-                messages.success(request, f'Proveedor "{proveedor.nombre}" y su contacto principal han sido creados exitosamente.')
-                return redirect('gestion_inventario:ruta_lista_proveedores')
+                # 2. Guardar el Contacto y vincularlo
+                contacto = contacto_form.save(commit=False)
+                contacto.proveedor = proveedor
+                contacto.save()
 
-            except IntegrityError as e:
-                print(e)
-                messages.error(request, 'Error: Ya existe un proveedor con ese RUT.')
-            except Exception as e:
-                messages.error(request, f'Ha ocurrido un error inesperado: {e}')
+                # 3. Cerrar el círculo: Asignar contacto principal
+                proveedor.contacto_principal = contacto
+                proveedor.save(update_fields=['contacto_principal'])
 
-        # Si algún formulario no es válido, volvemos a mostrar la página con los errores
+            messages.success(self.request, f'Proveedor "{proveedor.nombre}" creado exitosamente.')
+            return redirect(self.success_url)
+
+        except IntegrityError:
+            # Error específico de base de datos (ej: RUT duplicado)
+            messages.error(self.request, 'Error: Ya existe un proveedor registrado con ese RUT.')
+            return self.forms_invalid(proveedor_form, contacto_form)
+            
+        except Exception as e:
+            # Error genérico
+            messages.error(self.request, f'Ha ocurrido un error inesperado: {e}')
+            return self.forms_invalid(proveedor_form, contacto_form)
+
+    def forms_invalid(self, proveedor_form, contacto_form):
+        """
+        Renderiza la plantilla con los errores de validación.
+        """
         context = {
             'proveedor_form': proveedor_form,
             'contacto_form': contacto_form
         }
-        return render(request, self.template_name, context)
+        return render(self.request, self.template_name, context)
 
 
 
 
-class ProveedorDetalleView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class ProveedorDetalleView(BaseEstacionMixin, PermissionRequiredMixin, DetailView):
     """
-    Muestra el detalle de un Proveedor, separando el contacto principal (global)
-    de los contactos personalizados por estación.
+    Vista de detalle de Proveedor.
+    mplementa DetailView, optimizando la carga de relaciones (Globales y Locales)
+    y limpiando la lógica de negocio en get_context_data.
     """
+    model = Proveedor
     template_name = 'gestion_inventario/pages/detalle_proveedor.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_proveedores"
-    model = Proveedor
+    context_object_name = 'proveedor'
 
-    def get(self, request, *args, **kwargs):
-        proveedor_id = self.kwargs.get('pk')
-        estacion_id = request.session.get('active_estacion_id')
+    def get_queryset(self):
+        """
+        Obtiene el proveedor y precarga las relaciones 'globales' necesarias.
+        """
+        return super().get_queryset().select_related(
+            'contacto_principal__comuna__region',
+            'estacion_creadora'
+        )
 
-        try:
-            # Obtenemos el proveedor y precargamos sus relaciones principales
-            proveedor = Proveedor.objects.select_related(
-                'contacto_principal__comuna__region', 
-                'estacion_creadora' # Asumo que Estacion no necesita más joins
-            ).get(pk=proveedor_id)
-        
-        except Proveedor.DoesNotExist:
-            messages.error(request, "El proveedor solicitado no existe.")
-            return redirect('gestion_inventario:ruta_lista_proveedores')
+    def get_context_data(self, **kwargs):
+        """
+        Calcula y añade al contexto los contactos específicos (personalizados).
+        """
+        context = super().get_context_data(**kwargs)
+        proveedor = self.object
 
-        # 1. Obtenemos el Contacto Principal (Global)
-        contacto_principal = proveedor.contacto_principal
+        # 1. Buscar Contacto Personalizado de la Estación Actual
+        # Usamos filter().first() para evitar try/except DoesNotExist.
+        # Es más limpio: retorna el objeto o None.
+        contacto_actual = ContactoProveedor.objects.filter(
+            proveedor=proveedor,
+            estacion_especifica=self.estacion_activa
+        ).select_related(
+            'comuna__region'
+        ).first()
 
-        # 2. Buscamos si la estación activa tiene un contacto personalizado
-        # Asumo que el modelo ContactoProveedor tiene un campo FK a Estacion
-        # llamado 'estacion_personalizada' (que puede ser Null).
-        contacto_estacion_actual = None
-        if estacion_id:
-            try:
-                contacto_estacion_actual = ContactoProveedor.objects.select_related('comuna__region').get(
-                    proveedor=proveedor,
-                    estacion_especifica=estacion_id
-                )
-            except ContactoProveedor.DoesNotExist:
-                contacto_estacion_actual = None
-
-        # 3. Obtenemos la lista de "otros" contactos personalizados
-        # Es decir, todos los que tienen una estación asignada, excluyendo
-        # el de la estación actual (si existe) para no mostrarlo duplicado.
-        query_otros_contactos = ContactoProveedor.objects.filter(
+        # 2. Buscar "Otros" Contactos Personalizados
+        # Excluimos el actual para no duplicarlo en la lista "otros".
+        otros_contactos_qs = ContactoProveedor.objects.filter(
             proveedor=proveedor,
             estacion_especifica__isnull=False
-        ).select_related('estacion_especifica', 'comuna__region')
+        ).select_related(
+            'estacion_especifica', 'comuna__region'
+        )
 
-        if contacto_estacion_actual:
-            query_otros_contactos = query_otros_contactos.exclude(pk=contacto_estacion_actual.pk)
+        if contacto_actual:
+            otros_contactos_qs = otros_contactos_qs.exclude(id=contacto_actual.id)
 
-        # 4. Determinamos permisos
-        # Solo la estación creadora puede editar la info "global"
-        es_estacion_creadora = (estacion_id == proveedor.estacion_creadora_id)
+        # 3. Lógica de Permisos de UI (¿Es quien creó el proveedor?)
+        # Comparamos IDs para ser eficientes y evitar consultas extra
+        es_creador = (self.estacion_activa.id == proveedor.estacion_creadora_id)
 
-        context = {
-            'proveedor': proveedor,
-            'contacto_principal': contacto_principal,
-            'contacto_estacion_actual': contacto_estacion_actual, # El de la sesión
-            'otros_contactos_personalizados': query_otros_contactos,
-            'es_estacion_creadora': es_estacion_creadora,
-            'active_estacion_id': estacion_id, # Para saber si hay sesión activa
-        }
+        context.update({
+            'contacto_principal': proveedor.contacto_principal,
+            'contacto_estacion_actual': contacto_actual,
+            'otros_contactos_personalizados': otros_contactos_qs,
+            'es_estacion_creadora': es_creador,
+        })
 
-        return render(request, self.template_name, context)
-
-
+        return context
 
 
-class ContactoPersonalizadoCrearView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+
+
+class ContactoPersonalizadoCrearView(BaseEstacionMixin, PermissionRequiredMixin, CreateView):
     """
-    Permite a una estación activa crear un ContactoProveedor específico
-    (un 'ContactoPersonalizado') para un Proveedor existente.
+    Vista para crear un Contacto Personalizado.
+    Utiliza CreateView con chequeo de pre-condiciones en dispatch,
+    propiedades cacheadas para optimización y manejo de integridad de datos.
     """
+    model = ContactoProveedor
+    form_class = ContactoProveedorForm
     template_name = 'gestion_inventario/pages/crear_contacto_personalizado.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_proveedores"
 
-    def get(self, request, *args, **kwargs):
+    @cached_property
+    def proveedor(self):
+        """
+        Recupera el proveedor una sola vez por petición.
+        """
+        return get_object_or_404(Proveedor, pk=self.kwargs['proveedor_pk'])
+
+    def dispatch(self, request, *args, **kwargs):
+        """
+        Validación de Regla de Negocio: Verificar unicidad antes de procesar.
+        Obtenemos el ID directo de la session porque el Mixin aún no ha corrido.
+        """
+        # 1. Obtenemos el ID "crudo" de la sesión
         estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Debes tener una estación activa para esta acción.")
-            return redirect('gestion_inventario:ruta_lista_proveedores')
 
-        proveedor_id = self.kwargs.get('proveedor_pk')
-        proveedor = get_object_or_404(Proveedor, pk=proveedor_id)
+        # Si hay ID, hacemos la validación de negocio
+        if estacion_id:
+            existe = ContactoProveedor.objects.filter(
+                proveedor=self.proveedor,
+                estacion_especifica_id=estacion_id 
+            ).exists()
 
-        # --- Validación clave ---
-        # Verificamos si ya existe un contacto para esta estación y este proveedor
-        existe_ya = ContactoProveedor.objects.filter(
-            proveedor=proveedor,
-            estacion_especifica_id=estacion_id
-        ).exists()
+            if existe:
+                messages.warning(
+                    request, 
+                    f"Tu estación ya tiene un contacto personalizado para {self.proveedor.nombre}."
+                )
+                return redirect('gestion_inventario:ruta_detalle_proveedor', pk=self.proveedor.pk)
 
-        if existe_ya:
-            messages.warning(request, f"Tu estación ya tiene un contacto personalizado para {proveedor.nombre}. Serás redirigido para editarlo.")
-            # (Opcional: Redirigir a la vista de EDICIÓN cuando exista)
-            # Por ahora, lo devolvemos al detalle.
-            return redirect('gestion_inventario:ruta_detalle_proveedor', pk=proveedor_id)
+        # 2. Llamamos a super(). Esto ejecutará BaseEstacionMixin.dispatch,
+        # el cual validará si el ID es válido, si el usuario tiene permiso, etc.
+        return super().dispatch(request, *args, **kwargs)
 
-        # Si no existe, preparamos el formulario
-        contacto_form = ContactoProveedorForm()
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['proveedor'] = self.proveedor
+        context['contacto_form'] = context.get('form')
+        return context
+
+    def form_valid(self, form):
+        """
+        Asigna las relaciones foráneas automáticamente.
+        """
+        form.instance.proveedor = self.proveedor
+        form.instance.estacion_especifica = self.estacion_activa
         
-        context = {
-            'contacto_form': contacto_form,
-            'proveedor': proveedor
-        }
-        return render(request, self.template_name, context)
+        try:
+            response = super().form_valid(form)
+            messages.success(
+                self.request, 
+                f'Se ha creado el contacto "{self.object.nombre_contacto}" para tu estación.'
+            )
+            return response
 
-    def post(self, request, *args, **kwargs):
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Tu sesión ha expirado o no tienes una estación activa.")
-            return redirect('gestion_inventario:ruta_lista_proveedores')
+        except IntegrityError:
+            # Captura race-conditions si dos usuarios intentan crear al mismo tiempo
+            messages.error(self.request, "Error: Ya existe un contacto personalizado para este proveedor.")
+            return self.form_invalid(form)
+        except Exception as e:
+            messages.error(self.request, f"Error inesperado: {e}")
+            return self.form_invalid(form)
 
-        proveedor_id = self.kwargs.get('proveedor_pk')
-        proveedor = get_object_or_404(Proveedor, pk=proveedor_id)
-        estacion_actual = get_object_or_404(Estacion, pk=estacion_id)
-
-        # Repetimos la validación por seguridad en el POST
-        existe_ya = ContactoProveedor.objects.filter(
-            proveedor=proveedor,
-            estacion_especifica=estacion_actual
-        ).exists()
-
-        if existe_ya:
-            messages.error(request, "Error: Ya existe un contacto personalizado para este proveedor.")
-            return redirect('gestion_inventario:ruta_detalle_proveedor', pk=proveedor_id)
-
-        # Procesamos el formulario
-        contacto_form = ContactoProveedorForm(request.POST)
-
-        if contacto_form.is_valid():
-            try:
-                contacto = contacto_form.save(commit=False)
-                
-                # --- Asignación de claves foráneas ---
-                # El formulario no los pide, los asignamos desde el contexto
-                contacto.proveedor = proveedor
-                contacto.estacion_especifica = estacion_actual
-                
-                contacto.save()
-                
-                messages.success(request, f'Se ha creado el contacto "{contacto.nombre_contacto}" para tu estación.')
-                return redirect('gestion_inventario:ruta_detalle_proveedor', pk=proveedor.pk)
-            
-            except Exception as e:
-                messages.error(request, f'Ha ocurrido un error inesperado: {e}')
-        
-        # Si el formulario no es válido, volvemos a mostrar la página con errores
-        context = {
-            'contacto_form': contacto_form,
-            'proveedor': proveedor
-        }
-        return render(request, self.template_name, context)
+    def get_success_url(self):
+        return reverse('gestion_inventario:ruta_detalle_proveedor', kwargs={'pk': self.proveedor.pk})
 
 
 
 
-class ContactoPersonalizadoEditarView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class ContactoPersonalizadoEditarView(BaseEstacionMixin, PermissionRequiredMixin, UpdateView):
     """
     Permite a una estación activa editar SU PROPIO ContactoProveedor
     específico (su 'ContactoPersonalizado').
     """
+    model = ContactoProveedor
+    form_class = ContactoProveedorForm
     template_name = 'gestion_inventario/pages/editar_contacto_personalizado.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_proveedores"
-    model = ContactoProveedor
+    context_object_name = 'contacto' # Accesible como {{ contacto }} en el HTML
 
-    def get_objeto_seguro(self, request, pk_contacto):
+    def get_queryset(self):
         """
-        Método helper para obtener el contacto, asegurando que pertenezca
-        a la estación activa.
+        Filtra el queryset para que SOLO se puedan editar contactos de la estación activa.
+        Django lanzará 404 automáticamente si se intenta editar otro ID.
         """
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            return None, redirect('gestion_inventario:ruta_lista_proveedores')
+        return super().get_queryset().filter(
+            estacion_especifica_id=self.estacion_activa_id
+        ).select_related('proveedor', 'comuna__region')
 
-        try:
-            # --- Validación clave de seguridad ---
-            # Obtenemos el contacto SÓLO SI el pk coincide Y
-            # la estacion_especifica coincide con la estación activa.
-            contacto = ContactoProveedor.objects.select_related(
-                'proveedor', 'comuna__region'
-            ).get(
-                pk=pk_contacto,
-                estacion_especifica_id=estacion_id
-            )
-            return contacto, None
-        
-        except ContactoProveedor.DoesNotExist:
-            messages.error(request, "El contacto no existe o no tienes permiso para editarlo.")
-            # Si el contacto no existe, no podemos saber de qué proveedor era,
-            # así que redirigimos a la lista general.
-            return None, redirect('gestion_inventario:ruta_lista_proveedores')
+    def get_initial(self):
+        """
+        Pre-pobla campos del formulario que no son del modelo (como 'region').
+        """
+        initial = super().get_initial()
+        if self.object.comuna:
+            initial['region'] = self.object.comuna.region_id
+        return initial
 
-    def get(self, request, *args, **kwargs):
-        pk_contacto = self.kwargs.get('pk')
-        contacto_a_editar, error_redirect = self.get_objeto_seguro(request, pk_contacto)
-        
-        if error_redirect:
-            return error_redirect
-        
-        # --- Pre-poblar el formulario ---
-        # Pasamos 'instance' para que el formulario se cargue con datos.
-        contacto_form = ContactoProveedorForm(instance=contacto_a_editar)
+    def get_context_data(self, **kwargs):
+        """
+        Añade datos extra y el alias del formulario.
+        """
+        context = super().get_context_data(**kwargs)
+        # Tu template usa 'contacto_form' en lugar de 'form'
+        context['contacto_form'] = context.get('form')
+        context['proveedor'] = self.object.proveedor
+        return context
 
-        # --- Lógica para pre-seleccionar la Región ---
-        # El campo 'region' no está en el modelo, así que lo seteamos manualmente.
-        if contacto_a_editar.comuna:
-            # Seteamos el valor inicial del campo 'region'
-            contacto_form.fields['region'].initial = contacto_a_editar.comuna.region_id
-            
-            # El __init__ del form ya maneja poblar el queryset de comunas
-            # si 'instance' es proveído.
-            
-        
-        context = {
-            'contacto_form': contacto_form,
-            'proveedor': contacto_a_editar.proveedor,
-            'contacto': contacto_a_editar # Para el título o breadcrumbs
-        }
-        return render(request, self.template_name, context)
+    def form_valid(self, form):
+        messages.success(
+            self.request, 
+            f'Se ha actualizado el contacto "{self.object.nombre_contacto}".'
+        )
+        return super().form_valid(form)
 
-    def post(self, request, *args, **kwargs):
-        pk_contacto = self.kwargs.get('pk')
-        contacto_a_editar, error_redirect = self.get_objeto_seguro(request, pk_contacto)
-
-        if error_redirect:
-            return error_redirect
-        
-        # Pasamos 'instance' Y 'request.POST' para procesar la actualización
-        contacto_form = ContactoProveedorForm(request.POST, instance=contacto_a_editar)
-
-        if contacto_form.is_valid():
-            try:
-                # No necesitamos asignar proveedor ni estación,
-                # 'instance' se encarga de que estemos actualizando el correcto.
-                contacto_form.save()
-                
-                messages.success(request, f'Se ha actualizado el contacto "{contacto_a_editar.nombre_contacto}".')
-                # Devolvemos al usuario al detalle del proveedor
-                return redirect('gestion_inventario:ruta_detalle_proveedor', pk=contacto_a_editar.proveedor_id)
-            
-            except Exception as e:
-                messages.error(request, f'Ha ocurrido un error inesperado: {e}')
-        
-        # Si el formulario no es válido, volvemos a mostrar la página con errores
-        context = {
-            'contacto_form': contacto_form,
-            'proveedor': contacto_a_editar.proveedor,
-            'contacto': contacto_a_editar
-        }
-        return render(request, self.template_name, context)
+    def get_success_url(self):
+        return reverse('gestion_inventario:ruta_detalle_proveedor', kwargs={'pk': self.object.proveedor_id})
 
 
 
