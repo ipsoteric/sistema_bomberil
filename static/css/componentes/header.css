@@ -44,9 +44,9 @@
 }
 
 .header__logo {
-    width: 40px;
+    width: 50px;
     min-width: 40px;
-    max-width: 40px;
+    max-width: 50px;
     border-radius: 50%;
 }
 
@@ -151,6 +151,7 @@
 
 .menu_usuario__avatar_usuario img {
     width: var(--user-avatar-width);
+    height: var(--user-avatar-width);
     border-radius: 100%;
     object-fit: cover;
 }
