@@ -1239,368 +1239,333 @@ class ProductoGlobalCrearView(BaseEstacionMixin, PermissionRequiredMixin, Create
 
 
 
-class ProductoLocalListView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class ProductoLocalListView(BaseEstacionMixin, PermissionRequiredMixin, ListView):
     """
-    Muestra el Catálogo Local de Productos para la estación activa.
-    Incluye filtros avanzados, ordenación y cambio de vista (galería/tabla).
+    Vista del Catálogo Local de Productos.
+    Implementa ListView genérica, centralizando la lógica de filtrado
+    compleja en get_queryset y optimizando la carga de datos relacionados.
     """
-    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_catalogos"
+    model = Producto
     template_name = 'gestion_inventario/pages/catalogo_local.html'
+    context_object_name = 'productos'
     paginate_by = 12
+    permission_required = "gestion_usuarios.accion_gestion_inventario_ver_catalogos"
 
-    def get(self, request, *args, **kwargs):
-        
-        # 1. Obtener la estación activa (CRÍTICO para esta vista)
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Debes tener una estación activa para ver el catálogo local.")
-            # Redirige a donde el usuario selecciona su estación o al inicio
-            return redirect('portal:ruta_inicio') # Ajusta esta URL si es necesario
-            
-        try:
-            estacion = Estacion.objects.get(pk=estacion_id)
-        except Estacion.DoesNotExist:
-             messages.error(request, "La estación activa no es válida.")
-             return redirect('portal:ruta_inicio') # Ajusta esta URL
-
-        # 2. Obtener parámetros de filtro y ordenación
-        search_query = request.GET.get('q', None)
-        categoria_id_str = request.GET.get('categoria', None)
-        marca_id_str = request.GET.get('marca', None)
-        es_serializado_str = request.GET.get('serializado', None) # 'si', 'no', ''
-        es_expirable_str = request.GET.get('expirable', None) # 'si', 'no', ''
-        sort_by = request.GET.get('sort', 'fecha_desc') # Opciones: fecha_desc, fecha_asc, costo_desc, costo_asc
-        
-        view_mode = request.GET.get('view', 'gallery')
-        page_number = request.GET.get('page')
-
-        # 3. QuerySet base: Productos de la estación activa, optimizado
-        queryset = Producto.objects.filter(
-            estacion_id=estacion_id
+    def get_queryset(self):
+        """
+        Construye el queryset filtrado por estación y parámetros GET.
+        Aplica filtros de búsqueda, categoría, marca y atributos booleanos.
+        """
+        # 1. QuerySet Base: Filtrado por estación activa y optimizado
+        qs = super().get_queryset().filter(
+            estacion_id=self.estacion_activa_id
         ).select_related(
             'producto_global__marca', 
             'producto_global__categoria'
-        ).order_by('-created_at') # Orden por defecto
+        )
 
-        # 4. Aplicar filtros dinámicamente
+        # 2. Captura de parámetros GET
+        search_query = self.request.GET.get('q')
+        categoria_id = self.request.GET.get('categoria')
+        marca_id = self.request.GET.get('marca')
+        es_serializado = self.request.GET.get('serializado')
+        es_expirable = self.request.GET.get('expirable')
+        sort_by = self.request.GET.get('sort', 'fecha_desc')
+
+        # 3. Filtros Dinámicos
         if search_query:
-            queryset = queryset.filter(
+            qs = qs.filter(
                 Q(sku__icontains=search_query) |
                 Q(producto_global__nombre_oficial__icontains=search_query) |
                 Q(producto_global__modelo__icontains=search_query) |
                 Q(producto_global__marca__nombre__icontains=search_query)
             )
         
-        categoria_id = None
-        if categoria_id_str and categoria_id_str.isdigit():
-            categoria_id = int(categoria_id_str)
-            queryset = queryset.filter(producto_global__categoria_id=categoria_id)
+        if categoria_id and categoria_id.isdigit():
+            qs = qs.filter(producto_global__categoria_id=int(categoria_id))
 
-        marca_id = None
-        if marca_id_str and marca_id_str.isdigit():
-            marca_id = int(marca_id_str)
-            queryset = queryset.filter(producto_global__marca_id=marca_id)
+        if marca_id and marca_id.isdigit():
+            qs = qs.filter(producto_global__marca_id=int(marca_id))
             
-        if es_serializado_str == 'si':
-            queryset = queryset.filter(es_serializado=True)
-        elif es_serializado_str == 'no':
-             queryset = queryset.filter(es_serializado=False)
+        if es_serializado in ['si', 'no']:
+            qs = qs.filter(es_serializado=(es_serializado == 'si'))
              
-        if es_expirable_str == 'si':
-            queryset = queryset.filter(es_expirable=True)
-        elif es_expirable_str == 'no':
-             queryset = queryset.filter(es_expirable=False)
+        if es_expirable in ['si', 'no']:
+            qs = qs.filter(es_expirable=(es_expirable == 'si'))
 
-        # 5. Aplicar Ordenación
-        if sort_by == 'fecha_asc':
-            queryset = queryset.order_by('created_at')
-        elif sort_by == 'costo_desc':
-            queryset = queryset.order_by('-costo_compra', '-created_at') # '-created_at' como desempate
-        elif sort_by == 'costo_asc':
-            queryset = queryset.order_by('costo_compra', 'created_at')
-        else: # Por defecto (fecha_desc)
-            queryset = queryset.order_by('-created_at')
+        # 4. Ordenamiento
+        ordering_map = {
+            'fecha_asc': 'created_at',
+            'costo_desc': ('-costo_compra', '-created_at'),
+            'costo_asc': ('costo_compra', 'created_at'),
+            'fecha_desc': '-created_at' # Default
+        }
+        
+        ordering = ordering_map.get(sort_by, '-created_at')
+        if isinstance(ordering, tuple):
+            qs = qs.order_by(*ordering)
+        else:
+            qs = qs.order_by(ordering)
 
-        # 6. Obtener datos para los <select> del formulario
-        all_categorias = Categoria.objects.order_by('nombre')
-        # Mostramos solo marcas que realmente estén en el catálogo local de esta estación
-        marcas_en_catalogo_ids = queryset.exclude(
+        return qs
+
+    def get_context_data(self, **kwargs):
+        """
+        Prepara el contexto auxiliar: filtros, opciones de select y paginación.
+        """
+        context = super().get_context_data(**kwargs)
+        
+        # Obtenemos solo las marcas presentes en el catálogo local para el filtro
+        # Esto es mucho más amigable que mostrar todas las marcas del sistema
+        marcas_ids = self.object_list.exclude(
             producto_global__marca__isnull=True
         ).values_list(
             'producto_global__marca_id', flat=True
         ).distinct()
-        all_marcas = Marca.objects.filter(id__in=marcas_en_catalogo_ids).order_by('nombre')
+        
+        context['all_marcas'] = Marca.objects.filter(id__in=marcas_ids).order_by('nombre')
+        context['all_categorias'] = Categoria.objects.order_by('nombre')
+        
+        # Mantenemos el estado de la UI
+        context.update({
+            'current_search': self.request.GET.get('q', ''),
+            'current_categoria_id': self.request.GET.get('categoria', ''),
+            'current_marca_id': self.request.GET.get('marca', ''),
+            'current_serializado': self.request.GET.get('serializado', ''),
+            'current_expirable': self.request.GET.get('expirable', ''),
+            'current_sort': self.request.GET.get('sort', 'fecha_desc'),
+            'view_mode': self.request.GET.get('view', 'gallery'),
+            'estacion': self.estacion_activa # Disponible gracias al Mixin
+        })
 
-        # 7. Preparar parámetros para la paginación
-        params = request.GET.copy()
+        # Preservar filtros en paginación
+        params = self.request.GET.copy()
         if 'page' in params:
             del params['page']
-        query_params = params.urlencode()
+        context['query_params'] = params.urlencode()
 
-        # 8. Paginación Manual
-        paginator = Paginator(queryset, self.paginate_by)
-        page_obj = paginator.get_page(page_number)
-
-        # 9. Construir el Contexto final
-        context = {
-            'productos': page_obj,
-            'page_obj': page_obj,
-            'paginator': paginator,
-            'view_mode': view_mode,
-            'query_params': query_params,
-            'estacion': estacion, # Pasamos la estación actual a la plantilla
-            
-            # Contexto para los filtros y ordenación
-            'all_categorias': all_categorias,
-            'all_marcas': all_marcas,
-            'current_search': search_query or "",
-            'current_categoria_id': categoria_id_str or "",
-            'current_marca_id': marca_id_str or "",
-            'current_serializado': es_serializado_str or "",
-            'current_expirable': es_expirable_str or "",
-            'current_sort': sort_by,
-        }
-        
-        return render(request, self.template_name, context)
+        return context
 
 
 
 
-class ProductoLocalEditView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
-    template_name = 'gestion_inventario/pages/editar_producto_local.html'
-    form_class = ProductoLocalEditForm
-    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_catalogo_local"
+class ProductoLocalEditView(BaseEstacionMixin, PermissionRequiredMixin, UpdateView):
+    """
+    Vista para editar un producto del catálogo local.
+    Utiliza UpdateView y encapsula la lógica compleja de 
+    recálculo de vida útil en un método transaccional dedicado.
+    """
     model = Producto
+    form_class = ProductoLocalEditForm
+    template_name = 'gestion_inventario/pages/editar_producto_local.html'
+    permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_catalogo_local"
+    context_object_name = 'producto'
+    success_url = reverse_lazy('gestion_inventario:ruta_catalogo_local')
 
-    def dispatch(self, request, *args, **kwargs):
+    def get_queryset(self):
         """
-        Verifica que haya una estación activa antes de proceder.
+        Filtra para asegurar que solo se editen productos de la estación activa.
         """
-        self.estacion_id = request.session.get('active_estacion_id')
-        if not self.estacion_id:
-            messages.error(request, "Debes tener una estación activa para editar productos locales.")
-            return redirect('portal:ruta_inicio') # Ajusta si es necesario
-        try:
-            self.estacion = Estacion.objects.get(pk=self.estacion_id)
-        except Estacion.DoesNotExist:
-             messages.error(request, "La estación activa no es válida.")
-             return redirect('portal:ruta_inicio')
-             
-        # Obtener el producto a editar, asegurándose que pertenezca a la estación activa
-        self.producto = get_object_or_404(Producto, pk=kwargs['pk'], estacion_id=self.estacion_id)
-        
-        return super().dispatch(request, *args, **kwargs)
+        return super().get_queryset().filter(estacion_id=self.estacion_activa_id)
 
-    def get(self, request, pk, *args, **kwargs):
-        """Muestra el formulario pre-rellenado."""
+    def get_form_kwargs(self):
+        """
+        Pasa argumentos adicionales necesarios para el __init__ del formulario.
+        """
+        kwargs = super().get_form_kwargs()
+        producto = self.object
         
-        # Verificar si existe inventario asociado para deshabilitar 'es_serializado'
-        existe_inventario = Activo.objects.filter(producto=self.producto).exists() or \
-                           LoteInsumo.objects.filter(producto=self.producto).exists()
-        
-        # Pasamos la instancia y los parámetros extra al formulario
-        form = self.form_class(
-            instance=self.producto, 
-            estacion=self.estacion, 
-            disable_es_serializado=existe_inventario
+        # Verificar dependencias (si tiene stock) para deshabilitar campos sensibles
+        existe_inventario = (
+            Activo.objects.filter(producto=producto).exists() or 
+            LoteInsumo.objects.filter(producto=producto).exists()
         )
-        
-        context = {
-            'form': form,
-            'producto': self.producto, # Pasamos el objeto para mostrar info en la plantilla
-            'estacion': self.estacion
-        }
-        return render(request, self.template_name, context)
 
-    def post(self, request, pk, *args, **kwargs):
-        """Procesa el formulario enviado."""
-        
-        # Verificar si existe inventario asociado (igual que en GET)
-        existe_inventario = Activo.objects.filter(producto=self.producto).exists() or \
-                           LoteInsumo.objects.filter(producto=self.producto).exists()
+        kwargs.update({
+            'estacion': self.estacion_activa, # Del mixin
+            'disable_es_serializado': existe_inventario
+        })
+        return kwargs
 
-        # Pasamos la instancia, datos POST/FILES y los parámetros extra al formulario
-        form = self.form_class(
-            request.POST, 
-            request.FILES, 
-            instance=self.producto, 
-            estacion=self.estacion,
-            disable_es_serializado=existe_inventario
-        )
-        
-        if form.is_valid():
-            try:
-                # Usamos una transacción para asegurar que todo (o nada) se guarde
-                with transaction.atomic():
-                    producto_editado = form.save()
-                    
-                    # --- INICIO DE LA LÓGICA DE RECALCULO ---
-                    
-                    # Verificamos si el campo de vida útil realmente cambió.
-                    # No queremos recalcular cientos de activos si solo se cambió el SKU.
-                    if form.has_changed() and 'vida_util_estacion_anos' in form.changed_data:
-                        
-                        # Obtenemos TODOS los activos asociados a este producto
-                        activos_a_actualizar = Activo.objects.filter(producto=producto_editado)
-                        
-                        count_actualizados = 0
-                        for activo in activos_a_actualizar:
-                            # Simplemente llamamos a .save() en cada activo.
-                            # Esto disparará el método _calcular_fin_vida_util()
-                            # que ya definimos en el models.py del Activo.
-                            activo.save()
-                            count_actualizados += 1
-                        
-                        if count_actualizados > 0:
-                            messages.info(request, f"Se actualizó la vida útil de {count_actualizados} activos existentes.")
+    def get_context_data(self, **kwargs):
+        """Añade la estación al contexto (usada en el template)."""
+        context = super().get_context_data(**kwargs)
+        context['estacion'] = self.estacion_activa
+        return context
 
-                    messages.success(request, f'Producto "{producto_editado.producto_global.nombre_oficial}" actualizado correctamente.')
-                # Redirigir de vuelta al catálogo local
-                return redirect('gestion_inventario:ruta_catalogo_local')
+    def _recalcular_vida_util_activos(self, producto):
+        """
+        Método privado para actualizar la fecha de fin de vida útil 
+        de todos los activos asociados.
+        """
+        activos = Activo.objects.filter(producto=producto)
+        count = 0
+        
+        # Nota: No usamos update() masivo porque dependemos de la lógica 
+        # en el método save() del modelo Activo para el cálculo preciso.
+        for activo in activos:
+            activo.save() # Dispara _calcular_fin_vida_util()
+            count += 1
             
-            except IntegrityError:
-                 messages.error(request, 'Error: Ya existe otro producto en tu estación con ese SKU.')
-            except Exception as e:
-                messages.error(request, f'Ha ocurrido un error inesperado: {e}')
-        
-        # Si el formulario no es válido, se vuelve a renderizar con los errores
-        context = {
-            'form': form,
-            'producto': self.producto,
-            'estacion': self.estacion
-        }
-        return render(request, self.template_name, context)
+        return count
+
+    def form_valid(self, form):
+        try:
+            with transaction.atomic():
+                self.object = form.save()
+                
+                # Lógica de Negocio: Recálculo de Vida Útil
+                if form.has_changed() and 'vida_util_estacion_anos' in form.changed_data:
+                    total_actualizados = self._recalcular_vida_util_activos(self.object)
+                    
+                    if total_actualizados > 0:
+                        messages.info(
+                            self.request, 
+                            f"Se actualizó la vida útil de {total_actualizados} activos existentes."
+                        )
+
+                messages.success(
+                    self.request, 
+                    f'Producto "{self.object.producto_global.nombre_oficial}" actualizado correctamente.'
+                )
+                return super().form_valid(form)
+
+        except IntegrityError:
+            messages.error(self.request, 'Error: Ya existe otro producto en tu estación con ese SKU.')
+            return self.form_invalid(form)
+        except Exception as e:
+            messages.error(self.request, f'Ha ocurrido un error inesperado: {e}')
+            return self.form_invalid(form)
 
 
 
 
-class ProductoLocalDetalleView(LoginRequiredMixin, ModuleAccessMixin, PermissionRequiredMixin, View):
+class ProductoLocalDetalleView(BaseEstacionMixin, PermissionRequiredMixin, DetailView):
     """
     Muestra los detalles de un Producto (Local y Global) y 
     lista todo el stock existente (Activos o Lotes) de ese 
     producto en la estación.
     """
+    model = Producto
     template_name = 'gestion_inventario/pages/detalle_producto_local.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_ver_catalogos"
-    model = Producto
+    context_object_name = 'producto'
 
-    def get(self, request, *args, **kwargs):
-        # 1. Obtener Estación Activa (tu lógica de sesión)
-        estacion_id = request.session.get('active_estacion_id')
-        if not estacion_id:
-            messages.error(request, "Estación no seleccionada.")
-            return redirect('portal:home')
-
-        # 2. Obtener el Producto (asegurando que sea de la estación)
-        producto_pk = kwargs.get('pk')
-        producto = get_object_or_404(
-            Producto.objects.select_related(
-                'producto_global__marca', 
-                'producto_global__categoria',
-                'proveedor_preferido'
-            ), 
-            pk=producto_pk, 
-            estacion_id=estacion_id
+    def get_queryset(self):
+        """
+        Obtiene el producto asegurando pertenencia a la estación y 
+        precargando relaciones costosas.
+        """
+        return super().get_queryset().filter(
+            estacion_id=self.estacion_activa_id
+        ).select_related(
+            'producto_global__marca', 
+            'producto_global__categoria',
+            'proveedor_preferido'
         )
 
-        # 3. Obtener Filtros y Ordenamiento de la URL
-        sort_by = request.GET.get('sort', 'vencimiento_asc') # Default: por vencer primero
-        estado_id = request.GET.get('estado', None)
-
-        # 4. Preparar el formulario de filtro (CORREGIDO)
-        filter_form = ProductoStockDetalleFilterForm(request.GET)
-
-        # --- AÑADIDO: Fechas para cálculos de estado ---
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        producto = self.object
+        
+        # Parámetros GET
+        self.sort_by = self.request.GET.get('sort', 'vencimiento_asc')
+        self.estado_id = self.request.GET.get('estado')
+        
+        # Variables de Fecha para Annotations (DRY)
         today = timezone.now().date()
-        warning_date = today + datetime.timedelta(days=90) # Alerta de 90 días
+        warning_date = today + datetime.timedelta(days=90)
+        
+        # Definimos la lógica del Case/When una sola vez para reutilizar
+        self.annotation_vencimiento = Case(
+            When(vencimiento__isnull=True, then=Value('no_aplica')),
+            When(vencimiento__lt=today, then=Value('vencido')),
+            When(vencimiento__lt=warning_date, then=Value('proximo')),
+            default=Value('ok'),
+            output_field=CharField()
+        )
 
-        # 5. Lógica de Stock (Separada por tipo de producto)
-        stock_queryset = None
-        stock_summary = {}
-        
-        estados_visibles = [1, 2] # IDs para OPERATIVO y NO OPERATIVO
-        
+        # Delegación de lógica según el tipo de producto (Strategy Pattern)
         if producto.es_serializado:
-            # --- Es un ACTIVO ---
-            base_qs = Activo.objects.filter(producto=producto).select_related('compartimento__ubicacion', 'estado')
-            
-            # Calcular resumen de stock (antes de filtrar por estado)
-            summary_data = base_qs.values('estado__nombre').annotate(total=Count('id')).order_by('estado__nombre')
-            stock_summary = {item['estado__nombre']: item['total'] for item in summary_data}
-            stock_summary['total_general'] = base_qs.count()
-
-            # Aplicar filtros
-            if estado_id:
-                base_qs = base_qs.filter(estado_id=estado_id)
-            else:
-                base_qs = base_qs.filter(estado__tipo_estado__id__in=estados_visibles)
-
-            # --- AÑADIDO: Anotaciones de Vencimiento ---
-            base_qs = base_qs.annotate(
-                vencimiento=Coalesce('fecha_expiracion', 'fin_vida_util_calculada'),
-                estado_vencimiento=Case(
-                    When(vencimiento__isnull=True, then=Value('no_aplica')),
-                    When(vencimiento__lt=today, then=Value('vencido')),
-                    When(vencimiento__lt=warning_date, then=Value('proximo')),
-                    default=Value('ok'),
-                    output_field=CharField()
-                )
-            )
-            # --- FIN AÑADIDO ---
-
-            # Aplicar ordenamiento
-            if sort_by == 'vencimiento_asc':
-                base_qs = base_qs.order_by(F('vencimiento').asc(nulls_last=True))
-            else: # 'recepcion_desc'
-                base_qs = base_qs.order_by('-fecha_recepcion')
-            
-            stock_queryset = base_qs
-
+            context.update(self._get_context_activos(producto))
         else:
-            # --- Es un INSUMO (LOTE) ---
-            base_qs = LoteInsumo.objects.filter(producto=producto).select_related('compartimento__ubicacion', 'estado')
+            context.update(self._get_context_lotes(producto))
 
-            # (Lógica de resumen de stock)
-            summary_data = base_qs.filter(cantidad__gt=0).values('estado__nombre').annotate(total=Sum('cantidad')).order_by('estado__nombre')
-            stock_summary = {item['estado__nombre']: item['total'] for item in summary_data}
-            stock_summary['total_general'] = base_qs.filter(cantidad__gt=0).aggregate(total=Sum('cantidad'))['total'] or 0
+        # Formulario de filtros y metadatos UI
+        context['filter_form'] = ProductoStockDetalleFilterForm(self.request.GET)
+        context['current_sort'] = self.sort_by
+        context['current_estado'] = self.request.GET.get('estado', '')
+        
+        return context
 
-            # Aplicar filtros
-            if estado_id:
-                base_qs = base_qs.filter(estado_id=estado_id)
-            else:
-                 base_qs = base_qs.filter(estado__tipo_estado__id__in=estados_visibles, cantidad__gt=0)
-            
-            # --- AÑADIDO: Anotaciones de Vencimiento ---
-            base_qs = base_qs.annotate(
-                vencimiento=F('fecha_expiracion'), # Alias para consistencia
-                estado_vencimiento=Case(
-                    When(fecha_expiracion__isnull=True, then=Value('no_aplica')),
-                    When(fecha_expiracion__lt=today, then=Value('vencido')),
-                    When(fecha_expiracion__lt=warning_date, then=Value('proximo')),
-                    default=Value('ok'),
-                    output_field=CharField()
-                )
-            )
-            # --- FIN AÑADIDO ---
-            
-            # Aplicar ordenamiento
-            if sort_by == 'vencimiento_asc':
-                base_qs = base_qs.order_by(F('vencimiento').asc(nulls_last=True))
-            else: # 'recepcion_desc'
-                base_qs = base_qs.order_by('-fecha_recepcion')
-            
-            stock_queryset = base_qs
+    def _get_context_activos(self, producto):
+        """Estrategia de obtención de datos para Activos (Serializados)."""
+        base_qs = Activo.objects.filter(producto=producto).select_related(
+            'compartimento__ubicacion', 'estado'
+        )
 
-        context = {
-            'producto': producto,
-            'stock_items': stock_queryset,
-            'stock_summary': stock_summary,
-            'filter_form': filter_form,
-            'current_sort': sort_by,
-            'current_estado': request.GET.get('estado', ''),
+        # 1. Resumen (antes de filtrar)
+        summary_data = base_qs.values('estado__nombre').annotate(total=Count('id')).order_by('estado__nombre')
+        stock_summary = {item['estado__nombre']: item['total'] for item in summary_data}
+        stock_summary['total_general'] = base_qs.count()
+
+        # 2. Filtrado
+        if self.estado_id:
+            base_qs = base_qs.filter(estado_id=self.estado_id)
+        else:
+            # Por defecto: Operativo y No Operativo (IDs 1 y 2 según tu lógica)
+            base_qs = base_qs.filter(estado__tipo_estado__id__in=[1, 2])
+
+        # 3. Anotación y Ordenamiento
+        # Coalesce es clave aquí porque Activo usa dos campos de fecha posibles
+        qs = base_qs.annotate(
+            vencimiento=Coalesce('fecha_expiracion', 'fin_vida_util_calculada')
+        ).annotate(
+            estado_vencimiento=self.annotation_vencimiento
+        )
+        
+        return {
+            'stock_items': self._aplicar_ordenamiento(qs),
+            'stock_summary': stock_summary
         }
-        return render(request, self.template_name, context)
+
+    def _get_context_lotes(self, producto):
+        """Estrategia de obtención de datos para Lotes (Fungibles)."""
+        base_qs = LoteInsumo.objects.filter(producto=producto).select_related(
+            'compartimento__ubicacion', 'estado'
+        )
+
+        # 1. Resumen (Solo lotes con cantidad > 0)
+        qs_con_stock = base_qs.filter(cantidad__gt=0)
+        summary_data = qs_con_stock.values('estado__nombre').annotate(total=Sum('cantidad')).order_by('estado__nombre')
+        
+        stock_summary = {item['estado__nombre']: item['total'] for item in summary_data}
+        stock_summary['total_general'] = qs_con_stock.aggregate(total=Sum('cantidad'))['total'] or 0
+
+        # 2. Filtrado
+        if self.estado_id:
+            base_qs = base_qs.filter(estado_id=self.estado_id)
+        else:
+            base_qs = base_qs.filter(estado__tipo_estado__id__in=[1, 2], cantidad__gt=0)
+
+        # 3. Anotación y Ordenamiento
+        qs = base_qs.annotate(
+            vencimiento=F('fecha_expiracion') # Alias simple
+        ).annotate(
+            estado_vencimiento=self.annotation_vencimiento
+        )
+
+        return {
+            'stock_items': self._aplicar_ordenamiento(qs),
+            'stock_summary': stock_summary
+        }
+
+    def _aplicar_ordenamiento(self, queryset):
+        """Helper común para ordenar querysets ya anotados."""
+        if self.sort_by == 'vencimiento_asc':
+            return queryset.order_by(F('vencimiento').asc(nulls_last=True))
+        else:
+            return queryset.order_by('-fecha_recepcion')
 
 
 
