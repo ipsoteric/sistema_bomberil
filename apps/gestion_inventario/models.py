@@ -658,7 +658,7 @@ class Activo(models.Model):
             raise ValueError("El producto de un activo debe pertenecer a la misma compañía.")
 
         # ... (validación existente) ...
-        if not self.codigo_activo and not self.pk and self.estacion: 
+        if not self.codigo_activo and self.estacion:
             estacion_code = self.estacion.codigo
 
             # (Opcional) Protección por si la estación es antigua y no tiene código generado
