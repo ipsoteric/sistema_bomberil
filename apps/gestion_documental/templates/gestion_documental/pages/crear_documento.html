@@ -8,8 +8,10 @@
     <div class="container-form">
         <div class="panel">
             <div class="panel-header">
-                <h1 class="titulo-pagina">Subir Nuevo Documento</h1>
-                <a href="{% url 'gestion_documental:ruta_lista_documentos' %}" class="back-link">
+                {# Título principal: Tamaño 3XL y Negrita #}
+                <h1 class="titulo-pagina text-3xl font-bold">Subir Nuevo Documento</h1>
+                {# Enlace de volver: Tamaño base y peso medio #}
+                <a href="{% url 'gestion_documental:ruta_lista_documentos' %}" class="back-link text-base font-medium">
                     <i class="fas fa-arrow-left"></i> Cancelar y Volver
                 </a>
             </div>
@@ -19,32 +21,39 @@
                     {% csrf_token %}
                     
                     <div class="form-section">
-                        <h2 class="section-title">
+                        {# Título de sección: Tamaño XL y Negrita #}
+                        <h2 class="section-title text-xl font-bold">
                             <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
                             Información del Documento
                         </h2>
                         
                         {% for field in form %}
                             <div class="form-group">
+                                {# Nota: label_tag y field renderizan su propio HTML. #}
+                                {# Se recomienda configurar las clases de los inputs en forms.py #}
                                 {{ field.label_tag }}
                                 {{ field }}
                                 
                                 {% if field.errors %}
-                                    <div class="error-message">{{ field.errors|first }}</div>
+                                    {# Errores: Texto pequeño y negrita para destacar #}
+                                    <div class="error-message text-sm font-bold">{{ field.errors|first }}</div>
                                 {% endif %}
                                 
                                 {% if field.help_text %}
-                                    <small class="help-text">{{ field.help_text }}</small>
+                                    {# Ayuda: Texto extra pequeño y regular #}
+                                    <small class="help-text text-xs font-regular">{{ field.help_text }}</small>
                                 {% endif %}
                             </div>
                         {% endfor %}
                     </div>
                     
                     <div class="button-group">
-                        <a href="{% url 'gestion_documental:ruta_lista_documentos' %}" class="btn btn-secondary">
+                        {# Botón cancelar: Tamaño base y peso medio #}
+                        <a href="{% url 'gestion_documental:ruta_lista_documentos' %}" class="btn btn-secondary text-base font-medium">
                             Cancelar
                         </a>
-                        <button type="submit" class="btn btn-primary">
+                        {# Botón guardar: Tamaño base y peso negrita (acción principal) #}
+                        <button type="submit" class="btn btn-primary text-base font-bold">
                             <i class="fas fa-save"></i> Guardar Documento
                         </button>
                     </div>

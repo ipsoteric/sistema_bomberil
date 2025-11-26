@@ -7,11 +7,13 @@
 <div class="container-fluid mt-4"> 
     <div class="panel">
         <div class="panel-header">
-            <h1 class="titulo-pagina">
+            {# Título Página: 3XL y Negrita #}
+            <h1 class="titulo-pagina text-3xl font-bold">
                 <i class="fas fa-folder-open" style="margin-right: 10px; color: #D72600;"></i>
                 Archivo Histórico: {{ estacion_usuario.nombre | default:"Compañía" }}
             </h1>
-            <a href="{% url 'gestion_documental:ruta_subir_documento' %}" class="btn btn-principal">
+            {# Botón de acción principal: Base y Negrita #}
+            <a href="{% url 'gestion_documental:ruta_subir_documento' %}" class="btn btn-principal text-base font-bold">
                 <i class="fas fa-cloud-upload-alt"></i> Subir Documento
             </a>
         </div>
@@ -21,39 +23,46 @@
             <table class="data-table styled-table">
                 <thead>
                     <tr>
-                        <th style="width: 40%;">Documento</th>
-                        <th style="width: 20%;">Tipo</th>
-                        <th style="width: 15%;">Fecha Origen</th>
-                        <th style="width: 15%;">Subido por</th>
-                        <th style="width: 10%; text-align: center;">Acciones</th>
+                        {# Encabezados de tabla: Pequeño y Negrita #}
+                        <th style="width: 40%;" class="text-sm font-bold">Documento</th>
+                        <th style="width: 20%;" class="text-sm font-bold">Tipo</th>
+                        <th style="width: 15%;" class="text-sm font-bold">Fecha Origen</th>
+                        <th style="width: 15%;" class="text-sm font-bold">Subido por</th>
+                        <th style="width: 10%; text-align: center;" class="text-sm font-bold">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for doc in documentos %}
                     <tr>
                         <td>
-                            <span class="doc-title">{{ doc.titulo }}</span>
-                            <p class="doc-desc">
+                            {# Título del documento: Base y Negrita #}
+                            <span class="doc-title text-base font-bold">{{ doc.titulo }}</span>
+                            {# Descripción: Pequeña y Regular #}
+                            <p class="doc-desc text-sm font-regular">
                                 {{ doc.descripcion|truncatewords:20|default:"Sin descripción disponible." }}
                             </p>
                         </td>
                         <td>
-                            <span class="badge-type">{{ doc.tipo_documento.nombre }}</span>
+                            {# Badge/Etiqueta: Extra pequeño y peso medio #}
+                            <span class="badge-type text-xs font-medium">{{ doc.tipo_documento.nombre }}</span>
                         </td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 5px; color: #555;">
+                            {# Fecha: Clase especial text-data-code para datos técnicos #}
+                            <div class="text-sm text-data-code" style="display: flex; align-items: center; gap: 5px; color: #555;">
                                 <i class="far fa-calendar-alt"></i>
                                 {{ doc.fecha_documento | date:"d/m/Y" }}
                             </div>
                         </td>
                         <td>
-                            <div style="font-size: 0.9rem;">
+                            {# Usuario: Pequeño y Regular (Reemplazado el style inline) #}
+                            <div class="text-sm font-regular">
                                 <i class="fas fa-user-circle" style="color: #ccc; margin-right: 4px;"></i>
                                 {{ doc.usuario_registra.get_full_name | default:"Sistema" }}
                             </div>
                         </td>
                         <td style="text-align: center;">
-                            <a href="{{ doc.archivo.url }}" class="btn btn-view btn-sm" target="_blank" title="Ver / Descargar PDF">
+                            {# Botón Ver: Pequeño y Medio #}
+                            <a href="{{ doc.archivo.url }}" class="btn btn-view btn-sm text-sm font-medium" target="_blank" title="Ver / Descargar PDF">
                                 <i class="fas fa-eye"></i> Ver
                             </a>
                         </td>
@@ -63,8 +72,10 @@
                         <td colspan="5">
                             <div class="empty-state">
                                 <i class="fas fa-file-archive"></i>
-                                <h3>No hay documentos registrados</h3>
-                                <p>Aún no se han digitalizado documentos para esta estación.</p>
+                                {# Título vacío: XL y Negrita #}
+                                <h3 class="text-xl font-bold">No hay documentos registrados</h3>
+                                {# Texto vacío: Base y Regular #}
+                                <p class="text-base font-regular">Aún no se han digitalizado documentos para esta estación.</p>
                             </div>
                         </td>
                     </tr>
