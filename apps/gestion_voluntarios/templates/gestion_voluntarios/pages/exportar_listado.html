@@ -8,14 +8,17 @@
 <div class="container-fluid mt-4"> 
     <div class="panel">
         <div class="panel-header">
-            <h1 class="titulo-pagina">Exportar Listado de Voluntarios</h1>
+            {# Título Página: Tamaño 3XL y Negrita #}
+            <h1 class="titulo-pagina text-3xl font-bold">Exportar Listado de Voluntarios</h1>
         </div>
 
         <div class="panel-body">
             
             <div class="card-reporte">
-                <h2 class="card-title-report">Filtros y Formato de Salida</h2>
-                <p class="text-muted-report">
+                {# Título Tarjeta: Tamaño XL y Negrita #}
+                <h2 class="card-title-report text-xl font-bold">Filtros y Formato de Salida</h2>
+                {# Descripción: Tamaño Base y Regular #}
+                <p class="text-muted-report text-base font-regular">
                     Seleccione el rango para personalizar el reporte. Luego, elija el formato de archivo que mejor se adapte a sus necesidades.
                 </p>
 
@@ -28,8 +31,10 @@
                         {# El backend ahora usa la sesión activa automáticamente #}
 
                         <div class="form-group">
-                            <label for="filtro_rango" class="label-custom">Filtrar por Rango:</label>
-                            <select id="filtro_rango" name="rango" class="form-control">
+                            {# Label: Tamaño Base y Peso Medio #}
+                            <label for="filtro_rango" class="label-custom text-base font-medium">Filtrar por Rango:</label>
+                            {# Select: Tamaño Base #}
+                            <select id="filtro_rango" name="rango" class="form-control text-base font-regular">
                                 <option value="global">Todos los Rangos</option>
                                 {% for cargo in cargos %}
                                 <option value="{{ cargo.id }}">{{ cargo.nombre }}</option>
@@ -38,8 +43,10 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="formato_export" class="label-custom">Formato de Exportación:</label>
-                            <select id="formato_export" name="format" class="form-control" required>
+                            {# Label: Tamaño Base y Peso Medio #}
+                            <label for="formato_export" class="label-custom text-base font-medium">Formato de Exportación:</label>
+                            {# Select: Tamaño Base #}
+                            <select id="formato_export" name="format" class="form-control text-base font-regular" required>
                                 <option value="csv">Valores Separados por Coma (.csv)</option>
                                 <option value="excel">Microsoft Excel (.xlsx)</option>
                                 <option value="pdf">Documento PDF (.pdf)</option>
@@ -49,7 +56,8 @@
                     </div>
                     
                     <div class="form-actions-report">
-                        <button type="submit" class="btn btn-principal">
+                        {# Botón Principal: Tamaño Base y Negrita #}
+                        <button type="submit" class="btn btn-principal text-base font-bold">
                             <i class="fas fa-file-export" style="margin-right: 8px;"></i> Exportar Listado
                         </button>
                     </div>

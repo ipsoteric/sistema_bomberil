@@ -6,24 +6,25 @@
 {% block contenido %}
 <div class="container-fluid mt-4"> 
     <div class="container">
-        <h1>Configuración del Módulo</h1>
+        
+        <h1 class="text-3xl font-bold">Configuración del Módulo</h1>
 
         <div class="tabs">
-            <button class="tab-button active" id="tab-btn-profesiones" onclick="openTab('profesiones')">Profesiones</button>
-            <button class="tab-button" id="tab-btn-rangos" onclick="openTab('rangos')">Rangos Bomberiles</button>
+            <button class="tab-button active text-base font-medium" id="tab-btn-profesiones" onclick="openTab('profesiones')">Profesiones</button>
+            <button class="tab-button text-base font-medium" id="tab-btn-rangos" onclick="openTab('rangos')">Rangos Bomberiles</button>
         </div>
 
         <div id="profesiones" class="tab-content active">
             <div class="filter-controls-area">
                 <div class="add-new-item">
-                    <a href="{% url 'gestion_voluntarios:ruta_profesion_crear' %}" class="btn btn-primary">
+                    <a href="{% url 'gestion_voluntarios:ruta_profesion_crear' %}" class="btn btn-primary text-base font-bold">
                         <i class="fas fa-plus" style="margin-right: 5px;"></i> Agregar Profesión
                     </a>
                 </div>
                 <div class="data-table-controls">
                     <div class="search-box">
-                        <span>Buscar:</span>
-                        <input type="text" id="search-profesion" placeholder="Nombre profesión..." class="form-control-sm" value="{{ request.GET.q_profesion }}">
+                        <span class="text-sm font-medium">Buscar:</span>
+                        <input type="text" id="search-profesion" placeholder="Nombre profesión..." class="form-control-sm text-sm font-regular" value="{{ request.GET.q_profesion }}">
                     </div>
                 </div>
             </div>
@@ -31,25 +32,27 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Nombre de la Profesión</th>
-                        <th>Acciones</th>
+                        <th class="text-sm font-bold">ID</th>
+                        <th class="text-sm font-bold">Nombre de la Profesión</th>
+                        <th class="text-sm font-bold">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for profesion in profesiones %}
                     <tr>
-                        <td>{{ profesion.id }}</td>
-                        <td><strong>{{ profesion.nombre }}</strong></td>
+                        <td class="text-sm text-data-code">{{ profesion.id }}</td>
+                        {# Nombre: Tamaño base y negrita #}
+                        <td><strong class="text-base font-bold">{{ profesion.nombre }}</strong></td>
                         <td class="actions">
-                            <a href="{% url 'gestion_voluntarios:ruta_profesion_modificar' id=profesion.id %}" class="btn btn-warning btn-sm">
+                            {# Botón Editar: Tamaño pequeño y medio #}
+                            <a href="{% url 'gestion_voluntarios:ruta_profesion_modificar' id=profesion.id %}" class="btn btn-warning btn-sm text-sm font-medium">
                                 <i class="fas fa-pen"></i> Editar
                             </a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="3" style="text-align: center; padding: 30px;">No hay profesiones registradas.</td>
+                        <td colspan="3" class="text-base font-regular" style="text-align: center; padding: 30px;">No hay profesiones registradas.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -59,14 +62,14 @@
         <div id="rangos" class="tab-content">
             <div class="filter-controls-area">
                 <div class="add-new-item">
-                    <a href="{% url 'gestion_voluntarios:ruta_cargos_crear' %}" class="btn btn-primary">
+                    <a href="{% url 'gestion_voluntarios:ruta_cargos_crear' %}" class="btn btn-primary text-base font-bold">
                         <i class="fas fa-plus" style="margin-right: 5px;"></i> Agregar Rango
                     </a>
                 </div>
                 <div class="data-table-controls">
                     <div class="entries-selector">
-                        <span>Categoría:</span>
-                        <select id="filter-tipo-cargo" class="form-control-sm">
+                        <span class="text-sm font-medium">Categoría:</span>
+                        <select id="filter-tipo-cargo" class="form-control-sm text-sm font-regular">
                             <option value="global">Todas</option>
                             {% for tipo in tipos_cargo %}
                             <option value="{{ tipo.id }}" {% if request.GET.tipo_cargo == tipo.id|stringformat:"s" %}selected{% endif %}>
@@ -77,8 +80,9 @@
                     </div>
                     
                     <div class="search-box">
-                        <span>Buscar:</span>
-                        <input type="text" id="search-cargo" placeholder="Nombre rango..." class="form-control-sm" value="{{ request.GET.q_cargo }}">
+                        <span class="text-sm font-medium">Buscar:</span>
+                        {# Input: Tamaño pequeño y regular #}
+                        <input type="text" id="search-cargo" placeholder="Nombre rango..." class="form-control-sm text-sm font-regular" value="{{ request.GET.q_cargo }}">
                     </div>
                 </div>
             </div>
@@ -86,29 +90,31 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Nombre del Rango</th>
-                        <th>Categoría</th>
-                        <th>Acciones</th>
+                        <th class="text-sm font-bold">ID</th>
+                        <th class="text-sm font-bold">Nombre del Rango</th>
+                        <th class="text-sm font-bold">Categoría</th>
+                        <th class="text-sm font-bold">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for cargo in cargos %}
                     <tr>
-                        <td>{{ cargo.id }}</td>
-                        <td><strong>{{ cargo.nombre }}</strong></td>
+                        <td class="text-sm text-data-code">{{ cargo.id }}</td>
+                        {# Nombre: Tamaño base y negrita #}
+                        <td><strong class="text-base font-bold">{{ cargo.nombre }}</strong></td>
                         <td>
-                            <span class="badge">{{ cargo.tipo_cargo.nombre | default:"Sin Categoría" }}</span>
+                            <span class="badge text-xs font-medium">{{ cargo.tipo_cargo.nombre | default:"Sin Categoría" }}</span>
                         </td>
                         <td class="actions">
-                            <a href="{% url 'gestion_voluntarios:ruta_cargos_modificar' id=cargo.id %}" class="btn btn-warning btn-sm">
+                            {# Botón Editar: Tamaño pequeño y medio #}
+                            <a href="{% url 'gestion_voluntarios:ruta_cargos_modificar' id=cargo.id %}" class="btn btn-warning btn-sm text-sm font-medium">
                                 <i class="fas fa-pen"></i> Editar
                             </a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" style="text-align: center; padding: 30px;">No hay rangos registrados.</td>
+                        <td colspan="4" class="text-base font-regular" style="text-align: center; padding: 30px;">No hay rangos registrados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

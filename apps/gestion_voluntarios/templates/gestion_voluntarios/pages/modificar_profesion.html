@@ -6,28 +6,33 @@
 {% block contenido %}
 <div class="container-fluid mt-4"> 
     <div class="container">
-        <h1>Modificar Profesión: {{ profesion.nombre }}</h1>
+        {# Título Principal: Tamaño 3XL y Negrita #}
+        <h1 class="text-3xl font-bold">Modificar Profesión: {{ profesion.nombre }}</h1>
         
         <form method="POST">
             {% csrf_token %}
             
             <div class="form-section">
-                <h2>Datos de la Profesión</h2>
+                {# Título Sección: Tamaño XL y Negrita #}
+                <h2 class="text-xl font-bold">Datos de la Profesión</h2>
                 
                 {% for field in form %}
                     <div class="form-group">
                         {{ field.label_tag }}
                         {{ field }}
                         {% if field.errors %}
-                            <div class="error-message" style="color: red; font-size: 0.9em; margin-top: 5px;">{{ field.errors|first }}</div>
+                            {# Errores: Texto pequeño y negrita. Se elimina font-size inline #}
+                            <div class="error-message text-sm font-bold" style="color: red; margin-top: 5px;">{{ field.errors|first }}</div>
                         {% endif %}
                     </div>
                 {% endfor %}
             </div>
             
             <div class="button-group">
-                <button type="submit" class="btn-primary">Guardar Cambios</button>
-                <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="btn-secondary">Cancelar</a>
+                {# Botón Guardar: Tamaño Base y Negrita #}
+                <button type="submit" class="btn-primary text-base font-bold">Guardar Cambios</button>
+                {# Botón Cancelar: Tamaño Base y Medio #}
+                <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="btn-secondary text-base font-medium">Cancelar</a>
             </div>
         </form>
     </div>

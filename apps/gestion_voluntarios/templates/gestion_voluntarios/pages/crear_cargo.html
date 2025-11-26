@@ -6,27 +6,34 @@
 {% block contenido %}
 <div class="container-fluid mt-4"> 
     <div class="container">
-        <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="back-link"><i class="fas fa-arrow-left"></i> Volver al listado</a>
+        {# Enlace de volver: Tamaño base y peso medio #}
+        <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="back-link text-base font-medium">
+            <i class="fas fa-arrow-left"></i> Volver al listado
+        </a>
         
         <form method="POST" class="form-centered">
             {% csrf_token %}
             
             <div class="form-section">
-                <h2>Datos del Rango</h2>
+                {# Título del formulario: Tamaño XL y Negrita #}
+                <h2 class="text-xl font-bold">Datos del Rango</h2>
                 {% for field in form %}
                     <div class="form-group">
                         {{ field.label_tag }}
                         {{ field }}
                         {% if field.errors %}
-                            <div class="error-message" style="color: red;">{{ field.errors|first }}</div>
+                            {# Errores: Texto pequeño y negrita #}
+                            <div class="error-message text-sm font-bold" style="color: red;">{{ field.errors|first }}</div>
                         {% endif %}
                     </div>
                 {% endfor %}
             </div>
             
             <div class="button-group">
-                <button type="submit" class="btn-primary">Guardar Rango</button>
-                <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="btn-secondary">Cancelar</a>
+                {# Botón Principal: Tamaño base y Negrita #}
+                <button type="submit" class="btn-primary text-base font-bold">Guardar Rango</button>
+                {# Botón Secundario: Tamaño base y Medio #}
+                <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="btn-secondary text-base font-medium">Cancelar</a>
             </div>
         </form>
     </div>

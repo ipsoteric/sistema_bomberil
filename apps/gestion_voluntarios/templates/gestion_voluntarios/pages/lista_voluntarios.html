@@ -10,15 +10,18 @@
         <div class="toolbar">
             <div class="search-container">
                 <i class="fas fa-search"></i>
-                <input type="text" id="search-input" placeholder="Buscar por nombre, RUT o apellido..." value="{{ request.GET.q }}">
+                {# Input de búsqueda: Tamaño base y peso regular #}
+                <input type="text" id="search-input" class="text-base font-regular" placeholder="Buscar por nombre, RUT o apellido..." value="{{ request.GET.q }}">
             </div>
             
             <div class="filters-container">
                 {# --- ELIMINADO EL SELECTOR DE ESTACIÓN --- #}
                 
                 <div class="filter-group">
-                    <label for="rango-filter">Rango / Cargo</label>
-                    <select id="rango-filter" class="filter-select">
+                    {# Etiqueta: Tamaño pequeño y negrita #}
+                    <label for="rango-filter" class="text-sm font-bold">Rango / Cargo</label>
+                    {# Select: Tamaño pequeño y regular #}
+                    <select id="rango-filter" class="filter-select text-sm font-regular">
                         <option value="global">Todos los rangos</option>
                         {% for cargo in cargos %}
                         <option value="{{ cargo.id }}" {% if request.GET.rango == cargo.id|stringformat:"s" %}selected{% endif %}>
@@ -44,7 +47,8 @@
                             {% if voluntario.imagen %}
                                 <img src="{{ voluntario.imagen.url }}" alt="{{ voluntario.usuario.get_full_name }}">
                             {% else %}
-                                <div class="avatar-placeholder">
+                                {# Placeholder: Texto grande y negrita (iniciales) #}
+                                <div class="avatar-placeholder text-2xl font-bold">
                                     {{ voluntario.usuario.first_name|slice:":1" }}{{ voluntario.usuario.last_name|slice:":1" }}
                                 </div>
                             {% endif %}
@@ -59,9 +63,11 @@
                     </div>
                     
                     <div class="card-body">
-                        <h3 class="volunteer-name">{{ voluntario.usuario.get_full_name }}</h3>
+                        {# Nombre: Tamaño XL y Negrita #}
+                        <h3 class="volunteer-name text-xl font-bold">{{ voluntario.usuario.get_full_name }}</h3>
                         
-                        <div class="volunteer-role">
+                        {# Rol: Tamaño base y peso medio #}
+                        <div class="volunteer-role text-base font-medium">
                             {% if cargo_actual %}
                                 {{ cargo_actual.cargo.nombre }}
                             {% else %}
@@ -69,7 +75,8 @@
                             {% endif %}
                         </div>
                         
-                        <div class="volunteer-station">
+                        {# Estación: Tamaño pequeño y regular #}
+                        <div class="volunteer-station text-sm font-regular">
                             <i class="fas fa-building"></i>
                             {% if membresia %}
                                 {{ membresia.estacion.nombre }}
@@ -80,10 +87,11 @@
                     </div>
                     
                     <div class="card-footer">
-                        <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.usuario.id %}" class="action-btn btn-view">
+                        {# Botones: Tamaño pequeño y negrita #}
+                        <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.usuario.id %}" class="action-btn btn-view text-sm font-bold">
                             <i class="fas fa-id-card"></i> Hoja de Vida
                         </a>
-                        <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.usuario.id %}" class="action-btn btn-edit">
+                        <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.usuario.id %}" class="action-btn btn-edit text-sm font-bold">
                             <i class="fas fa-pen"></i> Editar
                         </a>
                     </div>
@@ -93,8 +101,10 @@
             {% empty %}
                 <div class="empty-state">
                     <i class="fas fa-search"></i>
-                    <h3>No se encontraron resultados</h3>
-                    <p>Intenta ajustar la búsqueda o el filtro de cargo.</p>
+                    {# Título vacío: Tamaño XL y Negrita #}
+                    <h3 class="text-xl font-bold">No se encontraron resultados</h3>
+                    {# Texto vacío: Tamaño base y regular #}
+                    <p class="text-base font-regular">Intenta ajustar la búsqueda o el filtro de cargo.</p>
                 </div>
             {% endfor %}
             

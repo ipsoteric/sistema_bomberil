@@ -6,7 +6,8 @@
 {% block contenido %}
 <div class="container-fluid mt-4"> 
     <div class="container">
-        <h1>Modificar Rango: {{ cargo.nombre }}</h1>
+        {# Título Principal: Tamaño 3XL y Negrita #}
+        <h1 class="text-3xl font-bold">Modificar Rango: {{ cargo.nombre }}</h1>
         
         <form method="POST">
             {% csrf_token %}
@@ -17,15 +18,18 @@
                         {{ field.label_tag }}
                         {{ field }}
                         {% if field.errors %}
-                            <div class="error-message" style="color: red;">{{ field.errors|first }}</div>
+                            {# Errores: Texto pequeño y negrita #}
+                            <div class="error-message text-sm font-bold" style="color: red;">{{ field.errors|first }}</div>
                         {% endif %}
                     </div>
                 {% endfor %}
             </div>
             
             <div class="button-group">
-                <button type="submit" class="btn-primary">Guardar Cambios</button>
-                <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="btn-secondary">Cancelar</a>
+                {# Botón Guardar: Tamaño base y Negrita #}
+                <button type="submit" class="btn-primary text-base font-bold">Guardar Cambios</button>
+                {# Botón Cancelar: Tamaño base y Medio #}
+                <a href="{% url 'gestion_voluntarios:ruta_cargos_lista' %}" class="btn-secondary text-base font-medium">Cancelar</a>
             </div>
         </form>
     </div>

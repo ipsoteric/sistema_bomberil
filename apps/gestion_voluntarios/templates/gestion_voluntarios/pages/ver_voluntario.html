@@ -26,7 +26,7 @@
             margin-bottom: 20px;
             color: #6c757d;
             text-decoration: none;
-            font-weight: 600;
+            /* font-weight: 600; Reemplazado por clase font-medium */
             transition: color 0.2s;
         }
         .back-link:hover { color: var(--primary-color); }
@@ -73,8 +73,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 4rem;
-            font-weight: 700;
+            /* font-size: 4rem; Reemplazado por clase text-3xl */
+            /* font-weight: 700; Reemplazado por clase font-bold */
             text-transform: uppercase;
         }
 
@@ -98,9 +98,9 @@
 
         .profile-main-info h1 {
             margin: 0 0 10px 0;
-            font-size: 2.2rem;
+            /* font-size: 2.2rem; Reemplazado por text-3xl */
             color: var(--secondary-color);
-            font-weight: 800;
+            /* font-weight: 800; Reemplazado por font-bold */
         }
 
         .profile-badges {
@@ -113,8 +113,8 @@
         .badge {
             padding: 6px 12px;
             border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
+            /* font-size: 0.9rem; Reemplazado por text-xs */
+            /* font-weight: 600; Reemplazado por font-bold */
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -133,13 +133,13 @@
             border-radius: 8px;
             cursor: pointer;
             border: none;
-            font-weight: 600;
+            /* font-weight: 600; Reemplazado por font-bold */
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             gap: 8px;
             transition: all 0.2s;
-            font-size: 0.95rem;
+            /* font-size: 0.95rem; Reemplazado por text-sm */
         }
         .btn:hover { transform: translateY(-2px); }
         
@@ -158,7 +158,7 @@
         .btn-add-item { 
             background-color: #28a745; 
             color: white; 
-            font-size: 0.85rem; 
+            /* font-size: 0.85rem; Reemplazado por text-xs */
             padding: 6px 12px; 
             border-radius: 6px;
             width: fit-content;
@@ -183,8 +183,8 @@
             background: none;
             border: none;
             padding: 12px 20px;
-            font-size: 1rem;
-            font-weight: 600;
+            /* font-size: 1rem; Reemplazado por text-base */
+            /* font-weight: 600; Reemplazado por font-medium */
             color: #6c757d;
             cursor: pointer;
             border-bottom: 3px solid transparent;
@@ -217,7 +217,7 @@
         .tab-content h2 {
             margin-top: 0;
             color: var(--secondary-color);
-            font-size: 1.5rem;
+            /* font-size: 1.5rem; Reemplazado por text-xl */
             margin-bottom: 25px;
             display: flex;
             justify-content: space-between;
@@ -240,16 +240,16 @@
 
         .info-item strong {
             color: #6c757d;
-            font-size: 0.85rem;
+            /* font-size: 0.85rem; Reemplazado por text-xs */
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 5px;
         }
 
         .info-item span {
-            font-size: 1.1rem;
+            /* font-size: 1.1rem; Reemplazado por text-base */
             color: #2c3e50;
-            font-weight: 500;
+            /* font-weight: 500; Reemplazado por font-medium */
             background: #f8f9fa;
             padding: 10px 15px;
             border-radius: 8px;
@@ -287,15 +287,15 @@
 
         .history-list strong {
             display: block;
-            font-size: 1.1rem;
+            /* font-size: 1.1rem; Reemplazado por text-base */
             color: #2c3e50;
             margin-bottom: 2px;
         }
 
         .history-list .date-range {
-            font-size: 0.9rem;
+            /* font-size: 0.9rem; Reemplazado por text-sm */
             color: #6c757d;
-            font-weight: 500;
+            /* font-weight: 500; Reemplazado por font-medium */
             display: block;
             margin-bottom: 5px;
         }
@@ -303,7 +303,7 @@
         .history-list p, .history-list small {
             color: #555;
             margin: 0;
-            font-size: 0.95rem;
+            /* font-size: 0.95rem; Reemplazado por text-sm */
         }
 
         /* --- MODALES --- */
@@ -346,14 +346,15 @@
         {% if messages %}
             <div class="messages-container" style="margin-bottom: 20px;">
                 {% for message in messages %}
-                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} text-sm font-medium">
                         {{ message }}
                     </div>
                 {% endfor %}
             </div>
         {% endif %}
 
-        <a href="{% url 'gestion_voluntarios:ruta_lista_voluntarios' %}" class="back-link">
+        {# Enlace volver: Tamaño base y peso medio #}
+        <a href="{% url 'gestion_voluntarios:ruta_lista_voluntarios' %}" class="back-link text-base font-medium">
             <i class="fas fa-arrow-left"></i> Volver al Listado
         </a>
 
@@ -363,7 +364,8 @@
                 {% if voluntario.imagen %}
                     <img src="{{ voluntario.imagen.url }}" alt="Foto de perfil">
                 {% else %}
-                    <div class="avatar-placeholder-large">
+                    {# Placeholder: Texto muy grande (3XL) y Negrita #}
+                    <div class="avatar-placeholder-large text-3xl font-bold">
                         {{ voluntario.usuario.first_name|slice:":1" }}{{ voluntario.usuario.last_name|slice:":1" }}
                     </div>
                 {% endif %}
@@ -377,24 +379,27 @@
             </div>
 
             <div class="profile-main-info">
-                <h1>{{ voluntario.usuario.get_full_name }}</h1>
+                {# Nombre: Texto 3XL y Negrita #}
+                <h1 class="text-3xl font-bold">{{ voluntario.usuario.get_full_name }}</h1>
                 
                 <div class="profile-badges">
-                    <span class="badge badge-rank">
+                    {# Badges: Texto extra pequeño y Negrita #}
+                    <span class="badge badge-rank text-xs font-bold">
                         <i class="fas fa-star" style="margin-right:5px;"></i>
                         {% if cargo_actual %}{{ cargo_actual.cargo.nombre }}{% else %}Sin Rango{% endif %}
                     </span>
-                    <span class="badge badge-station">
+                    <span class="badge badge-station text-xs font-bold">
                         <i class="fas fa-building" style="margin-right:5px;"></i>
                         {% if membresia %}{{ membresia.estacion.nombre }}{% else %}Sin Estación{% endif %}
                     </span>
                 </div>
 
                 <div class="profile-actions">
-                    <a href="{% url 'gestion_voluntarios:ruta_hoja_vida' id=voluntario.usuario.id %}" target="_blank" class="btn btn-pdf">
+                    {# Botones: Tamaño pequeño y Negrita #}
+                    <a href="{% url 'gestion_voluntarios:ruta_hoja_vida' id=voluntario.usuario.id %}" target="_blank" class="btn btn-pdf text-sm font-bold">
                         <i class="fas fa-file-pdf"></i> Generar Hoja de Vida
                     </a>
-                    <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.usuario.id %}" class="btn btn-edit">
+                    <a href="{% url 'gestion_voluntarios:ruta_modificar_voluntario' id=voluntario.usuario.id %}" class="btn btn-edit text-sm font-bold">
                         <i class="fas fa-pen"></i> Modificar Perfil
                     </a>
                 </div>
@@ -402,98 +407,104 @@
         </div>
 
         <div class="profile-tabs">
-            <button class="tab-btn active" onclick="openTab('info')">Información General</button>
-            <button class="tab-btn" onclick="openTab('experience')">Experiencia Bomberil</button>
-            <button class="tab-btn" onclick="openTab('recognitions')">Reconocimientos</button>
-            <button class="tab-btn" onclick="openTab('sanctions')">Sanciones</button>
+            {# Botones Tabs: Tamaño base y Medio #}
+            <button class="tab-btn active text-base font-medium" onclick="openTab('info')">Información General</button>
+            <button class="tab-btn text-base font-medium" onclick="openTab('experience')">Experiencia Bomberil</button>
+            <button class="tab-btn text-base font-medium" onclick="openTab('recognitions')">Reconocimientos</button>
+            <button class="tab-btn text-base font-medium" onclick="openTab('sanctions')">Sanciones</button>
         </div>
 
         <div id="info" class="tab-content active">
-            <h2>Datos Personales y de Contacto</h2>
+            {# Título Sección: Tamaño XL y Negrita #}
+            <h2 class="text-xl font-bold">Datos Personales y de Contacto</h2>
             <div class="info-grid">
-                <div class="info-item"><strong>RUT / DNI</strong><span>{{ voluntario.usuario.rut|default:"No registrado" }}</span></div>
-                <div class="info-item"><strong>Fecha Nacimiento</strong><span>{{ voluntario.fecha_nacimiento|date:"d/m/Y"|default:"-" }}</span></div>
-                <div class="info-item"><strong>Teléfono</strong><span>{{ voluntario.usuario.phone|default:"-" }}</span></div>
-                <div class="info-item"><strong>Correo</strong><span>{{ voluntario.usuario.email|default:"-" }}</span></div>
-                <div class="info-item"><strong>Profesión Civil</strong><span>{{ voluntario.profesion.nombre|default:"-" }}</span></div>
-                <div class="info-item"><strong>Nacionalidad</strong><span>{{ voluntario.nacionalidad.gentilicio|default:"-" }}</span></div>
-                <div class="info-item"><strong>Género</strong><span>{{ voluntario.get_genero_display|default:"-" }}</span></div>
-                <div class="info-item"><strong>Estado Civil</strong><span>{{ voluntario.get_estado_civil_display|default:"-" }}</span></div>
+                {# Items Grid: Etiqueta (XS, Bold) y Valor (Base, Medium) + Data Code para datos técnicos #}
+                <div class="info-item"><strong class="text-xs font-bold">RUT / DNI</strong><span class="text-base font-medium text-data-code">{{ voluntario.usuario.rut|default:"No registrado" }}</span></div>
+                <div class="info-item"><strong class="text-xs font-bold">Fecha Nacimiento</strong><span class="text-base font-medium text-data-code">{{ voluntario.fecha_nacimiento|date:"d/m/Y"|default:"-" }}</span></div>
+                <div class="info-item"><strong class="text-xs font-bold">Teléfono</strong><span class="text-base font-medium text-data-code">{{ voluntario.usuario.phone|default:"-" }}</span></div>
+                <div class="info-item"><strong class="text-xs font-bold">Correo</strong><span class="text-base font-medium text-data-code">{{ voluntario.usuario.email|default:"-" }}</span></div>
+                <div class="info-item"><strong class="text-xs font-bold">Profesión Civil</strong><span class="text-base font-medium">{{ voluntario.profesion.nombre|default:"-" }}</span></div>
+                <div class="info-item"><strong class="text-xs font-bold">Nacionalidad</strong><span class="text-base font-medium">{{ voluntario.nacionalidad.gentilicio|default:"-" }}</span></div>
+                <div class="info-item"><strong class="text-xs font-bold">Género</strong><span class="text-base font-medium">{{ voluntario.get_genero_display|default:"-" }}</span></div>
+                <div class="info-item"><strong class="text-xs font-bold">Estado Civil</strong><span class="text-base font-medium">{{ voluntario.get_estado_civil_display|default:"-" }}</span></div>
                 
-                <div class="info-item"><strong>Fecha Primer Ingreso</strong><span>{{ voluntario.fecha_primer_ingreso|date:"d/m/Y"|default:"-" }}</span></div>
-                <div class="info-item"><strong>N° Registro General</strong><span>{{ voluntario.numero_registro_bomberil|default:"-" }}</span></div>
+                <div class="info-item"><strong class="text-xs font-bold">Fecha Primer Ingreso</strong><span class="text-base font-medium text-data-code">{{ voluntario.fecha_primer_ingreso|date:"d/m/Y"|default:"-" }}</span></div>
+                <div class="info-item"><strong class="text-xs font-bold">N° Registro General</strong><span class="text-base font-medium text-data-code">{{ voluntario.numero_registro_bomberil|default:"-" }}</span></div>
 
-                <div class="info-item full-width"><strong>Dirección</strong><span>{{ voluntario.domicilio_calle|default:"" }} {{ voluntario.domicilio_numero|default:"" }} {{ voluntario.domicilio_comuna.nombre|default:"" }}</span></div>
+                <div class="info-item full-width"><strong class="text-xs font-bold">Dirección</strong><span class="text-base font-medium">{{ voluntario.domicilio_calle|default:"" }} {{ voluntario.domicilio_numero|default:"" }} {{ voluntario.domicilio_comuna.nombre|default:"" }}</span></div>
             </div>
         </div>
 
         <div id="experience" class="tab-content">
-            <h2>
+            <h2 class="text-xl font-bold">
                 Historial de Cargos
-                <button class="btn btn-add-item" onclick="abrirModal('modalAgregarCargo')">
+                <button class="btn btn-add-item text-xs font-bold" onclick="abrirModal('modalAgregarCargo')">
                     <i class="fas fa-plus" style="margin-right: 5px;"></i> Registrar Ascenso
                 </button>
             </h2>
             <ul class="history-list">
                 {% for cargo in voluntario.historial_cargos.all %}
                     <li>
-                        <strong>{{ cargo.cargo.nombre }}</strong>
-                        <span class="date-range">
+                        {# Título item: Base y Bold #}
+                        <strong class="text-base font-bold">{{ cargo.cargo.nombre }}</strong>
+                        {# Fecha: Pequeña, Medium y código #}
+                        <span class="date-range text-sm font-medium text-data-code">
                             {{ cargo.fecha_inicio|date:"d/m/Y" }} — 
                             {% if cargo.fecha_fin %}{{ cargo.fecha_fin|date:"d/m/Y" }}{% else %}Actualidad{% endif %}
                         </span>
-                        <small>Ámbito: {{ cargo.ambito }} | Registrado por: {{ cargo.estacion_registra.nombre }}
+                        {# Detalles: Pequeño y Regular #}
+                        <small class="text-sm font-regular">Ámbito: {{ cargo.ambito }} | Registrado por: {{ cargo.estacion_registra.nombre }}
                             {% if cargo.es_historico %}<span style="color: #6c757d; margin-left:5px;">(Reg. Histórico)</span>{% endif %}
                         </small>
                     </li>
                 {% empty %}
-                    <p style="color:#888; font-style:italic;">No hay cargos registrados en el historial.</p>
+                    <p class="text-sm font-regular" style="color:#888; font-style:italic;">No hay cargos registrados en el historial.</p>
                 {% endfor %}
             </ul>
         </div>
 
         <div id="recognitions" class="tab-content">
-            <h2>
+            <h2 class="text-xl font-bold">
                 Reconocimientos y Logros
-                <button class="btn btn-add-item" onclick="abrirModal('modalAgregarReconocimiento')">
+                <button class="btn btn-add-item text-xs font-bold" onclick="abrirModal('modalAgregarReconocimiento')">
                     <i class="fas fa-plus" style="margin-right: 5px;"></i> Agregar
                 </button>
             </h2>
             <ul class="history-list">
                 {% for reco in voluntario.historial_reconocimientos.all %}
                     <li>
-                        <strong>{{ reco.tipo_reconocimiento.nombre }}</strong>
-                        <span class="date-range">Fecha: {{ reco.fecha_evento|date:"d/m/Y" }}</span>
-                        {% if reco.descripcion_personalizada %}<p>{{ reco.descripcion_personalizada }}</p>{% endif %}
-                        <small>Otorgado por: {{ reco.ambito }}
+                        <strong class="text-base font-bold">{{ reco.tipo_reconocimiento.nombre }}</strong>
+                        <span class="date-range text-sm font-medium text-data-code">Fecha: {{ reco.fecha_evento|date:"d/m/Y" }}</span>
+                        {% if reco.descripcion_personalizada %}<p class="text-sm font-regular">{{ reco.descripcion_personalizada }}</p>{% endif %}
+                        <small class="text-sm font-regular">Otorgado por: {{ reco.ambito }}
                             {% if reco.es_historico %}<span style="color: #6c757d; margin-left:5px;">(Reg. Histórico)</span>{% endif %}
                         </small>
                     </li>
                 {% empty %}
-                    <p style="color:#888; font-style:italic;">No hay reconocimientos registrados.</p>
+                    <p class="text-sm font-regular" style="color:#888; font-style:italic;">No hay reconocimientos registrados.</p>
                 {% endfor %}
             </ul>
         </div>
         
         <div id="sanctions" class="tab-content">
-            <h2>
+            <h2 class="text-xl font-bold">
                 Registro de Sanciones
-                <button class="btn btn-add-item" style="background-color: var(--danger-color);" onclick="abrirModal('modalAgregarSancion')">
+                <button class="btn btn-add-item text-xs font-bold" style="background-color: var(--danger-color);" onclick="abrirModal('modalAgregarSancion')">
                     <i class="fas fa-gavel" style="margin-right: 5px;"></i> Registrar
                 </button>
             </h2>
             <ul class="history-list">
                 {% for sancion in voluntario.historial_sanciones.all %}
                      <li>
-                        <strong style="color: var(--primary-color);">{{ sancion.get_tipo_sancion_display }}</strong>
-                        <span class="date-range">Fecha: {{ sancion.fecha_evento|date:"d/m/Y" }}</span>
-                        <p style="margin: 5px 0;">{{ sancion.descripcion }}</p>
-                        <small>Emitida por: {{ sancion.estacion_evento.nombre }}
+                        <strong class="text-base font-bold" style="color: var(--primary-color);">{{ sancion.get_tipo_sancion_display }}</strong>
+                        <span class="date-range text-sm font-medium text-data-code">Fecha: {{ sancion.fecha_evento|date:"d/m/Y" }}</span>
+                        <p class="text-sm font-regular" style="margin: 5px 0;">{{ sancion.descripcion }}</p>
+                        <small class="text-sm font-regular">Emitida por: {{ sancion.estacion_evento.nombre }}
                             {% if sancion.es_historico %}<span style="color: #6c757d; margin-left:5px;">(Reg. Histórico)</span>{% endif %}
                         </small>
                     </li>
                 {% empty %}
-                    <p style="color:#888; font-style:italic;">No existen sanciones registradas (¡Excelente!).</p>
+                    <p class="text-sm font-regular" style="color:#888; font-style:italic;">No existen sanciones registradas (¡Excelente!).</p>
                 {% endfor %}
             </ul>
         </div>
@@ -501,7 +512,8 @@
     </div>
 
     <div id="modalAgregarCargo" class="modal">
-        <div class="modal-header"><h3>Registrar Ascenso</h3><span class="close-btn" onclick="cerrarModal('modalAgregarCargo')">&times;</span></div>
+        {# Header Modal: XL y Bold #}
+        <div class="modal-header"><h3 class="text-xl font-bold">Registrar Ascenso</h3><span class="close-btn" onclick="cerrarModal('modalAgregarCargo')">&times;</span></div>
         <form method="POST" action="{% url 'gestion_voluntarios:ruta_agregar_cargo' id=voluntario.usuario.id %}">
             {% csrf_token %}
             
@@ -509,27 +521,29 @@
                 {% if field.name == 'es_registro_antiguo' %}
                     <div class="checkbox-row">
                         {{ field }}
-                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {# Label Checkbox: Pequeño y Regular #}
+                        <label for="{{ field.id_for_label }}" class="text-sm font-regular">{{ field.label }}</label>
                     </div>
                 {% else %}
                     <div class="form-group">
-                        <label>{{ field.label }}</label>
+                        {# Label Input: Pequeño y Bold #}
+                        <label class="text-sm font-bold">{{ field.label }}</label>
                         {{ field }}
-                        {% if field.help_text %}<small style="color:#777;">{{ field.help_text }}</small>{% endif %}
-                        {% if field.errors %}<small style="color:red;">{{ field.errors.0 }}</small>{% endif %}
+                        {% if field.help_text %}<small class="text-xs font-regular" style="color:#777;">{{ field.help_text }}</small>{% endif %}
+                        {% if field.errors %}<small class="text-xs font-bold" style="color:red;">{{ field.errors.0 }}</small>{% endif %}
                     </div>
                 {% endif %}
             {% endfor %}
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalAgregarCargo')">Cancelar</button>
-                <button type="submit" class="btn btn-principal">Guardar</button>
+                <button type="button" class="btn btn-secondary text-base font-medium" onclick="cerrarModal('modalAgregarCargo')">Cancelar</button>
+                <button type="submit" class="btn btn-principal text-base font-bold">Guardar</button>
             </div>
         </form>
     </div>
 
     <div id="modalAgregarReconocimiento" class="modal">
-        <div class="modal-header"><h3>Agregar Reconocimiento</h3><span class="close-btn" onclick="cerrarModal('modalAgregarReconocimiento')">&times;</span></div>
+        <div class="modal-header"><h3 class="text-xl font-bold">Agregar Reconocimiento</h3><span class="close-btn" onclick="cerrarModal('modalAgregarReconocimiento')">&times;</span></div>
         <form method="POST" action="{% url 'gestion_voluntarios:ruta_agregar_reconocimiento' id=voluntario.usuario.id %}">
             {% csrf_token %}
             
@@ -537,25 +551,25 @@
                 {% if field.name == 'es_registro_antiguo' %}
                     <div class="checkbox-row">
                         {{ field }}
-                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        <label for="{{ field.id_for_label }}" class="text-sm font-regular">{{ field.label }}</label>
                     </div>
                 {% else %}
                     <div class="form-group">
-                        <label>{{ field.label }}</label>
+                        <label class="text-sm font-bold">{{ field.label }}</label>
                         {{ field }}
                     </div>
                 {% endif %}
             {% endfor %}
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalAgregarReconocimiento')">Cancelar</button>
-                <button type="submit" class="btn btn-principal">Guardar</button>
+                <button type="button" class="btn btn-secondary text-base font-medium" onclick="cerrarModal('modalAgregarReconocimiento')">Cancelar</button>
+                <button type="submit" class="btn btn-principal text-base font-bold">Guardar</button>
             </div>
         </form>
     </div>
 
     <div id="modalAgregarSancion" class="modal">
-        <div class="modal-header"><h3>Registrar Sanción</h3><span class="close-btn" onclick="cerrarModal('modalAgregarSancion')">&times;</span></div>
+        <div class="modal-header"><h3 class="text-xl font-bold">Registrar Sanción</h3><span class="close-btn" onclick="cerrarModal('modalAgregarSancion')">&times;</span></div>
         <form method="POST" action="{% url 'gestion_voluntarios:ruta_agregar_sancion' id=voluntario.usuario.id %}" enctype="multipart/form-data">
             {% csrf_token %}
             
@@ -563,20 +577,20 @@
                 {% if field.name == 'es_registro_antiguo' %}
                     <div class="checkbox-row">
                         {{ field }}
-                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        <label for="{{ field.id_for_label }}" class="text-sm font-regular">{{ field.label }}</label>
                     </div>
                 {% else %}
                     <div class="form-group">
-                        <label>{{ field.label }}</label>
+                        <label class="text-sm font-bold">{{ field.label }}</label>
                         {{ field }}
-                        {% if field.help_text %}<small style="color:#777;">{{ field.help_text }}</small>{% endif %}
+                        {% if field.help_text %}<small class="text-xs font-regular" style="color:#777;">{{ field.help_text }}</small>{% endif %}
                     </div>
                 {% endif %}
             {% endfor %}
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalAgregarSancion')">Cancelar</button>
-                <button type="submit" class="btn btn-principal">Guardar</button>
+                <button type="button" class="btn btn-secondary text-base font-medium" onclick="cerrarModal('modalAgregarSancion')">Cancelar</button>
+                <button type="submit" class="btn btn-principal text-base font-bold">Guardar</button>
             </div>
         </form>
     </div>

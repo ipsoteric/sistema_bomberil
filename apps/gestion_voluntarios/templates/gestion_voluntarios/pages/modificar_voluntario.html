@@ -7,19 +7,26 @@
 {% block contenido %}
 <div class="container-fluid mt-4"> 
     <div class="container">
-        <h1>Modificar Voluntario</h1>
-        <p class="subtitle">Editando perfil de: <strong>{{ voluntario.usuario.get_full_name }}</strong></p>
+        {# Título principal: Tamaño 3XL y Negrita #}
+        <h1 class="text-3xl font-bold">Modificar Voluntario</h1>
+        {# Subtítulo: Tamaño Grande y Regular #}
+        <p class="subtitle text-lg font-regular">
+            Editando perfil de: <strong class="font-bold">{{ voluntario.usuario.get_full_name }}</strong>
+        </p>
         
         <div class="current-photo-container">
             {# --- LÓGICA DE IMAGEN ROBUSTA --- #}
             {% if voluntario.imagen %}
                 <img src="{{ voluntario.imagen.url }}" alt="Foto actual" class="current-photo">
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Foto de perfil actual</p>
+                {# Texto de ayuda foto: Tamaño pequeño y regular (Reemplaza estilo inline) #}
+                <p class="text-sm font-regular" style="color: #666; margin-top: 10px;">Foto de perfil actual</p>
             {% else %}
-                <div class="avatar-placeholder-large">
+                {# Placeholder: Texto 3XL y Negrita para las iniciales #}
+                <div class="avatar-placeholder-large text-3xl font-bold">
                     {{ voluntario.usuario.first_name|slice:":1" }}{{ voluntario.usuario.last_name|slice:":1" }}
                 </div>
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Sin foto de perfil asignada</p>
+                {# Texto de ayuda foto: Tamaño pequeño y regular #}
+                <p class="text-sm font-regular" style="color: #666; margin-top: 10px;">Sin foto de perfil asignada</p>
             {% endif %}
         </div>
 
@@ -28,14 +35,18 @@
 
             {% if usuario_form.non_field_errors or voluntario_form.non_field_errors %}
                 <div class="alert alert-danger">
-                    <p><strong>Error al guardar:</strong> Por favor revise los siguientes errores:</p>
-                    {{ usuario_form.non_field_errors }}
-                    {{ voluntario_form.non_field_errors }}
+                    {# Texto de alerta: Tamaño base #}
+                    <p class="text-base font-regular"><strong class="font-bold">Error al guardar:</strong> Por favor revise los siguientes errores:</p>
+                    <div class="text-sm font-medium">
+                        {{ usuario_form.non_field_errors }}
+                        {{ voluntario_form.non_field_errors }}
+                    </div>
                 </div>
             {% endif %}
 
             <div class="form-section">
-                <h2>Datos de Acceso y Contacto</h2>
+                {# Título Sección: Tamaño XL y Negrita #}
+                <h2 class="text-xl font-bold">Datos de Acceso y Contacto</h2>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     {% for field in usuario_form %}
@@ -43,7 +54,8 @@
                             {{ field.label_tag }}
                             {{ field }}
                             {% if field.errors %}
-                                <div class="error-message">{{ field.errors|first }}</div>
+                                {# Error: Tamaño pequeño y Negrita #}
+                                <div class="error-message text-sm font-bold">{{ field.errors|first }}</div>
                             {% endif %}
                         </div>
                     {% endfor %}
@@ -51,7 +63,8 @@
             </div>
 
             <div class="form-section">
-                <h2>Información Bomberil y Personal</h2>
+                {# Título Sección: Tamaño XL y Negrita #}
+                <h2 class="text-xl font-bold">Información Bomberil y Personal</h2>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     {% for field in voluntario_form %}
@@ -62,10 +75,12 @@
                             {{ field }}
                             
                             {% if field.errors %}
-                                <div class="error-message">{{ field.errors|first }}</div>
+                                {# Error: Tamaño pequeño y Negrita #}
+                                <div class="error-message text-sm font-bold">{{ field.errors|first }}</div>
                             {% endif %}
                             {% if field.help_text %}
-                                <small class="help-text">{{ field.help_text }}</small>
+                                {# Ayuda: Texto extra pequeño y Regular #}
+                                <small class="help-text text-xs font-regular">{{ field.help_text }}</small>
                             {% endif %}
                         </div>
                     {% endfor %}
@@ -73,10 +88,12 @@
             </div>
 
             <div class="button-group">
-                <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.usuario.id %}" class="btn btn-secondary">
+                {# Botón Cancelar: Tamaño Base y Medio #}
+                <a href="{% url 'gestion_voluntarios:ruta_ver_voluntario' id=voluntario.usuario.id %}" class="btn btn-secondary text-base font-medium">
                     <i class="fas fa-times" style="margin-right: 8px;"></i> Cancelar
                 </a>
-                <button type="submit" class="btn btn-primary">
+                {# Botón Guardar: Tamaño Base y Negrita #}
+                <button type="submit" class="btn btn-primary text-base font-bold">
                     <i class="fas fa-save" style="margin-right: 8px;"></i> Guardar Cambios
                 </button>
             </div>

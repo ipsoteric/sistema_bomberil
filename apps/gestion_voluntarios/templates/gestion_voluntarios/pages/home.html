@@ -14,9 +14,11 @@
                     <div class="card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                {# Etiqueta: Texto pequeño y negrita #}
+                                <div class="text-sm font-bold text-primary text-uppercase mb-1">
                                     Total Voluntarios (General)</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_voluntarios_general }}</div>
+                                {# Valor Numérico: Texto muy grande (3XL) y negrita para impacto #}
+                                <div class="text-3xl font-bold text-gray-800 mb-0">{{ total_voluntarios_general }}</div>
                             </div>
                             <div class="col-auto">
                                 <i class="fa-solid fa-users fa-2x text-gray-300"></i>
@@ -31,9 +33,11 @@
                     <div class="card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                {# Etiqueta: Texto pequeño y negrita #}
+                                <div class="text-sm font-bold text-success text-uppercase mb-1">
                                     Voluntarios Activos</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ voluntarios_activos }}</div>
+                                {# Valor Numérico: Texto muy grande (3XL) y negrita #}
+                                <div class="text-3xl font-bold text-gray-800 mb-0">{{ voluntarios_activos }}</div>
                             </div>
                             <div class="col-auto">
                                 <i class="fa-solid fa-user-check fa-2x text-gray-300"></i>
@@ -48,9 +52,11 @@
                     <div class="card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                {# Etiqueta: Texto pequeño y negrita #}
+                                <div class="text-sm font-bold text-warning text-uppercase mb-1">
                                     Voluntarios Inactivos</div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ voluntarios_inactivos }}</div>
+                                {# Valor Numérico: Texto muy grande (3XL) y negrita #}
+                                <div class="text-3xl font-bold text-gray-800 mb-0">{{ voluntarios_inactivos }}</div>
                             </div>
                             <div class="col-auto">
                                 <i class="fa-solid fa-user-clock fa-2x text-gray-300"></i>
@@ -66,7 +72,8 @@
             <div class="col-xl-7 col-lg-6">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                        <h6 class="m-0 font-weight-bold text-primary">Voluntarios por Rango (Actual)</h6>
+                        {# Título de Gráfico: Texto XL y negrita (reemplaza h6) #}
+                        <h6 class="m-0 text-xl font-bold text-primary">Voluntarios por Rango (Actual)</h6>
                     </div>
                     <div class="card-body">
                         <div class="chart-area" style="height: 350px;">
@@ -79,7 +86,8 @@
             <div class="col-xl-5 col-lg-6">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                        <h6 class="m-0 font-weight-bold text-primary">Top 5 Profesiones</h6>
+                        {# Título de Gráfico: Texto XL y negrita #}
+                        <h6 class="m-0 text-xl font-bold text-primary">Top 5 Profesiones</h6>
                     </div>
                     <div class="card-body">
                         <div class="chart-pie pt-4 pb-2" style="height: 350px;">

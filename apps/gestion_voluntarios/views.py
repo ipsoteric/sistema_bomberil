@@ -45,7 +45,7 @@ class VoluntariosInicioView(View, EstacionActivaMixin):
     def get(self, request):
         estacion_id = self.get_estacion_activa(request)
         if not estacion_id:
-            return redirect('portal:home') # O donde corresponda si no hay sesión
+            return redirect('portal:ruta_:inicio') # O donde corresponda si no hay sesión
 
         # --- 1. Datos para las Tarjetas (SOLO ESTACIÓN ACTIVA) ---
         # Filtramos membresías que pertenezcan a la estación activa
