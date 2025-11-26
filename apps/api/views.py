@@ -13,6 +13,7 @@ from PIL import Image
 from apps.gestion_usuarios.models import Usuario, Membresia
 from apps.common.permissions import CanUpdateUserProfile
 from apps.common.utils import procesar_imagen_en_memoria, generar_thumbnail_en_memoria
+from apps.common.mixins import AuditoriaMixin
 from apps.gestion_inventario.models import Comuna, Activo, LoteInsumo, ProductoGlobal, Estacion, Producto
 from apps.gestion_inventario.utils import generar_sku_sugerido
 from .serializers import ComunaSerializer, ProductoLocalInputSerializer
@@ -359,10 +360,10 @@ class ProductoGlobalSKUAPIView(APIView):
 
 
 
-class AnadirProductoLocalAPIView(APIView):
+class AnadirProductoLocalAPIView(AuditoriaMixin, APIView):
     """
     Endpoint (POST) para crear un Producto local en la estación activa.
-    Nivel Senior: Utiliza Serializers para validación de entrada, 
+    Utiliza Serializers para validación de entrada, 
     Manejo de Excepciones granular y Transacciones atómicas.
     """
     permission_classes = [IsStationActiveAndHasPermission]
@@ -404,6 +405,14 @@ class AnadirProductoLocalAPIView(APIView):
                     sku=data['sku'],
                     es_serializado=data['es_serializado'],
                     es_expirable=data['es_expirable']
+                )
+
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo="agregó a la compañía el producto",
+                    objetivo=nuevo_producto,
+                    objetivo_repr=nuevo_producto.producto_global.nombre_oficial,
+                    detalles={'nombre': nuevo_producto.producto_global.nombre_oficial}
                 )
             
             # 5. Respuesta Exitosa

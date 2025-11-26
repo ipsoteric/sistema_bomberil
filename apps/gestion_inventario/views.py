@@ -24,14 +24,12 @@ from dateutil.relativedelta import relativedelta
 from django.db.models.functions import Coalesce, Abs
 from django.utils.functional import cached_property
 
-from .utils import generar_sku_sugerido
 from core.settings import (
     INVENTARIO_UBICACION_AREA_NOMBRE as AREA_NOMBRE, 
     INVENTARIO_UBICACION_VEHICULO_NOMBRE as VEHICULO_NOMBRE, 
 )
 
-from apps.gestion_usuarios.models import Membresia
-from apps.common.mixins import ModuleAccessMixin, EstacionActivaRequiredMixin, BaseEstacionMixin
+from apps.common.mixins import ModuleAccessMixin, BaseEstacionMixin, AuditoriaMixin
 from .mixins import UbicacionMixin, InventoryStateValidatorMixin, StationInventoryObjectMixin
 
 from .models import (
@@ -227,7 +225,7 @@ class AreaListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
 
 
-class AreaCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
+class AreaCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, View):
     """
     Vista para crear ubicaciones de tipo "ÁREA"
     """
@@ -284,6 +282,14 @@ class AreaCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
         
         # Guardar el objeto final
         ubicacion.save()
+
+        # --- AUDITORÍA ---
+        self.auditar(
+            verbo="creó el almacén/área",
+            objetivo=ubicacion,
+            objetivo_repr=ubicacion.nombre,
+            detalles={'nombre': ubicacion.nombre}
+        )
 
         # Enviar mensaje de éxito
         messages.success(self.request, f'Almacén/ubicación "{ubicacion.nombre.title()}" creado exitosamente.')
@@ -369,7 +375,7 @@ class UbicacionDetalleView(BaseEstacionMixin, PermissionRequiredMixin, Ubicacion
 
 
 
-class UbicacionDeleteView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, View):
+class UbicacionDeleteView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, AuditoriaMixin, View):
     """
     Vista para confirmar y ejecutar la eliminación de una Ubicación (Área o Vehículo).
     Maneja ProtectedError si la ubicación aún tiene compartimentos.
@@ -416,6 +422,16 @@ class UbicacionDeleteView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionM
         try:
             # Intento de eliminación
             ubicacion.delete()
+
+            # --- AUDITORÍA ---
+            # Pasamos 'objetivo=None' porque ya no existe en BD, 
+            # pero usamos 'detalles' para persistir el nombre.
+            self.auditar(
+                verbo=f"eliminó permanentemente el/la {tipo_nombre.lower()}",
+                objetivo=None, 
+                objetivo_repr=ubicacion_nombre,
+                detalles={'nombre_rol_eliminado': ubicacion_nombre}
+            )
             
             messages.success(request, f"El {tipo_nombre.lower()} '{ubicacion_nombre}' ha sido eliminado exitosamente.")
             
@@ -438,7 +454,7 @@ class UbicacionDeleteView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionM
 
 
 
-class AreaEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, View):
+class AreaEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, AuditoriaMixin, View):
     """
     Editar datos de una ubicación/almacén.
     """
@@ -495,7 +511,15 @@ class AreaEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin,
     
 
     def form_valid(self, form):
-        form.save()
+        self.object = form.save()
+
+        self.auditar(
+                verbo="modificó la información del almacén",
+                objetivo=self.object,
+                objetivo_repr=self.object.nombre,
+                detalles={'campos_modificados': form.changed_data}
+            )
+        
         messages.success(self.request, 'Almacén actualizado correctamente.')
         return redirect(self.get_success_url())
 
@@ -559,7 +583,7 @@ class VehiculoListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
 
 
-class VehiculoCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
+class VehiculoCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, View):
     """
     Vista para crear un nuevo Vehículo.
     Maneja la creación simultánea en los modelos Ubicacion y Vehiculo.
@@ -624,6 +648,14 @@ class VehiculoCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
                 # Asignar la relación OneToOne al objeto recién creado
                 detalles_obj.ubicacion = ubicacion_obj 
                 detalles_obj.save() # Guardar en BD
+
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo="creó el vehículo",
+                    objetivo=ubicacion_obj,
+                    objetivo_repr=ubicacion_obj.nombre,
+                    detalles={'nombre': ubicacion_obj.nombre}
+                )
             
             messages.success(self.request, f"Vehículo '{ubicacion_obj.nombre}' creado exitosamente.")
             
@@ -648,7 +680,7 @@ class VehiculoCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
 
 
-class VehiculoEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, View):
+class VehiculoEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin, AuditoriaMixin, View):
     """
     Vista para editar los detalles de un Vehículo.
     Maneja dos formularios:
@@ -730,13 +762,21 @@ class VehiculoEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMi
         try:
             with transaction.atomic():
                 # Guardamos el formulario de Ubicacion
-                form_ubicacion.save()
+                ubicacion_obj = form_ubicacion.save()
                 
                 # Guardamos el formulario de Detalles (sin commit)
                 detalles_obj = form_detalles.save(commit=False)
                 # Asignamos la relación OneToOne a la Ubicacion (self.object)
                 detalles_obj.ubicacion = self.object 
                 detalles_obj.save()
+
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo="modificó la información del vehículo",
+                    objetivo=ubicacion_obj,
+                    objetivo_repr=ubicacion_obj.nombre,
+                    detalles={'nombre': ubicacion_obj.nombre}
+                )
             
             messages.success(self.request, f"El vehículo '{self.object.nombre}' se actualizó correctamente.")
             return redirect(self.get_success_url())
@@ -838,7 +878,7 @@ class CompartimentoListaView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
 
 
-class CompartimentoCrearView(BaseEstacionMixin, PermissionRequiredMixin, CreateView):
+class CompartimentoCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, CreateView):
     """
     Vista para crear un compartimento.
     Utiliza CreateView y @cached_property para una gestión 
@@ -878,6 +918,14 @@ class CompartimentoCrearView(BaseEstacionMixin, PermissionRequiredMixin, CreateV
         """
         form.instance.ubicacion = self.ubicacion
         response = super().form_valid(form)
+
+        # --- AUDITORÍA ---
+        self.auditar(
+            verbo="creó el compartimento",
+            objetivo=form.instance,
+            objetivo_repr=form.instance.nombre,
+            detalles={'nombre': form.instance.nombre}
+        )
         
         messages.success(
             self.request, 
@@ -961,7 +1009,7 @@ class CompartimentoDetalleView(BaseEstacionMixin, PermissionRequiredMixin, Detai
 
 
 
-class CompartimentoEditView(BaseEstacionMixin, PermissionRequiredMixin, UpdateView):
+class CompartimentoEditView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, UpdateView):
     """
     Vista para editar un compartimento.
     Utiliza UpdateView para eliminar boilerplate, delegando 
@@ -997,6 +1045,13 @@ class CompartimentoEditView(BaseEstacionMixin, PermissionRequiredMixin, UpdateVi
         """
         Override: Hook para ejecutar lógica extra cuando el formulario es válido.
         """
+        # --- AUDITORÍA ---
+        self.auditar(
+            verbo="modificó la información del compartimento",
+            objetivo=self.object,
+            objetivo_repr=self.object.nombre,
+            detalles={'nombre': self.object.nombre}
+        )
         messages.success(self.request, f"El compartimento '{self.object.nombre}' se actualizó correctamente.")
         return super().form_valid(form)
 
@@ -1010,7 +1065,7 @@ class CompartimentoEditView(BaseEstacionMixin, PermissionRequiredMixin, UpdateVi
 
 
 
-class CompartimentoDeleteView(BaseEstacionMixin, PermissionRequiredMixin, DeleteView):
+class CompartimentoDeleteView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, DeleteView):
     """
     Vista para eliminar un compartimento.
     Utiliza DeleteView genérica, encapsulando la lógica de negocio
@@ -1047,10 +1102,21 @@ class CompartimentoDeleteView(BaseEstacionMixin, PermissionRequiredMixin, Delete
         Aquí capturamos ProtectedError para evitar crash si hay hijos.
         """
         try:
+            nombre_compartimento = self.object.nombre
             # El método delete() de Model retorna una tupla, no lo necesitamos aquí
             self.object.delete()
+
+            # --- AUDITORÍA ---
+            # Pasamos 'objetivo=None' porque ya no existe en BD, 
+            # pero usamos 'detalles' para persistir el nombre.
+            self.auditar(
+                verbo="eliminó permanentemente el compartimento",
+                objetivo=None, 
+                objetivo_repr=nombre_compartimento,
+                detalles={'nombre_rol_eliminado': nombre_compartimento}
+            )
             
-            messages.success(self.request, f"El compartimento '{self.object.nombre}' ha sido eliminado exitosamente.")
+            messages.success(self.request, f"El compartimento '{nombre_compartimento}' ha sido eliminado exitosamente.")
             return HttpResponseRedirect(self.get_success_url())
 
         except ProtectedError:
@@ -1159,7 +1225,7 @@ class CatalogoGlobalListView(BaseEstacionMixin, PermissionRequiredMixin, ListVie
 
 
 
-class ProductoGlobalCrearView(BaseEstacionMixin, PermissionRequiredMixin, CreateView):
+class ProductoGlobalCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, CreateView):
     """
     Vista para crear un Producto Global.
     Utiliza CreateView y extrae la lógica de negocio compleja 
@@ -1191,6 +1257,12 @@ class ProductoGlobalCrearView(BaseEstacionMixin, PermissionRequiredMixin, Create
             )
             
             if created:
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo="creó la marca",
+                    objetivo=marca_obj,
+                    objetivo_repr=marca_obj.nombre,
+                )
                 messages.info(request, f'Se ha creado la nueva marca "{marca_obj.nombre}".')
             
             # Modificamos el POST para inyectar el ID real
@@ -1235,8 +1307,22 @@ class ProductoGlobalCrearView(BaseEstacionMixin, PermissionRequiredMixin, Create
 
 
     def form_valid(self, form):
-        messages.success(self.request, f'Producto Global "{form.instance.nombre_oficial}" creado exitosamente.')
-        return super().form_valid(form)
+        # 1. Ejecutamos super().form_valid(form) primero.
+        # Esto guarda el objeto en la BD y asigna self.object
+        response = super().form_valid(form)
+        # --- AUDITORÍA ---
+        self.auditar(
+            verbo="registró el producto global",
+            objetivo=self.object,
+            objetivo_repr=self.object.nombre_oficial,
+            detalles={
+                'marca': str(self.object.marca),
+                'categoria': str(self.object.categoria),
+                'modelo': self.object.modelo
+            }
+        )
+        messages.success(self.request, f'Producto Global "{self.object.nombre_oficial}" creado exitosamente.')
+        return response
 
 
 
@@ -1350,7 +1436,7 @@ class ProductoLocalListView(BaseEstacionMixin, PermissionRequiredMixin, ListView
 
 
 
-class ProductoLocalEditView(BaseEstacionMixin, PermissionRequiredMixin, UpdateView):
+class ProductoLocalEditView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, UpdateView):
     """
     Vista para editar un producto del catálogo local.
     Utiliza UpdateView y encapsula la lógica compleja de 
@@ -1424,6 +1510,14 @@ class ProductoLocalEditView(BaseEstacionMixin, PermissionRequiredMixin, UpdateVi
                             self.request, 
                             f"Se actualizó la vida útil de {total_actualizados} activos existentes."
                         )
+
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo="modificó la información del producto",
+                    objetivo=self.object,
+                    objetivo_repr=self.object.producto_global.nombre_oficial,
+                    detalles={'nombre': self.object.producto_global.nombre_oficial}
+                )
 
                 messages.success(
                     self.request, 
@@ -1680,7 +1774,7 @@ class ProveedorListView(BaseEstacionMixin, PermissionRequiredMixin, ListView):
 
 
 
-class ProveedorCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
+class ProveedorCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, View):
     """
     Vista para crear un Proveedor y su Contacto Principal simultáneamente.
     Manejo de múltiples formularios con transacción atómica
@@ -1730,6 +1824,17 @@ class ProveedorCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
                 # 3. Cerrar el círculo: Asignar contacto principal
                 proveedor.contacto_principal = contacto
                 proveedor.save(update_fields=['contacto_principal'])
+
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo="registró al proveedor",
+                    objetivo=proveedor,
+                    objetivo_repr=proveedor.nombre,
+                    detalles={
+                        'rut': proveedor.rut,
+                        'contacto_inicial': contacto.nombre_contacto
+                    }
+                )
 
             messages.success(self.request, f'Proveedor "{proveedor.nombre}" creado exitosamente.')
             return redirect(self.success_url)
@@ -1822,7 +1927,7 @@ class ProveedorDetalleView(BaseEstacionMixin, PermissionRequiredMixin, DetailVie
 
 
 
-class ContactoPersonalizadoCrearView(BaseEstacionMixin, PermissionRequiredMixin, CreateView):
+class ContactoPersonalizadoCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, CreateView):
     """
     Vista para crear un Contacto Personalizado.
     Utiliza CreateView con chequeo de pre-condiciones en dispatch,
@@ -1881,6 +1986,18 @@ class ContactoPersonalizadoCrearView(BaseEstacionMixin, PermissionRequiredMixin,
         
         try:
             response = super().form_valid(form)
+
+            # --- AUDITORÍA ---
+            self.auditar(
+                verbo="agregó un contacto personalizado para el proveedor",
+                objetivo=self.proveedor,
+                objetivo_repr=self.proveedor.nombre,
+                detalles={
+                    'nombre_contacto_nuevo': self.object.nombre_contacto,
+                    'telefono': self.object.telefono
+                }
+            )
+
             messages.success(
                 self.request, 
                 f'Se ha creado el contacto "{self.object.nombre_contacto}" para tu estación.'
@@ -1901,7 +2018,7 @@ class ContactoPersonalizadoCrearView(BaseEstacionMixin, PermissionRequiredMixin,
 
 
 
-class ContactoPersonalizadoEditarView(BaseEstacionMixin, PermissionRequiredMixin, UpdateView):
+class ContactoPersonalizadoEditarView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, UpdateView):
     """
     Permite a una estación activa editar SU PROPIO ContactoProveedor
     específico (su 'ContactoPersonalizado').
@@ -1941,11 +2058,26 @@ class ContactoPersonalizadoEditarView(BaseEstacionMixin, PermissionRequiredMixin
         return context
 
     def form_valid(self, form):
+        self.object = form.save()
+
+        # --- AUDITORÍA ---
+        if form.changed_data:
+            self.auditar(
+                verbo="actualizó el contacto personalizado del proveedor",
+                objetivo=self.object.proveedor,
+                detalles={
+                    'nombre_contacto': self.object.nombre_contacto,
+                    'campos_modificados': form.changed_data
+                }
+            )
+
         messages.success(
             self.request, 
             f'Se ha actualizado el contacto "{self.object.nombre_contacto}".'
         )
-        return super().form_valid(form)
+        # Nota: Usamos redirect explícito en lugar de super().form_valid() para controlar el flujo
+        # aunque super().form_valid() también redirige, aquí ya guardamos manualmente arriba.
+        return redirect(self.get_success_url())
 
     def get_success_url(self):
         return reverse('gestion_inventario:ruta_detalle_proveedor', kwargs={'pk': self.object.proveedor_id})
@@ -2130,7 +2262,7 @@ class StockActualListView(BaseEstacionMixin, PermissionRequiredMixin, TemplateVi
 
 
 
-class RecepcionStockView(BaseEstacionMixin, PermissionRequiredMixin, View):
+class RecepcionStockView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, View):
     """
     Vista transaccional compleja para recepción de stock.
     Descompone la lógica monolítica en métodos de servicio privados,
@@ -2194,6 +2326,8 @@ class RecepcionStockView(BaseEstacionMixin, PermissionRequiredMixin, View):
         estado_disponible = Estado.objects.get(nombre='DISPONIBLE', tipo_estado__nombre='OPERATIVO')
 
         nuevos_ids = {'activos': [], 'lotes': []}
+        cantidad_total_items = 0 # Suma total de unidades físicas
+        compartimentos_destino_set = set() # Para capturar destinos únicos
 
         for form in detalle_formset:
             if not form.cleaned_data or form.cleaned_data.get('DELETE'):
@@ -2201,6 +2335,10 @@ class RecepcionStockView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
             data = form.cleaned_data
             producto = data['producto']
+
+            # Capturar nombre del compartimento destino para el log
+            if data.get('compartimento_destino'):
+                compartimentos_destino_set.add(data['compartimento_destino'].nombre)
             
             # Actualización de costos (Side-effect intencional)
             costo = data.get('costo_unitario')
@@ -2212,9 +2350,50 @@ class RecepcionStockView(BaseEstacionMixin, PermissionRequiredMixin, View):
             if producto.es_serializado:
                 item_id = self._crear_activo(data, proveedor, fecha_recepcion, notas, estado_disponible)
                 nuevos_ids['activos'].append(item_id)
+                cantidad_total_items += 1
             else:
                 item_id = self._crear_lote(data, proveedor, fecha_recepcion, notas, estado_disponible)
                 nuevos_ids['lotes'].append(item_id)
+                cantidad_total_items += data['cantidad']
+
+        # --- CONSTRUCCIÓN DE VERBO DETALLADO ---
+        cant_activos = len(nuevos_ids['activos'])
+        cant_insumos = cantidad_total_items - cant_activos
+        
+        partes_msg = []
+        if cant_activos > 0:
+            partes_msg.append(f"{cant_activos} Activo{'s' if cant_activos != 1 else ''}")
+        if cant_insumos > 0:
+            partes_msg.append(f"{cant_insumos} unidad{'es' if cant_insumos != 1 else ''} de Insumo{'s' if cant_insumos != 1 else ''}")
+        
+        detalle_texto = " y ".join(partes_msg) if partes_msg else "carga de inventario"
+        
+        # Texto de destinos (Ej: " en Pañol 1, Bodega B")
+        lista_destinos = list(compartimentos_destino_set)
+        texto_destinos = ""
+        if lista_destinos:
+            # Limitamos a mostrar 2 nombres para no saturar el feed si son muchos
+            if len(lista_destinos) > 2:
+                texto_destinos = f" en {', '.join(lista_destinos[:2])} y otros"
+            else:
+                texto_destinos = f" en {', '.join(lista_destinos)}"
+
+        verbo_final = f"recepcionó {detalle_texto}{texto_destinos} desde el proveedor"
+
+        # --- AUDITORÍA CONSOLIDADA ---
+        self.auditar(
+            verbo=verbo_final,
+            objetivo=proveedor, 
+            detalles={
+                'total_unidades': cantidad_total_items,
+                'desglose': {'activos': cant_activos, 'insumos': cant_insumos},
+                'destinos': lista_destinos,
+                # FIX: Serialización explícita de UUIDs a string
+                'nuevos_activos_ids': [str(uid) for uid in nuevos_ids['activos']],
+                'nuevos_lotes_ids': [str(uid) for uid in nuevos_ids['lotes']],
+                'nota_recepcion': notas
+            }
+        )
 
         messages.success(self.request, "Recepción de stock guardada correctamente.")
         return self._construir_url_redireccion(nuevos_ids)
@@ -2298,7 +2477,7 @@ class RecepcionStockView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
 
 
-class AgregarStockACompartimentoView(BaseEstacionMixin, PermissionRequiredMixin, View):
+class AgregarStockACompartimentoView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, View):
     """
     Vista para ingreso rápido de stock en compartimento.
     Gestiona transacciones atómicas, cumple reglas de negocio
@@ -2389,6 +2568,18 @@ class AgregarStockACompartimentoView(BaseEstacionMixin, PermissionRequiredMixin,
             cantidad_movida=1,
             notas="Ingreso rápido directo."
         )
+
+        # --- AUDITORÍA ---
+        self.auditar(
+            verbo=f"realizó ingreso rápido de activo en {compartimento.ubicacion.nombre}->{compartimento.nombre} de",
+            objetivo=activo,
+            objetivo_repr=f"{activo.producto.producto_global.nombre_oficial} ({activo.codigo_activo})",
+            detalles={
+                'compartimento': compartimento.nombre,
+                'codigo': activo.codigo_activo
+            }
+        )
+        
         messages.success(self.request, f"Activo '{activo.producto.producto_global.nombre_oficial}' añadido.")
 
     @transaction.atomic
@@ -2409,6 +2600,19 @@ class AgregarStockACompartimentoView(BaseEstacionMixin, PermissionRequiredMixin,
             cantidad_movida=lote.cantidad,
             notas=f"Ingreso rápido lote: {lote.numero_lote_fabricante or 'S/N'}"
         )
+
+        # --- AUDITORÍA ---
+        self.auditar(
+            verbo=f"realizó ingreso rápido de lote/insumo en {compartimento.ubicacion.nombre}->{compartimento.nombre} de",
+            objetivo=lote,
+            objetivo_repr=f"{lote.producto.producto_global.nombre_oficial} ({lote.codigo_lote})",
+            detalles={
+                'compartimento': compartimento.nombre,
+                'cantidad': lote.cantidad,
+                'producto': lote.producto.producto_global.nombre_oficial
+            }
+        )
+
         messages.success(self.request, f"Lote añadido: {lote.cantidad} u.")
 
 
@@ -2446,7 +2650,7 @@ def get_or_create_anulado_compartment(estacion: Estacion) -> Compartimento:
 
 
 
-class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, View):
+class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, AuditoriaMixin, View):
     """
     Vista para anular existencia.
     Usa StationInventoryObjectMixin para cargar el ítem y
@@ -2484,6 +2688,7 @@ class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationIn
             estado_anulado = Estado.objects.get(nombre='ANULADO POR ERROR')
             compartimento_destino = get_or_create_anulado_compartment(self.estacion_activa)
             compartimento_origen = self.item.compartimento
+            codigo_item = self.item.codigo_activo if self.tipo_item == 'activo' else self.item.codigo_lote
 
             with transaction.atomic():
                 # 1. Actualizar Item
@@ -2511,6 +2716,19 @@ class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationIn
                     notas="Anulación por error de ingreso."
                 )
 
+                # --- AUDITORÍA CRÍTICA ---
+                # Usamos el objetivo_repr explícito para que el log diga "Activo XYZ" 
+                # aunque el objeto ahora esté en estado "Anulado".
+                self.auditar(
+                    verbo="Anuló el registro de existencia (Error de Ingreso)",
+                    objetivo=self.item,
+                    objetivo_repr=f"{self.item.producto.producto_global.nombre_oficial} ({codigo_item})",
+                    detalles={
+                        'ubicacion_previa': compartimento_origen.nombre,
+                        'motivo': 'Corrección administrativa / Error de digitación'
+                    }
+                )
+
             messages.success(
                 request, 
                 f"'{self.item.producto.producto_global.nombre_oficial}' anulado correctamente."
@@ -2524,7 +2742,7 @@ class AnularExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationIn
 
 
 
-class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, SingleObjectMixin, FormView):
+class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, SingleObjectMixin, AuditoriaMixin, FormView):
     """
     Vista para ajuste manual de stock de lotes (inventario cíclico).
     Combina FormView (para el formulario de ajuste) con 
@@ -2620,6 +2838,22 @@ class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
                     cantidad_movida=diferencia,
                     notas=notas
                 )
+
+                # --- AUDITORÍA ---
+                # Verbo dinámico para indicar si subió o bajó
+                tipo_ajuste = "aumentó" if diferencia > 0 else "disminuyó"
+                
+                self.auditar(
+                    verbo=f"ajustó manualmente el stock ({tipo_ajuste}) de",
+                    objetivo=self.object,
+                    objetivo_repr=f"{self.object.producto.producto_global.nombre_oficial} ({self.object.codigo_lote})",
+                    detalles={
+                        'cantidad_previa': cantidad_previa,
+                        'cantidad_nueva': nueva_cantidad,
+                        'diferencia': diferencia,
+                        'motivo': notas
+                    }
+                )
             
             messages.success(
                 self.request, 
@@ -2637,7 +2871,7 @@ class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
 
 
 
-class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, FormView):
+class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, AuditoriaMixin, FormView):
     """
     Vista para Dar de Baja una existencia.
     Utiliza StationInventoryObjectMixin para la carga segura del ítem,
@@ -2671,6 +2905,10 @@ class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInve
         
         try:
             estado_baja = Estado.objects.get(nombre='DE BAJA')
+
+            # Preparamos datos para el log antes de guardar
+            nombre_item = self.item.producto.producto_global.nombre_oficial
+            codigo_item = self.item.codigo_activo if self.tipo_item == 'activo' else self.item.codigo_lote
             
             with transaction.atomic():
                 # 1. Actualizar Estado y Cantidad
@@ -2698,9 +2936,21 @@ class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInve
                     notas=f"Baja: {notas}"
                 )
 
+                # --- AUDITORÍA DETALLADA ---
+                self.auditar(
+                    verbo="dio de baja del inventario operativo a",
+                    objetivo=self.item,
+                    # Forzamos el formato "Nombre (Código)" para máxima claridad en el feed
+                    objetivo_repr=f"{nombre_item} ({codigo_item})",
+                    detalles={
+                        'motivo_declarado': notas,
+                        'tipo_existencia': self.tipo_item
+                    }
+                )
+
             messages.success(
                 self.request, 
-                f"'{self.item.producto.producto_global.nombre_oficial}' dado de baja correctamente."
+                f"'{nombre_item}' dado de baja correctamente."
             )
             return super().form_valid(form)
 
@@ -2739,7 +2989,7 @@ def get_or_create_extraviado_compartment(estacion: Estacion) -> Compartimento:
 
 
 
-class ExtraviadoExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, FormView):
+class ExtraviadoExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, AuditoriaMixin, FormView):
     """
     Vista para reportar una existencia como extraviada.
     Utiliza composición de mixins para manejo seguro de items,
@@ -2775,6 +3025,10 @@ class ExtraviadoExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, Stati
             compartimento_limbo = get_or_create_extraviado_compartment(self.estacion_activa)
             compartimento_origen = self.item.compartimento
 
+            # Preparar datos para el log
+            nombre_item = self.item.producto.producto_global.nombre_oficial
+            codigo_item = self.item.codigo_activo if self.tipo_item == 'activo' else self.item.codigo_lote
+
             with transaction.atomic():
                 # 1. Actualizar Item
                 cantidad_movimiento = 0
@@ -2801,6 +3055,17 @@ class ExtraviadoExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, Stati
                     notas=f"Extravío reportado: {notas}"
                 )
 
+                # --- REGISTRO DE ACTIVIDAD (Feed) ---
+                self.auditar(
+                    verbo="reportó como extraviado (pérdida de inventario) a",
+                    objetivo=self.item,
+                    objetivo_repr=f"{nombre_item} ({codigo_item})",
+                    detalles={
+                        'motivo_declarado': notas,
+                        'ubicacion_anterior': compartimento_origen.nombre
+                    }
+                )
+
             messages.success(
                 self.request, 
                 f"'{self.item.producto.producto_global.nombre_oficial}' reportado como extraviado."
@@ -2817,7 +3082,7 @@ class ExtraviadoExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, Stati
 
 
 
-class ConsumirStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, SingleObjectMixin, FormView):
+class ConsumirStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, InventoryStateValidatorMixin, SingleObjectMixin, AuditoriaMixin, FormView):
     """
     Vista para registrar consumo de stock (Salida por uso interno).
     Utiliza FormView, valida reglas de negocio (estados permitidos)
@@ -2899,6 +3164,19 @@ class ConsumirStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventor
                     cantidad_movida=cantidad_consumida * -1, # Negativo
                     notas=notas
                 )
+
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo=f"registró el consumo interno de {cantidad_consumida} unidad(es) de",
+                    objetivo=self.object,
+                    # Usamos nombre + código para máxima claridad
+                    objetivo_repr=f"{self.object.producto.producto_global.nombre_oficial} ({self.object.codigo_lote})",
+                    detalles={
+                        'cantidad_consumida': cantidad_consumida,
+                        'cantidad_restante': self.object.cantidad,
+                        'motivo_uso': notas
+                    }
+                )
             
             messages.success(
                 self.request, 
@@ -2913,7 +3191,7 @@ class ConsumirStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventor
 
 
 
-class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, FormView):
+class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInventoryObjectMixin, InventoryStateValidatorMixin, AuditoriaMixin, FormView):
     """
     Vista para transferir existencias.
     Utiliza composición de Mixins para delegar la recuperación del ítem,
@@ -2954,6 +3232,10 @@ class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, St
         notas = form.cleaned_data['notas']
         
         try:
+            nombre_item = self.item.producto.producto_global.nombre_oficial
+            codigo_item = self.item.codigo_activo if self.tipo_item == 'activo' else self.item.codigo_lote
+            cantidad_movida = 0 # Para el log y auditoría
+
             with transaction.atomic():
                 if self.tipo_item == 'activo':
                     # --- LÓGICA ACTIVOS ---
@@ -3006,6 +3288,22 @@ class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, St
                     notas=notas
                 )
 
+                # --- REGISTRO DE ACTIVIDAD (Feed) ---
+                # Construimos un verbo claro: "transfirió 5 u. a Bodega X"
+                detalle_cantidad = f"{cantidad_movida} u." if self.tipo_item == 'lote' else ""
+                
+                self.auditar(
+                    verbo=f"transfirió {detalle_cantidad} internamente hacia '{compartimento_destino.nombre}'",
+                    objetivo=self.item,
+                    objetivo_repr=f"{nombre_item} ({codigo_item})",
+                    detalles={
+                        'origen': compartimento_origen.nombre,
+                        'destino': compartimento_destino.nombre,
+                        'cantidad': cantidad_movida,
+                        'nota': notas
+                    }
+                )
+
             messages.success(self.request, f"Se transfirió {msg_item} a '{compartimento_destino.nombre}'.")
             return super().form_valid(form)
 
@@ -3016,7 +3314,7 @@ class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, St
 
 
 
-class CrearPrestamoView(BaseEstacionMixin, PermissionRequiredMixin, View):
+class CrearPrestamoView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, View):
     """
     Vista para crear un Préstamo (Cabecera y Detalles).
     Manejo híbrido de Formulario + JSON, con lógica transaccional
@@ -3025,11 +3323,13 @@ class CrearPrestamoView(BaseEstacionMixin, PermissionRequiredMixin, View):
     template_name = 'gestion_inventario/pages/crear_prestamo.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
 
+
     def get(self, request, *args, **kwargs):
         context = {
             'cabecera_form': PrestamoCabeceraForm(estacion=self.estacion_activa),
         }
         return render(request, self.template_name, context)
+
 
     def post(self, request, *args, **kwargs):
         cabecera_form = PrestamoCabeceraForm(request.POST, estacion=self.estacion_activa)
@@ -3067,6 +3367,7 @@ class CrearPrestamoView(BaseEstacionMixin, PermissionRequiredMixin, View):
         }
         return render(request, self.template_name, context)
 
+
     @transaction.atomic
     def _procesar_transaccion_prestamo(self, form, items_list):
         """Orquesta la creación del préstamo, detalles y movimientos."""
@@ -3085,20 +3386,52 @@ class CrearPrestamoView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
         # C. Procesar Ítems
         notas = form.cleaned_data['notas_prestamo']
+
+        total_items_fisicos = 0
+        conteo_activos = 0
+        conteo_insumos = 0
         
         for item_data in items_list:
             if item_data['tipo'] == 'activo':
                 self._procesar_item_activo(prestamo, item_data, notas, estado_disponible, estado_prestamo, destinatario)
+                total_items_fisicos += 1
+                conteo_activos += 1
             elif item_data['tipo'] == 'lote':
                 self._procesar_item_lote(prestamo, item_data, notas, estado_disponible, destinatario)
+                cantidad = int(item_data['cantidad_prestada'])
+                total_items_fisicos += cantidad
+                conteo_insumos += cantidad
+
+        # --- AUDITORÍA (Registro Consolidado) ---
+        partes_msg = []
+        if conteo_activos > 0:
+            partes_msg.append(f"{conteo_activos} Activo{'s' if conteo_activos != 1 else ''}")
+        if conteo_insumos > 0:
+            partes_msg.append(f"{conteo_insumos} unidad{'es' if conteo_insumos != 1 else ''} de Insumo{'s' if conteo_insumos != 1 else ''}")
+        
+        detalle_texto = " y ".join(partes_msg)
+        
+        self.auditar(
+            verbo=f"registró el préstamo de {detalle_texto} a",
+            objetivo=destinatario, # El objetivo lógico es quien recibe
+            objetivo_repr=destinatario.nombre_entidad,
+            detalles={
+                'id_prestamo': prestamo.id,
+                'responsable_interno': self.request.user.get_full_name,
+                'total_items': total_items_fisicos,
+                'desglose': {'activos': conteo_activos, 'insumos': conteo_insumos},
+                'nota': notas
+            }
+        )
         
         return prestamo.id
+
 
     def _get_or_create_destinatario(self, form):
         """Busca o crea el destinatario según los datos del form."""
         destinatario = form.cleaned_data.get('destinatario')
         if not destinatario:
-            destinatario, _ = Destinatario.objects.get_or_create(
+            destinatario, created = Destinatario.objects.get_or_create(
                 estacion=self.estacion_activa,
                 nombre_entidad=form.cleaned_data.get('nuevo_destinatario_nombre'),
                 defaults={
@@ -3106,7 +3439,20 @@ class CrearPrestamoView(BaseEstacionMixin, PermissionRequiredMixin, View):
                     'creado_por': self.request.user
                 }
             )
+
+            # --- AUDITORÍA (Creación implícita) ---
+            if created:
+                self.auditar(
+                    verbo="registró como nuevo destinatario a",
+                    objetivo=destinatario,
+                    detalles={
+                        'nombre': destinatario.nombre_entidad,
+                        'telefono': destinatario.telefono_contacto
+                    }
+                )
+                
         return destinatario
+
 
     def _procesar_item_activo(self, prestamo, data, notas, estado_disp, estado_prest, destinatario):
         """Procesa un activo individual."""
@@ -3269,7 +3615,7 @@ class HistorialPrestamosView(BaseEstacionMixin, PermissionRequiredMixin, ListVie
 
 
 
-class GestionarDevolucionView(BaseEstacionMixin, PermissionRequiredMixin, View):
+class GestionarDevolucionView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, View):
     """
     Vista para gestionar devoluciones de préstamos.
     Descompone la lógica de devolución masiva en servicios
@@ -3336,6 +3682,7 @@ class GestionarDevolucionView(BaseEstacionMixin, PermissionRequiredMixin, View):
         
         total_items_prestamo = len(items_prestados)
         total_items_completados = 0
+        total_unidades_fisicas_devueltas = 0 # Contador para el log
 
         for detalle in items_prestados:
             pendiente = detalle.cantidad_prestada - detalle.cantidad_devuelta
@@ -3356,6 +3703,7 @@ class GestionarDevolucionView(BaseEstacionMixin, PermissionRequiredMixin, View):
             detalle.cantidad_devuelta += cantidad_a_devolver
             detalle.save()
             items_actualizados_count += 1
+            total_unidades_fisicas_devueltas += cantidad_a_devolver
 
             if detalle.cantidad_devuelta == detalle.cantidad_prestada:
                 total_items_completados += 1
@@ -3370,6 +3718,20 @@ class GestionarDevolucionView(BaseEstacionMixin, PermissionRequiredMixin, View):
 
         # 4. Actualizar Estado del Préstamo
         self._actualizar_estado_prestamo(prestamo, total_items_completados, total_items_prestamo)
+
+         # --- AUDITORÍA ---
+        if total_unidades_fisicas_devueltas > 0:
+            self.auditar(
+                verbo=f"registró la devolución de {total_unidades_fisicas_devueltas} unidad(es) del Préstamo #{prestamo.id}",
+                objetivo=prestamo.destinatario, # Quien devuelve
+                objetivo_repr=f"Préstamo #{prestamo.id} - {prestamo.destinatario.nombre_entidad}",
+                detalles={
+                    'id_prestamo': prestamo.id,
+                    'items_lineas_procesadas': items_actualizados_count,
+                    'total_unidades': total_unidades_fisicas_devueltas,
+                    'nuevo_estado_prestamo': prestamo.estado
+                }
+            )
 
         return {'procesados': items_actualizados_count}
 
@@ -3474,7 +3836,7 @@ class DestinatarioListView(BaseEstacionMixin, PermissionRequiredMixin, ListView)
 
 
 
-class DestinatarioCreateView(BaseEstacionMixin, PermissionRequiredMixin, CreateView):
+class DestinatarioCreateView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, CreateView):
     """
     Vista para crear un nuevo destinatario.
     Implementa CreateView genérica, inyección automática de dependencias
@@ -3503,6 +3865,17 @@ class DestinatarioCreateView(BaseEstacionMixin, PermissionRequiredMixin, CreateV
         try:
             # super().form_valid() guarda el objeto y redirige
             response = super().form_valid(form)
+
+            # --- AUDITORÍA ---
+            self.auditar(
+                verbo="registró una nueva entidad destinataria para préstamos",
+                objetivo=self.object,
+                detalles={
+                    'nombre': self.object.nombre_entidad,
+                    'rut': self.object.rut_entidad,
+                    'contacto': self.object.nombre_contacto
+                }
+            )
             
             messages.success(
                 self.request, 
@@ -3524,7 +3897,7 @@ class DestinatarioCreateView(BaseEstacionMixin, PermissionRequiredMixin, CreateV
 
 
 
-class DestinatarioEditView(BaseEstacionMixin, PermissionRequiredMixin, UpdateView):
+class DestinatarioEditView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, UpdateView):
     """
     Vista para editar un destinatario existente.
     Utiliza UpdateView para simplificar el ciclo de vida (GET/POST),
@@ -3557,8 +3930,19 @@ class DestinatarioEditView(BaseEstacionMixin, PermissionRequiredMixin, UpdateVie
         Guarda los cambios manejando posibles conflictos de unicidad.
         """
         try:
-            # super().form_valid() intenta guardar el objeto y redirigir
+            # 1. Guardamos primero para confirmar que la operación es válida en BD
             response = super().form_valid(form)
+            
+            # 2. --- AUDITORÍA CON DETECCIÓN DE CAMBIOS ---
+            if form.changed_data:
+                self.auditar(
+                    verbo="actualizó los datos de la entidad destinataria",
+                    objetivo=self.object,
+                    detalles={
+                        'campos_modificados': form.changed_data,
+                        'nombre_actual': self.object.nombre_entidad
+                    }
+                )
             
             messages.success(
                 self.request, 

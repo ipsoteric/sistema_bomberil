@@ -88,8 +88,8 @@
                     <h5 class="mb-0 fs_normal fw-bold color_primario">Contacto para mi Estación</h5>
                 </div>
                 <div class="card-body fondo_secundario">
-                    {% if not active_estacion_id %}
-                        <div class="alert alert-info fs_normal color_primario_muteado">
+                    {% if not request.session.active_estacion_id %}
+                        <div class="alert alert-info fs_normal color_blanco">
                             Debes tener una estación activa para gestionar contactos personalizados.
                         </div>
                     {% elif contacto_estacion_actual %}

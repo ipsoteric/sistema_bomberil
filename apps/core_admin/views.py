@@ -499,7 +499,7 @@ class UsuarioResetPasswordView(SuperuserRequiredMixin, View):
 
         # 2. Validación: Email existente
         if not usuario.email:
-            messages.error(request, f"El usuario {usuario.get_full_name()} no tiene un correo registrado. No se puede enviar el reset.")
+            messages.error(request, f"El usuario {usuario.get_full_name} no tiene un correo registrado. No se puede enviar el reset.")
             return redirect('core_admin:usuario_list')
 
         # 3. Instanciamos el formulario estándar de Django
