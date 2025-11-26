@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- 2. Añadir Activo ---
     function anadirActivo(activoId) {
-        const url = `{% url 'gestion_mantenimiento:api_anadir_activo_plan' plan.id %}`;
+        const url = `{% url 'api:api_anadir_activo_plan' plan.id %}`;
         
         fetch(url, {
             method: 'POST',
@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Construir URL dinámicamente reemplazando un placeholder o usando JS simple
             // Dado que Django URLs en JS son tricky, usamos un string template asumiendo estructura
             // Mejor práctica: Renderizar URL base en template
-            const urlBase = "{% url 'gestion_mantenimiento:api_quitar_activo_plan' 0 %}".replace('0', configId);
+            const urlBase = "{% url 'api:api_quitar_activo_plan' 0 %}".replace('0', configId);
 
             fetch(urlBase, {
                 method: 'DELETE',

@@ -1,8 +1,9 @@
 import uuid
+from django.utils import timezone
 from django.shortcuts import redirect, get_object_or_404
 from django.http import JsonResponse
 from django.db import IntegrityError, transaction
-from django.db.models import Count, F, Sum
+from django.db.models import Count, F, Sum, Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -11,10 +12,12 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from PIL import Image
 
 from apps.gestion_usuarios.models import Usuario, Membresia
+from apps.gestion_mantenimiento.models import PlanMantenimiento, PlanActivoConfig, OrdenMantenimiento, RegistroMantenimiento
+from apps.gestion_mantenimiento.services import auditar_modificacion_incremental
 from apps.common.permissions import CanUpdateUserProfile
 from apps.common.utils import procesar_imagen_en_memoria, generar_thumbnail_en_memoria
 from apps.common.mixins import AuditoriaMixin
-from apps.gestion_inventario.models import Comuna, Activo, LoteInsumo, ProductoGlobal, Estacion, Producto
+from apps.gestion_inventario.models import Comuna, Activo, LoteInsumo, ProductoGlobal, Estacion, Producto, Estado
 from apps.gestion_inventario.utils import generar_sku_sugerido
 from .serializers import ComunaSerializer, ProductoLocalInputSerializer
 from .permissions import IsStationActiveAndHasPermission
@@ -435,3 +438,392 @@ class AnadirProductoLocalAPIView(AuditoriaMixin, APIView):
                 {'error': f'Error interno inesperado: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+
+
+# --- VISTAS DE GESTIÓN DE MANTENIMIENTO ---
+class ApiBuscarActivoParaPlanView(APIView):
+    """
+    API DRF: Busca activos de la estación que NO estén ya en el plan actual.
+    GET params: q (búsqueda), plan_id
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        query = request.GET.get('q', '').strip()
+        plan_id = request.GET.get('plan_id')
+        estacion_activa = request.session.get('active_estacion_id')
+
+        if not query or len(query) < 2:
+            return Response({'results': []})
+        
+        if not estacion_activa:
+             return Response({'results': []}, status=status.HTTP_403_FORBIDDEN)
+
+        # 1. Obtener plan
+        plan = get_object_or_404(PlanMantenimiento, id=plan_id, estacion_id=estacion_activa)
+        
+        # 2. Filtrar
+        activos = Activo.objects.filter(
+            estacion_id=estacion_activa
+        ).filter(
+            Q(codigo_activo__icontains=query) | 
+            Q(producto__producto_global__nombre_oficial__icontains=query)
+        ).exclude(
+            configuraciones_plan__plan=plan
+        ).select_related(
+            'producto__producto_global', 
+            'compartimento__ubicacion', 
+        )[:10]
+
+        results = []
+        for activo in activos:
+            ubicacion_str = f"{activo.compartimento.ubicacion.nombre} > {activo.compartimento.nombre}" if activo.compartimento else "Sin ubicación"
+            results.append({
+                'id': activo.id,
+                'codigo': activo.codigo_activo,
+                'nombre': activo.producto.producto_global.nombre_oficial,
+                'ubicacion': ubicacion_str,
+                'imagen_url': activo.producto.producto_global.imagen_thumb_small.url if activo.producto.producto_global.imagen_thumb_small else None
+            })
+
+        return Response({'results': results})
+
+
+
+
+class ApiAnadirActivoEnPlanView(APIView):
+    """
+    API DRF: Añade un activo a un plan.
+    """
+    permission_classes = [IsAuthenticated] # O tus permisos personalizados
+
+    def post(self, request, plan_pk):
+        estacion_activa = request.session.get('active_estacion_id')
+        if not estacion_activa:
+             return Response({'error': 'No hay estación activa'}, status=status.HTTP_403_FORBIDDEN)
+
+        plan = get_object_or_404(PlanMantenimiento, pk=plan_pk, estacion_id=estacion_activa)
+        
+        activo_id = request.data.get('activo_id')
+        if not activo_id:
+            return Response({'error': 'Falta activo_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+        activo = get_object_or_404(Activo, pk=activo_id, estacion_id=estacion_activa)
+
+        # Lógica de Negocio
+        config, created = PlanActivoConfig.objects.get_or_create(
+            plan=plan,
+            activo=activo,
+            defaults={
+                'horas_uso_en_ultima_mantencion': activo.horas_uso_totales 
+            }
+        )
+
+        if not created:
+            return Response({'message': 'El activo ya está en el plan'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- AUDITORÍA INCREMENTAL ---
+        # No inundamos el log. Agrupamos.
+        auditar_modificacion_incremental(
+            request=request,
+            plan=plan,
+            accion_detalle=f"Agregó activo: {activo.codigo_activo}"
+        )
+
+        return Response({'status': 'ok', 'message': f"Activo {activo.codigo_activo} añadido."}, status=status.HTTP_201_CREATED)
+
+
+
+
+class ApiQuitarActivoDePlanView(APIView):
+    """
+    API DRF: Quita un activo de un plan.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        estacion_activa = request.session.get('active_estacion_id')
+        
+        # Buscamos la configuración asegurando estación
+        config = get_object_or_404(PlanActivoConfig, pk=pk, plan__estacion_id=estacion_activa)
+        
+        plan = config.plan
+        activo_codigo = config.activo.codigo_activo
+        
+        config.delete()
+
+        # --- AUDITORÍA INCREMENTAL ---
+        auditar_modificacion_incremental(
+            request=request,
+            plan=plan,
+            accion_detalle=f"Retiró activo: {activo_codigo}"
+        )
+
+        return Response({'status': 'ok', 'message': f"Activo {activo_codigo} removido."}, status=status.HTTP_200_OK)
+
+
+
+
+class ApiTogglePlanActivoView(AuditoriaMixin, APIView):
+    """
+    API DRF: Cambia el estado 'activo_en_sistema' de un plan (On/Off).
+    POST: plan_pk
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        estacion_activa = request.session.get('active_estacion_id')
+        # Buscamos el plan
+        plan = get_object_or_404(PlanMantenimiento, pk=pk, estacion_id=estacion_activa)
+        
+        # Toggle
+        plan.activo_en_sistema = not plan.activo_en_sistema
+        plan.save(update_fields=['activo_en_sistema'])
+        
+        estado_texto = "activó" if plan.activo_en_sistema else "desactivó"
+        
+        # --- AUDITORÍA ---
+        # 2. Usamos el método del Mixin para consistencia
+        self.auditar(
+            verbo=f"{estado_texto} la ejecución automática del plan",
+            objetivo=plan,
+            objetivo_repr=plan.nombre,
+            detalles={'nuevo_estado': plan.activo_en_sistema}
+        )
+        
+        return Response({
+            'status': 'ok',
+            'nuevo_estado': plan.activo_en_sistema,
+            'mensaje': f'Plan {estado_texto.lower()} correctamente.'
+        })
+
+
+
+
+class ApiCambiarEstadoOrdenView(APIView, AuditoriaMixin):
+    """
+    API DRF: Cambia el estado global de la orden (INICIAR / FINALIZAR / CANCELAR).
+    POST: { accion: 'iniciar' | 'finalizar' | 'cancelar' }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        estacion_activa = request.session.get('active_estacion_id')
+        orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion_id=estacion_activa)
+        
+        accion = request.data.get('accion')
+        verbo_auditoria = ""
+        
+        if accion == 'iniciar':
+            if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
+                return Response({'message': 'La orden no está pendiente.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            orden.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
+            orden.save()
+            verbo_auditoria = "Inició la ejecución de la Orden de Mantenimiento"
+
+            # Poner activos en "EN REPARACIÓN"
+            try:
+                estado_reparacion = Estado.objects.get(nombre__iexact="EN REPARACIÓN")
+                orden.activos_afectados.update(estado=estado_reparacion)
+            except Estado.DoesNotExist:
+                pass
+
+        elif accion == 'finalizar':
+            orden.estado = OrdenMantenimiento.EstadoOrden.REALIZADA
+            orden.fecha_cierre = timezone.now()
+            orden.save()
+            verbo_auditoria = "Finalizó exitosamente la Orden de Mantenimiento"
+
+        elif accion == 'cancelar':
+            orden.estado = OrdenMantenimiento.EstadoOrden.CANCELADA
+            orden.fecha_cierre = timezone.now()
+            orden.save()
+            verbo_auditoria = "Canceló la Orden de Mantenimiento"
+            
+            # Devolver activos a "DISPONIBLE"
+            try:
+                estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
+                orden.activos_afectados.update(estado=estado_disponible)
+            except Estado.DoesNotExist:
+                pass
+
+        else:
+            return Response({'message': 'Acción no válida.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- AUDITORÍA (Cambio de Estado - Registro Único) ---
+        self.auditar(
+            verbo=verbo_auditoria,
+            objetivo=orden,
+            objetivo_repr=f"Orden #{orden.id} ({orden.tipo_orden})",
+            detalles={'nuevo_estado': orden.estado}
+        )
+
+        return Response({'status': 'ok', 'message': 'Estado actualizado.'})
+
+
+class ApiRegistrarTareaMantenimientoView(APIView):
+    """
+    API DRF: Crea un RegistroMantenimiento para un activo.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        estacion_activa = request.session.get('active_estacion_id')
+        orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion_id=estacion_activa)
+        
+        if orden.estado != OrdenMantenimiento.EstadoOrden.EN_CURSO:
+            return Response({'message': 'Debe INICIAR la orden antes de registrar tareas.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        activo_id = request.data.get('activo_id')
+        notas = request.data.get('notas')
+        fue_exitoso = request.data.get('exitoso', True)
+
+        activo = get_object_or_404(Activo, pk=activo_id, estacion_id=estacion_activa)
+
+        registro, created = RegistroMantenimiento.objects.update_or_create(
+            orden_mantenimiento=orden,
+            activo=activo,
+            defaults={
+                'usuario_ejecutor': request.user,
+                'fecha_ejecucion': timezone.now(),
+                'notas': notas,
+                'fue_exitoso': fue_exitoso
+            }
+        )
+
+        # Actualizar estado del activo
+        if fue_exitoso:
+            try:
+                nuevo_estado = Estado.objects.get(nombre__iexact="DISPONIBLE")
+                activo.estado = nuevo_estado
+            except Estado.DoesNotExist:
+                pass
+        else:
+            try:
+                nuevo_estado = Estado.objects.get(nombre__iexact="NO OPERATIVO")
+                activo.estado = nuevo_estado
+            except Estado.DoesNotExist:
+                pass
+        
+        activo.save()
+        
+        # Actualizar Plan si aplica
+        if fue_exitoso and orden.plan_origen:
+            plan_config = PlanActivoConfig.objects.filter(plan=orden.plan_origen, activo=activo).first()
+            if plan_config:
+                plan_config.fecha_ultima_mantencion = timezone.now()
+                plan_config.horas_uso_en_ultima_mantencion = activo.horas_uso_totales
+                plan_config.save()
+
+        # --- AUDITORÍA INCREMENTAL (Avance de Tareas) ---
+        # Agrupamos el progreso: "Registró tareas en la Orden X"
+        accion_txt = "Tarea exitosa" if fue_exitoso else "Falla reportada"
+        
+        auditar_modificacion_incremental(
+            request=request,
+            plan=orden, # El objetivo es la Orden
+            accion_detalle=f"{accion_txt} en {activo.codigo_activo}"
+        )
+
+        return Response({'status': 'ok', 'message': 'Registro guardado.'})
+
+
+class ApiBuscarActivoParaOrdenView(APIView):
+    """
+    API DRF: Busca activos para agregar a una ORDEN específica.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        query = request.GET.get('q', '').strip()
+        orden_id = request.GET.get('orden_id')
+        estacion_activa = request.session.get('active_estacion_id')
+
+        if not query or len(query) < 2:
+            return Response({'results': []})
+
+        orden = get_object_or_404(OrdenMantenimiento, id=orden_id, estacion_id=estacion_activa)
+        
+        activos = Activo.objects.filter(
+            estacion_id=estacion_activa
+        ).filter(
+            Q(codigo_activo__icontains=query) | 
+            Q(producto__producto_global__nombre_oficial__icontains=query)
+        ).exclude(
+            ordenes_mantenimiento=orden
+        ).select_related(
+            'producto__producto_global', 
+            'compartimento__ubicacion'
+        )[:10]
+
+        results = []
+        for activo in activos:
+            ubicacion_str = f"{activo.compartimento.ubicacion.nombre} > {activo.compartimento.nombre}" if activo.compartimento else "Sin ubicación"
+            results.append({
+                'id': activo.id,
+                'codigo': activo.codigo_activo,
+                'nombre': activo.producto.producto_global.nombre_oficial,
+                'ubicacion': ubicacion_str,
+                'imagen_url': activo.producto.producto_global.imagen_thumb_small.url if activo.producto.producto_global.imagen_thumb_small else None
+            })
+
+        return Response({'results': results})
+
+
+class ApiAnadirActivoOrdenView(APIView):
+    """
+    API DRF: Añade un activo a la lista de 'activos_afectados' de una orden.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        estacion_activa = request.session.get('active_estacion_id')
+        orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion_id=estacion_activa)
+        
+        if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
+            return Response({'message': 'Solo se pueden agregar activos a órdenes PENDIENTES.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        activo_id = request.data.get('activo_id')
+        activo = get_object_or_404(Activo, pk=activo_id, estacion_id=estacion_activa)
+
+        orden.activos_afectados.add(activo)
+        
+        # --- AUDITORÍA INCREMENTAL ---
+        auditar_modificacion_incremental(
+            request=request,
+            plan=orden, # Reutilizamos la función pasando la orden como 'plan' (objeto genérico)
+            accion_detalle=f"Añadió a la orden: {activo.codigo_activo}"
+        )
+        
+        return Response({'status': 'ok', 'message': f"Activo {activo.codigo_activo} añadido."})
+
+
+class ApiQuitarActivoOrdenView(APIView):
+    """
+    API DRF: Quita un activo de la orden.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        estacion_activa = request.session.get('active_estacion_id')
+        orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion_id=estacion_activa)
+        
+        if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
+            return Response({'message': 'Solo se pueden quitar activos de órdenes PENDIENTES.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        activo_id = request.data.get('activo_id')
+        activo = get_object_or_404(Activo, pk=activo_id, estacion_id=estacion_activa)
+
+        orden.activos_afectados.remove(activo)
+
+        # --- AUDITORÍA INCREMENTAL ---
+        auditar_modificacion_incremental(
+            request=request,
+            plan=orden, 
+            accion_detalle=f"Quitó de la orden: {activo.codigo_activo}"
+        )
+
+        return Response({'status': 'ok', 'message': f"Activo {activo.codigo_activo} quitado."})

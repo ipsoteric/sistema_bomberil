@@ -298,7 +298,7 @@
                 }
 
                 debounceTimer = setTimeout(() => {
-                    fetch(`{% url 'gestion_mantenimiento:api_buscar_activo_para_orden' %}?orden_id=${ordenId}&q=${query}`)
+                    fetch(`{% url 'api:api_buscar_activo_para_orden' %}?orden_id=${ordenId}&q=${query}`)
                         .then(response => response.json())
                         .then(data => {
                             divResultados.innerHTML = '';
@@ -343,7 +343,7 @@
         const verbos = { 'iniciar': 'Iniciar', 'finalizar': 'Finalizar', 'cancelar': 'Cancelar' };
         if (!confirm(`¿Seguro que desea ${verbos[accion]} esta orden?`)) return;
 
-        fetch(`{% url 'gestion_mantenimiento:api_cambiar_estado_orden' orden.id %}`, {
+        fetch(`{% url 'api:api_cambiar_estado_orden' orden.id %}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
             body: JSON.stringify({ accion: accion })
@@ -359,7 +359,7 @@
     }
 
     function anadirActivo(activoId) {
-        fetch(`{% url 'gestion_mantenimiento:api_anadir_activo_orden' orden.id %}`, {
+        fetch(`{% url 'api:api_anadir_activo_orden' orden.id %}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
             body: JSON.stringify({ activo_id: activoId })
@@ -373,7 +373,7 @@
 
     function quitarActivo(activoId, nombre) {
         if(!confirm(`¿Quitar ${nombre} de esta orden?`)) return;
-        fetch(`{% url 'gestion_mantenimiento:api_quitar_activo_orden' orden.id %}`, {
+        fetch(`{% url 'api:api_quitar_activo_orden' orden.id %}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
             body: JSON.stringify({ activo_id: activoId })
@@ -404,7 +404,7 @@
             return;
         }
 
-        fetch(`{% url 'gestion_mantenimiento:api_registrar_tarea_orden' orden.id %}`, {
+        fetch(`{% url 'api:api_registrar_tarea_orden' orden.id %}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
             body: JSON.stringify({ activo_id: activoId, notas: notas, exitoso: exitoso })

@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from .models import PlanMantenimiento, PlanActivoConfig, OrdenMantenimiento, RegistroMantenimiento
 from .forms import PlanMantenimientoForm, OrdenCorrectivaForm
-from apps.common.mixins import BaseEstacionMixin, ObjectInStationRequiredMixin
+from apps.common.mixins import BaseEstacionMixin, ObjectInStationRequiredMixin, AuditoriaMixin
 from apps.gestion_inventario.models import Activo, Estado
 
 
@@ -116,7 +116,7 @@ class PlanMantenimientoListView(BaseEstacionMixin, ListView):
 
 
 
-class PlanMantenimientoCrearView(BaseEstacionMixin, CreateView):
+class PlanMantenimientoCrearView(BaseEstacionMixin, AuditoriaMixin, CreateView):
     """
     Vista para crear un nuevo plan de mantenimiento.
     Asigna automáticamente la estación activa al plan.
@@ -139,6 +139,18 @@ class PlanMantenimientoCrearView(BaseEstacionMixin, CreateView):
         plan = form.save(commit=False)
         plan.estacion = self.estacion_activa
         plan.save()
+
+        # --- AUDITORÍA ---
+        self.auditar(
+            verbo="creó un nuevo plan de mantenimiento preventivo",
+            objetivo=plan,
+            objetivo_repr=plan.nombre,
+            detalles={
+                'nombre_plan': plan.nombre,
+                # Si tienes un campo 'frecuencia' o 'descripcion' en el modelo, 
+                # sería bueno agregarlo aquí también.
+            }
+        )
         
         messages.success(self.request, f'El plan "{plan.nombre}" ha sido creado exitosamente.')
         return super().form_valid(form)
@@ -175,7 +187,7 @@ class PlanMantenimientoGestionarView(BaseEstacionMixin, ObjectInStationRequiredM
 
 
 
-class PlanMantenimientoEditarView(BaseEstacionMixin, ObjectInStationRequiredMixin, UpdateView):
+class PlanMantenimientoEditarView(BaseEstacionMixin, ObjectInStationRequiredMixin, AuditoriaMixin, UpdateView):
     """
     Vista para editar un plan existente.
     Protegida por ObjectInStationRequiredMixin para asegurar propiedad.
@@ -192,6 +204,19 @@ class PlanMantenimientoEditarView(BaseEstacionMixin, ObjectInStationRequiredMixi
         return context
 
     def form_valid(self, form):
+
+        # 2. --- AUDITORÍA ---
+        if form.changed_data:
+            self.auditar(
+                verbo="actualizó la configuración del plan de mantenimiento",
+                objetivo=self.object,
+                objetivo_repr=self.object.nombre,
+                detalles={
+                    'nombre_plan': self.object.nombre,
+                    'campos_modificados': form.changed_data
+                }
+            )
+
         messages.success(self.request, f'Los cambios en el plan "{self.object.nombre}" se han guardado.')
         return super().form_valid(form)
 
@@ -202,7 +227,7 @@ class PlanMantenimientoEditarView(BaseEstacionMixin, ObjectInStationRequiredMixi
 
 
 
-class PlanMantenimientoEliminarView(BaseEstacionMixin, ObjectInStationRequiredMixin, DeleteView):
+class PlanMantenimientoEliminarView(BaseEstacionMixin, ObjectInStationRequiredMixin, AuditoriaMixin, DeleteView):
     """
     Vista para eliminar un plan de mantenimiento.
     Protegida para asegurar que solo se borren planes de la propia estación.
@@ -225,6 +250,17 @@ class PlanMantenimientoEliminarView(BaseEstacionMixin, ObjectInStationRequiredMi
     def form_valid(self, form):
         nombre_plan = self.object.nombre
         response = super().form_valid(form)
+
+        # 2. --- AUDITORÍA ---
+        # Usamos objetivo=None porque el plan ya no existe en BD,
+        # pero usamos objetivo_repr para que el log sea legible.
+        self.auditar(
+            verbo="eliminó permanentemente el plan de mantenimiento",
+            objetivo=None,
+            objetivo_repr=nombre_plan,
+            detalles={'nombre_plan_eliminado': nombre_plan}
+        )
+
         messages.success(self.request, f'El plan "{nombre_plan}" ha sido eliminado correctamente.')
         return response
 
@@ -429,7 +465,7 @@ class OrdenMantenimientoListView(BaseEstacionMixin, ListView):
 
 
 
-class OrdenCorrectivaCreateView(BaseEstacionMixin, CreateView):
+class OrdenCorrectivaCreateView(BaseEstacionMixin, AuditoriaMixin, CreateView):
     """
     Vista para crear una Orden de Mantenimiento Correctiva (sin plan).
     """
@@ -449,6 +485,16 @@ class OrdenCorrectivaCreateView(BaseEstacionMixin, CreateView):
         orden.tipo_orden = OrdenMantenimiento.TipoOrden.CORRECTIVA
         orden.estado = OrdenMantenimiento.EstadoOrden.PENDIENTE
         orden.save()
+
+        # --- AUDITORÍA ---
+        self.auditar(
+            verbo="creó una nueva Orden de Mantenimiento Correctiva",
+            objetivo=orden,
+            objetivo_repr=f"Orden #{orden.id} (Correctiva)",
+            detalles={
+                'descripcion_inicial': orden.descripcion_falla if hasattr(orden, 'descripcion_falla') else 'Sin descripción inicial'
+            }
+        )
         
         # Mensaje de éxito
         messages.success(self.request, f"Orden Correctiva #{orden.id} creada. Ahora añade los activos afectados.")
@@ -514,7 +560,7 @@ class OrdenMantenimientoDetalleView(BaseEstacionMixin, ObjectInStationRequiredMi
 
 # --- APIs DE FLUJO DE TRABAJO ---
 
-class ApiCambiarEstadoOrdenView(BaseEstacionMixin, View):
+class ApiCambiarEstadoOrdenView(BaseEstacionMixin, AuditoriaMixin, View):
     """
     API: Cambia el estado global de la orden (INICIAR / FINALIZAR / CANCELAR).
     POST: { accion: 'iniciar' | 'finalizar' | 'cancelar' }

@@ -10,6 +10,11 @@
 {% endblock %}
 
 {% block contenido %}
+<!-- Renderiza el token oculto para que JS lo encuentre -->
+<div style="display:none;">
+    {% csrf_token %}
+</div>
+
 <div class="container-fluid px-0">
 
     <!-- Barra de Herramientas y Filtros -->
@@ -224,7 +229,7 @@
                 this.disabled = true;
 
                 // URL construida manualmente o mejor usando un data attribute con la url completa si es posible
-                const url = `{% url 'gestion_mantenimiento:api_toggle_plan_activo' 0 %}`.replace('0', planId);
+                const url = `{% url 'api:api_toggle_plan_activo' 0 %}`.replace('0', planId);
 
                 fetch(url, {
                     method: 'POST',
