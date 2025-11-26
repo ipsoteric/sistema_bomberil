@@ -265,7 +265,7 @@ class MedicoCompatibilidadView(View):
                 recipients_by_type[blood_type] = []
             
             recipients_by_type[blood_type].append({
-                'id': ficha.id,
+                'id': ficha.pk,
                 'nombre': ficha.voluntario.usuario.get_full_name,
                 'rut': ficha.voluntario.usuario.rut,
                 # AÑADIR LA URL DE LA IMAGEN
@@ -288,12 +288,12 @@ class MedicoCompatibilidadView(View):
             final_recipients = []
             seen_ids = set()
             for r in possible_recipients:
-                if r['id'] != ficha.id and r['id'] not in seen_ids:
+                if r['id'] != ficha.pk and r['id'] not in seen_ids:
                     final_recipients.append(r)
                     seen_ids.add(r['id'])
             
             compatibilidad_list.append({
-                'voluntario_id': ficha.id,
+                'voluntario_id': ficha.pk,
                 'nombre_donante': ficha.voluntario.usuario.get_full_name,
                 'tipo_sangre': donor_type,
                 'puede_donar_a_tipos': recipients_types,
