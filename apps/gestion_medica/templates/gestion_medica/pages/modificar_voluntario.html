@@ -16,7 +16,6 @@
             <div class="card shadow mb-4 border-bottom-primary">
                 
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
-                    
                     <h6 class="m-0 font-weight-bold text-primary">
                         <i class="fas fa-heartbeat me-2"></i> Información Vital y Antecedentes
                     </h6>
@@ -25,13 +24,69 @@
                         <span class="small text-muted text-uppercase fw-bold me-2" style="font-size: 0.7rem;">Paciente:</span>
                         <span class="h6 m-0 font-weight-bold text-dark">
                             <i class="fas fa-user-circle me-1"></i>
-                            {# Usamos .rut porque tu modelo Usuario no tiene username #}
                             {{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut }}
                         </span>
                     </div>
                 </div>
 
                 <div class="card-body">
+
+                    <div class="card bg-light border-0 mb-4 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="heading-small text-muted mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">
+                                <i class="fas fa-id-card me-1"></i> Identificación del Voluntario
+                            </h6>
+                            
+                            <div class="row align-items-center">
+                                <div class="col-auto pe-0">
+                                    <div class="avatar rounded-circle" style="width: 60px; height: 60px; overflow: hidden; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                        {# Preparamos la imagen por defecto en una variable para el JS #}
+                                        {% static 'imagenes/default_avatar.png' as default_img %}
+                                        
+                                        {# Lógica inteligente para buscar la foto #}
+                                        {% with foto=ficha.voluntario.imagen_thumb_small|default:ficha.voluntario.usuario.avatar %}
+                                            {% if foto %}
+                                                <img src="{{ foto.url }}" 
+                                                     alt="Foto Paciente" 
+                                                     style="width: 100%; height: 100%; object-fit: cover;" 
+                                                     onerror="this.onerror=null; this.src='{{ default_img }}';">
+                                            {% else %}
+                                                <div class="bg-secondary text-white d-flex align-items-center justify-content-center h-100">
+                                                    <i class="fas fa-user"></i>
+                                                </div>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                </div>
+
+                                <div class="col-md-5 border-end-md ps-3">
+                                    <h5 class="h6 font-weight-bold text-dark mb-1">
+                                        {{ ficha.voluntario.usuario.get_full_name }}
+                                    </h5>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <span class="badge bg-white text-dark border fw-normal">
+                                            RUT: {{ ficha.voluntario.usuario.rut }}
+                                        </span>
+                                        <span class="small text-muted">
+                                            <i class="fas fa-phone-alt text-success me-1"></i>
+                                            {{ ficha.voluntario.usuario.phone|default:"Sin teléfono" }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-5 ps-md-4 mt-2 mt-md-0">
+                                    <label class="small fw-bold text-gray-600 d-block mb-0">Domicilio Registrado</label>
+                                    <span class="text-dark small d-block">
+                                        {{ ficha.voluntario.domicilio_calle|default:"Dirección no registrada" }} 
+                                        {{ ficha.voluntario.domicilio_numero }}
+                                    </span>
+                                    <span class="badge bg-info text-white fw-normal" style="font-size: 0.7rem;">
+                                        {{ ficha.voluntario.domicilio_comuna.nombre|default:"Comuna S/I" }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <form method="post">
                         {% csrf_token %}
                         

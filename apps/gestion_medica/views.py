@@ -177,32 +177,33 @@ class MedicoModificarView(View):
 
 class MedicoImprimirView(View):
     def get(self, request, pk):
-        # 1. Optimización y consulta de datos relacionados (One-to-One)
+        # 1. Traemos la ficha con todos los datos necesarios
         ficha = get_object_or_404(
             FichaMedica.objects.select_related(
                 'voluntario', 
-                'voluntario__usuario', # Para acceder a la fecha de nacimiento y nombre
+                'voluntario__usuario',
+                'voluntario__domicilio_comuna', # <--- IMPORTANTE: Esto faltaba para la comuna
                 'grupo_sanguineo', 
                 'sistema_salud'
             ), pk=pk
         )
         voluntario = ficha.voluntario
-        usuario = voluntario.usuario  # Accedemos a la cuenta de usuario real
         
-        # 2. CORRECCIÓN DE LA EDAD: Usando el campo 'birthdate' (Fecha Nacimiento)
-        edad = "S/I"
-        if usuario.birthdate: 
+        # 2. CÁLCULO INTELIGENTE DE EDAD
+        # Si no hay fecha en Voluntario, intenta buscar en Usuario
+        fecha_nac = voluntario.fecha_nacimiento or voluntario.usuario.birthdate
+        
+        edad = "S/I" # Sin Información por defecto
+        if fecha_nac: 
             today = date.today()
-            nac = usuario.birthdate
-            # Calcula la edad exacta
-            edad = today.year - nac.year - ((today.month, today.day) < (nac.month, nac.day))
+            # Algoritmo preciso de edad
+            edad = today.year - fecha_nac.year - ((today.month, today.day) < (fecha_nac.month, fecha_nac.day))
 
-        # 3. Prepara el contexto para el template
+        # 3. Enviamos todo al HTML
         return render(request, "gestion_medica/pages/imprimir_ficha.html", {
             'ficha': ficha,
             'voluntario': voluntario,
-            'edad': edad,
-            # Optimizamos las listas Many-to-Many también
+            'edad': edad, # Aquí va la edad calculada
             'alergias': ficha.alergias.all().select_related('alergia'),
             'enfermedades': ficha.enfermedades.all().select_related('enfermedad'),
             'medicamentos': ficha.medicamentos.all().select_related('medicamento'),
