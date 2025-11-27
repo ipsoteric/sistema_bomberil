@@ -16,13 +16,13 @@
             <div class="card shadow mb-4 border-bottom-primary">
                 
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
-                    <h6 class="m-0 font-weight-bold text-primary">
+                    <h6 class="m-0 font-bold text-primary text-lg">
                         <i class="fas fa-heartbeat me-2"></i> Información Vital y Antecedentes
                     </h6>
                     
                     <div class="bg-light px-3 py-1 rounded border">
-                        <span class="small text-muted text-uppercase fw-bold me-2" style="font-size: 0.7rem;">Paciente:</span>
-                        <span class="h6 m-0 font-weight-bold text-dark">
+                        <span class="text-muted text-xs font-bold uppercase me-2">Paciente:</span>
+                        <span class="m-0 font-bold text-dark text-base">
                             <i class="fas fa-user-circle me-1"></i>
                             {{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut }}
                         </span>
@@ -33,186 +33,156 @@
 
                     <div class="card bg-light border-0 mb-4 shadow-sm">
                         <div class="card-body">
-                            <h6 class="heading-small text-muted mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">
+                            <h6 class="text-muted font-bold text-xs uppercase mb-3">
                                 <i class="fas fa-id-card me-1"></i> Identificación del Voluntario
                             </h6>
                             
                             <div class="row align-items-center">
                                 <div class="col-auto pe-0">
                                     <div class="avatar rounded-circle" style="width: 60px; height: 60px; overflow: hidden; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                                        {# Preparamos la imagen por defecto en una variable para el JS #}
                                         {% static 'imagenes/default_avatar.png' as default_img %}
-                                        
-                                        {# Lógica inteligente para buscar la foto #}
                                         {% with foto=ficha.voluntario.imagen_thumb_small|default:ficha.voluntario.usuario.avatar %}
                                             {% if foto %}
-                                                <img src="{{ foto.url }}" 
-                                                     alt="Foto Paciente" 
-                                                     style="width: 100%; height: 100%; object-fit: cover;" 
-                                                     onerror="this.onerror=null; this.src='{{ default_img }}';">
+                                                <img src="{{ foto.url }}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='{{ default_img }}';">
                                             {% else %}
-                                                <div class="bg-secondary text-white d-flex align-items-center justify-content-center h-100">
-                                                    <i class="fas fa-user"></i>
-                                                </div>
+                                                <div class="bg-secondary text-white d-flex align-items-center justify-content-center h-100"><i class="fas fa-user"></i></div>
                                             {% endif %}
                                         {% endwith %}
                                     </div>
                                 </div>
 
                                 <div class="col-md-5 border-end-md ps-3">
-                                    <h5 class="h6 font-weight-bold text-dark mb-1">
-                                        {{ ficha.voluntario.usuario.get_full_name }}
-                                    </h5>
+                                    <h5 class="text-lg font-bold text-dark mb-1">{{ ficha.voluntario.usuario.get_full_name }}</h5>
                                     <div class="d-flex align-items-center gap-3">
-                                        <span class="badge bg-white text-dark border fw-normal">
-                                            RUT: {{ ficha.voluntario.usuario.rut }}
-                                        </span>
-                                        <span class="small text-muted">
-                                            <i class="fas fa-phone-alt text-success me-1"></i>
-                                            {{ ficha.voluntario.usuario.phone|default:"Sin teléfono" }}
+                                        <span class="badge bg-white text-dark border font-regular text-sm text-data-code">RUT: {{ ficha.voluntario.usuario.rut }}</span>
+                                        <span class="text-sm text-muted font-medium">
+                                            <i class="fas fa-phone-alt text-success me-1"></i> {{ ficha.voluntario.usuario.phone|default:"S/I" }}
                                         </span>
                                     </div>
                                 </div>
 
                                 <div class="col-md-5 ps-md-4 mt-2 mt-md-0">
-                                    <label class="small fw-bold text-gray-600 d-block mb-0">Domicilio Registrado</label>
-                                    <span class="text-dark small d-block">
-                                        {{ ficha.voluntario.domicilio_calle|default:"Dirección no registrada" }} 
-                                        {{ ficha.voluntario.domicilio_numero }}
+                                    <label class="text-xs font-bold text-gray-600 d-block mb-0 uppercase">Domicilio</label>
+                                    <span class="text-dark text-sm font-medium d-block">
+                                        {{ ficha.voluntario.domicilio_calle|default:"--" }} {{ ficha.voluntario.domicilio_numero }}
                                     </span>
-                                    <span class="badge bg-info text-white fw-normal" style="font-size: 0.7rem;">
-                                        {{ ficha.voluntario.domicilio_comuna.nombre|default:"Comuna S/I" }}
-                                    </span>
+                                    <span class="badge bg-info text-white font-regular text-xs">{{ ficha.voluntario.domicilio_comuna.nombre|default:"Comuna S/I" }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                     <form method="post">
                         {% csrf_token %}
                         
                         {% if form.errors %}
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <strong><i class="fas fa-exclamation-triangle"></i> Atención:</strong> Por favor corrija los errores indicados abajo.
+                            <div class="alert alert-danger alert-dismissible fade show text-sm" role="alert">
+                                <strong><i class="fas fa-exclamation-triangle"></i> Atención:</strong> Corrija los errores.
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         {% endif %}
 
-                        <h6 class="heading-small text-muted mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-                            Datos Corporales
-                        </h6>
+                        <h6 class="text-muted font-bold text-xs uppercase mb-3 border-bottom pb-2">Datos Corporales</h6>
                         
                         <div class="row mb-4">
                             <div class="col-md-6 col-lg-3 mb-3">
-                                <label class="form-label small fw-bold text-gray-700">Peso</label>
+                                <label class="form-label text-sm font-bold text-gray-700">Peso</label>
                                 <div class="input-group shadow-sm">
-                                    {{ form.peso_kg }}
-                                    <span class="input-group-text bg-light fw-bold">kg</span>
+                                    <div class="flex-grow-1 text-base">{{ form.peso_kg }}</div>
+                                    <span class="input-group-text bg-light font-bold text-sm">kg</span>
                                 </div>
-                                {% if form.peso_kg.errors %}<div class="text-danger small mt-1">{{ form.peso_kg.errors.0 }}</div>{% endif %}
+                                {% if form.peso_kg.errors %}<div class="text-danger text-xs mt-1 font-bold">{{ form.peso_kg.errors.0 }}</div>{% endif %}
                             </div>
                             
                             <div class="col-md-6 col-lg-3 mb-3">
-                                <label class="form-label small fw-bold text-gray-700">Altura</label>
+                                <label class="form-label text-sm font-bold text-gray-700">Altura</label>
                                 <div class="input-group shadow-sm">
-                                    {{ form.altura_mts }}
-                                    <span class="input-group-text bg-light fw-bold">mts</span>
+                                    <div class="flex-grow-1 text-base">{{ form.altura_mts }}</div>
+                                    <span class="input-group-text bg-light font-bold text-sm">mts</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="card bg-light border-left-info mb-4">
                             <div class="card-body pt-3 pb-3">
-                                <h6 class="text-info font-weight-bold mb-3" style="font-size: 0.85rem; text-transform: uppercase;">
-                                    <i class="fas fa-stethoscope me-1"></i> Presión Arterial
-                                </h6>
+                                <div class="d-flex align-items-center mb-3">
+                                    <h6 class="text-info font-bold text-sm uppercase m-0 me-2">
+                                        <i class="fas fa-stethoscope me-1"></i> Presión Arterial
+                                    </h6>
+                                    
+                                    <button type="button" class="btn btn-sm btn-circle btn-outline-info" 
+                                            data-bs-toggle="popover" 
+                                            data-bs-html="true"
+                                            title="<span class='font-bold'>Guía de Presión Arterial</span>"
+                                            data-bs-content="
+                                                <div class='text-sm'>
+                                                    <p class='mb-2'><strong class='text-danger'>Sistólica (Alta):</strong> Presión máxima ejercida cuando el corazón late y bombea sangre.</p>
+                                                    <p class='mb-0'><strong class='text-primary'>Diastólica (Baja):</strong> Presión mínima en las arterias cuando el corazón descansa entre latidos.</p>
+                                                </div>
+                                            ">
+                                        <i class="fas fa-question text-xs"></i>
+                                    </button>
+                                </div>
                                 
                                 <div class="row align-items-center">
                                     <div class="col-lg-5 col-md-12 mb-3 mb-lg-0">
                                         <div class="form-group">
-                                            <label class="small font-weight-bold text-gray-600 mb-1">Lectura (Sistólica / Diastólica)</label>
+                                            <label class="text-xs font-bold text-gray-600 mb-1">Sistólica / Diastólica</label>
                                             <div class="input-group input-group-lg shadow-sm">
-                                                <span class="input-group-text bg-white text-danger border-end-0">
-                                                    <i class="fas fa-heartbeat"></i>
-                                                </span>
-                                                
-                                                {{ form.presion_arterial_sistolica }}
-                                                
-                                                <span class="input-group-text bg-light border-start-0 border-end-0 fw-bold text-muted">/</span>
-                                                
-                                                {{ form.presion_arterial_diastolica }}
+                                                <span class="input-group-text bg-white text-danger border-end-0"><i class="fas fa-heartbeat"></i></span>
+                                                <div class="flex-grow-1 text-lg font-bold text-data-code">{{ form.presion_arterial_sistolica }}</div>
+                                                <span class="input-group-text bg-light border-0 font-bold text-muted">/</span>
+                                                <div class="flex-grow-1 text-lg font-bold text-data-code">{{ form.presion_arterial_diastolica }}</div>
                                             </div>
                                         </div>
                                     </div>
-
                                     <div class="col-lg-7 col-md-12">
-                                        <div class="alert alert-white border shadow-sm mb-0 p-3" style="border-left: 4px solid #36b9cc !important;">
-                                            <div class="row">
-                                                <div class="col-sm-6 mb-2 mb-sm-0">
-                                                    <small class="d-block text-uppercase font-weight-bold text-danger mb-1" style="font-size: 0.7rem;">
-                                                        Sistólica (Alta)
-                                                    </small>
-                                                    <p class="small text-muted m-0 lh-sm">
-                                                        Presión máxima ejercida cuando el corazón late y bombea sangre.
-                                                    </p>
-                                                </div>
-                                                <div class="col-sm-6">
-                                                    <small class="d-block text-uppercase font-weight-bold text-primary mb-1" style="font-size: 0.7rem;">
-                                                        Diastólica (Baja)
-                                                    </small>
-                                                    <p class="small text-muted m-0 lh-sm">
-                                                        Presión mínima en las arterias cuando el corazón descansa entre latidos.
-                                                    </p>
-                                                </div>
-                                            </div>
+                                        <div class="d-flex align-items-center text-muted">
+                                            <i class="fas fa-info-circle me-2 text-info"></i>
+                                            <p class="text-xs m-0 font-medium">Ingrese los valores en formato numérico (Ej: 120 / 80).</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <h6 class="heading-small text-muted mb-3 mt-4 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-                            Clasificación Médica
-                        </h6>
+                        <h6 class="text-muted font-bold text-xs uppercase mb-3 mt-4 border-bottom pb-2">Clasificación Médica</h6>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label small fw-bold text-gray-700">Grupo Sanguíneo</label>
+                                <label class="form-label text-sm font-bold text-gray-700">Grupo Sanguíneo</label>
                                 <div class="input-group shadow-sm">
                                     <span class="input-group-text bg-white text-danger border-right-0"><i class="fas fa-tint"></i></span>
-                                    {{ form.grupo_sanguineo }}
+                                    <div class="flex-grow-1 text-base">{{ form.grupo_sanguineo }}</div>
                                 </div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label small fw-bold text-gray-700">Sistema de Salud</label>
+                                <label class="form-label text-sm font-bold text-gray-700">Sistema de Salud</label>
                                 <div class="input-group shadow-sm">
                                     <span class="input-group-text bg-white text-success border-right-0"><i class="fas fa-hospital-user"></i></span>
-                                    {{ form.sistema_salud }}
+                                    <div class="flex-grow-1 text-base">{{ form.sistema_salud }}</div>
                                 </div>
                             </div>
                         </div>
 
-                        <h6 class="heading-small text-muted mb-3 mt-4 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-                            Notas Adicionales
-                        </h6>
+                        <h6 class="text-muted font-bold text-xs uppercase mb-3 mt-4 border-bottom pb-2">Notas Adicionales</h6>
 
-                        <div class="mb-4">
+                        <div class="mb-4 text-base">
                             {{ form.observaciones_generales }}
-                            <div class="form-text text-muted small fst-italic mt-1">
-                                <i class="fas fa-info-circle"></i> Registre aquí condiciones crónicas no listadas, prótesis, o detalles relevantes para emergencias.
+                            <div class="form-text text-muted text-xs font-regular mt-1">
+                                <i class="fas fa-info-circle"></i> Registre condiciones crónicas no listadas o detalles relevantes.
                             </div>
                         </div>
 
                         <hr class="my-4">
 
                         <div class="d-flex justify-content-end gap-2">
-                            <a href="{% url 'gestion_medica:ruta_lista_paciente' %}" class="btn btn-light border text-secondary px-4">
+                            <a href="{% url 'gestion_medica:ruta_lista_paciente' %}" class="btn btn-light border text-secondary px-4 font-bold text-sm">
                                 <i class="fas fa-times me-1"></i> Cancelar
                             </a>
-                            <button type="submit" class="btn btn-primary btn-icon-split px-4 shadow-sm">
-                                <span class="icon text-white-50 me-2">
-                                    <i class="fas fa-save"></i>
-                                </span>
-                                <span class="text font-weight-bold">Guardar Ficha</span>
+                            <button type="submit" class="btn btn-primary btn-icon-split px-4 shadow-sm font-bold text-sm">
+                                <span class="icon text-white-50 me-2"><i class="fas fa-save"></i></span>
+                                <span class="text">Guardar Ficha</span>
                             </button>
                         </div>
 
@@ -222,4 +192,24 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. Inicializar Popovers de Bootstrap (El botón de ayuda)
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl)
+        });
+
+        // 2. Aplicar estilos 'clean' a los inputs generados por Django
+        document.querySelectorAll('input, select, textarea').forEach(el => {
+            el.classList.add('form-control-clean');
+            
+            // Excepción: Los campos de presión usan una fuente especial
+            if (!el.name.includes('presion')) {
+                el.classList.add('text-base');
+            }
+        });
+    });
+</script>
 {% endblock %}

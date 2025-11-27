@@ -1,0 +1,47 @@
+:root {
+    /* =========================================
+       VARIABLES LOCALES DE GESTIÓN MÉDICA
+       ========================================= */
+    
+    /* --- TYPOGRAPHY SCALE (Modular: 1.25) --- */
+    --font-xs:   1.2rem;
+    --font-sm:   1.4rem;
+    --font-base: 1.6rem;
+    --font-md:   2.0rem;
+    --font-lg:   2.5rem;
+    --font-xl:   3.1rem;
+    --font-2xl:  3.9rem;
+    --font-3xl:  4.8rem;
+
+    /* --- FONT WEIGHTS --- */
+    --weight-regular: 400;
+    --weight-medium:  500;
+    --weight-bold:    700;
+    --weight-black:   900;
+
+    /* --- FONT FAMILY --- */
+    --font-data: "Courier New", Courier, monospace;
+}
+
+/* =========================================
+   CLASES UTILITARIAS DE TEXTO
+   ========================================= */
+
+/* TAMAÑOS */
+.text-xs   { font-size: var(--font-xs) !important; }
+.text-sm   { font-size: var(--font-sm) !important; }
+.text-base { font-size: var(--font-base) !important; }
+.text-md   { font-size: var(--font-md) !important; }
+.text-lg   { font-size: var(--font-lg) !important; line-height: 1.2 !important; }
+.text-xl   { font-size: var(--font-xl) !important; line-height: 1.1 !important; letter-spacing: -0.02em !important; }
+.text-2xl  { font-size: var(--font-2xl) !important; line-height: 1.1 !important; letter-spacing: -0.03em !important; }
+.text-3xl  { font-size: var(--font-3xl) !important; line-height: 1.0 !important; letter-spacing: -0.04em !important; }
+
+/* PESOS */
+.font-regular { font-weight: var(--weight-regular) !important; }
+.font-medium  { font-weight: var(--weight-medium) !important; }
+.font-bold    { font-weight: var(--weight-bold) !important; }
+.font-black   { font-weight: var(--weight-black) !important; }
+
+/* TEXTO ESPECIAL */
+.text-data-code { font-family: var(--font-data); }

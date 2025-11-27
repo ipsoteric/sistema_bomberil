@@ -12,8 +12,8 @@
                     <i class="fas fa-hospital-user position-absolute text-white-50" style="font-size: 8rem; right: -10px; bottom: -20px; opacity: 0.15;"></i>
                     <div class="row align-items-center">
                         <div class="col-md-10">
-                            <h5 class="text-white-50 text-uppercase font-weight-bold mb-1 ls-1"><i class="fas fa-file-medical me-2"></i>Ficha Médica</h5>
-                            <h2 class="font-weight-bold text-white mb-0">{{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut|title }}</h2>
+                            <h5 class="text-white-50 text-sm font-bold text-uppercase mb-1 ls-1"><i class="fas fa-file-medical me-2"></i>Ficha Médica</h5>
+                            <h2 class="text-2xl font-black text-white mb-0">{{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut|title }}</h2>
                         </div>
                     </div>
                 </div>
@@ -22,39 +22,45 @@
             <div class="card shadow-lg border-0" style="border-radius: 15px;">
                 <div class="card-header bg-white py-3 border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="font-weight-bold text-secondary mb-0"><i class="fas fa-pen-to-square text-indigo-custom me-2"></i>Editar Cirugía</h5>
-                        <span class="badge bg-indigo-soft text-indigo-custom border border-indigo rounded-pill px-3 py-2">ID: {{ item.id }}</span>
+                        <h5 class="text-xl font-bold text-secondary mb-0"><i class="fas fa-pen-to-square text-indigo-custom me-2"></i>Editar Cirugía</h5>
+                        <span class="badge bg-indigo-soft text-indigo-custom border border-indigo rounded-pill px-3 py-2 text-xs font-bold">ID: {{ item.id }}</span>
                     </div>
                 </div>
                 <div class="card-body p-5">
                     <form method="post">
                         {% csrf_token %}
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Tipo de Cirugía</label>
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Tipo de Cirugía</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-indigo">
                                 <span class="input-group-text bg-white border-0 text-indigo-custom ps-4"><i class="fas fa-procedures"></i></span>
-                                {{ form.cirugia }}
+                                <div class="form-control-clean flex-grow-1 d-flex align-items-center">
+                                    {{ form.cirugia }}
+                                </div>
                             </div>
                         </div>
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Fecha Aproximada</label>
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Fecha Aproximada</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-indigo">
                                 <span class="input-group-text bg-white border-0 text-indigo-custom ps-4"><i class="fas fa-calendar-day"></i></span>
-                                {{ form.fecha_cirugia }}
+                                <div class="flex-grow-1">
+                                    {{ form.fecha_cirugia }}
+                                </div>
                             </div>
                         </div>
                         <div class="mb-5">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Observaciones</label>
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Observaciones</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-indigo">
                                 <span class="input-group-text bg-white border-0 text-indigo-custom ps-4"><i class="fas fa-comment-medical"></i></span>
-                                {{ form.observaciones }}
+                                <div class="flex-grow-1">
+                                    {{ form.observaciones }}
+                                </div>
                             </div>
                         </div>
                         <div class="d-grid gap-3">
-                            <button type="submit" class="btn btn-indigo-custom btn-lg rounded-pill shadow-sm hover-elevate-indigo fw-bold py-3 text-white">
+                            <button type="submit" class="btn btn-indigo-custom btn-lg rounded-pill shadow-sm hover-elevate-indigo font-bold text-base py-3 text-white">
                                 <i class="fas fa-save me-2"></i> GUARDAR CAMBIOS
                             </button>
-                            <a href="{% url 'gestion_medica:ruta_cirugias_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-light btn-lg rounded-pill border text-muted fw-bold py-3">CANCELAR</a>
+                            <a href="{% url 'gestion_medica:ruta_cirugias_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-light btn-lg rounded-pill border text-muted font-bold text-base py-3">CANCELAR</a>
                         </div>
                     </form>
                 </div>
@@ -62,5 +68,5 @@
         </div>
     </div>
 </div>
-<script>document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('input,select,textarea').forEach(el=>el.classList.add('form-control-clean'));});</script>
+<script>document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('input,select,textarea').forEach(el=>{el.classList.add('form-control-clean'); el.classList.add('text-base');});});</script>
 {% endblock %}

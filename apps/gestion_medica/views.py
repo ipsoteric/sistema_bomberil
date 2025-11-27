@@ -118,34 +118,38 @@ class MedicoVerView(View):
 
 class MedicoInfoView(View):
     def get(self, request, pk):
-        # Buscamos la ficha por el ID (pk). Si no existe, da error 404.
-        ficha = get_object_or_404(FichaMedica, pk=pk)
-        # 2. Buscamos al voluntario
+        # 1. Buscamos la ficha y optimizamos consultas
+        ficha = get_object_or_404(
+            FichaMedica.objects.select_related(
+                'voluntario', 
+                'voluntario__usuario', 
+                'grupo_sanguineo', 
+                'sistema_salud'
+            ), pk=pk
+        )
         voluntario = ficha.voluntario
-
-        # --- CORRECCIÓN AQUÍ: Usamos voluntario.usuario ---
-        usuario = voluntario.usuario  # Accedemos a la cuenta de usuario real
+        
+        # 2. CÁLCULO DE EDAD MEJORADO (Igual que en imprimir)
+        # Prioriza la fecha del voluntario, si no, usa la del usuario
+        fecha_nac = voluntario.fecha_nacimiento or voluntario.usuario.birthdate
         
         edad = "S/I"
-        if usuario.birthdate: # <--- Aquí estaba el error, se llama birthdate
+        if fecha_nac: 
             today = date.today()
-            nac = usuario.birthdate
-            # Calculamos la edad exacta
-            edad = today.year - nac.year - ((today.month, today.day) < (nac.month, nac.day))
+            edad = today.year - fecha_nac.year - ((today.month, today.day) < (fecha_nac.month, fecha_nac.day))
 
         qr_url = request.build_absolute_uri()
 
         return render(request, "gestion_medica/pages/informacion_paciente.html", {
             'ficha': ficha,
             'voluntario': voluntario,
-            'edad': edad, # Enviamos la edad calculada
-            'qr_url': qr_url,  # Enviamos la URL para el QR
-            # Relaciones directas desde la ficha (usando related_name del models.py)
-            'alergias': ficha.alergias.all(),
-            'enfermedades': ficha.enfermedades.all(),
-            'medicamentos': ficha.medicamentos.all(),
-            'cirugias': ficha.cirugias.all(),
-            # Relación desde el voluntario
+            'edad': edad, # Ahora sí lleva el cálculo correcto
+            'qr_url': qr_url,
+            # Usamos select_related para optimizar las relaciones
+            'alergias': ficha.alergias.all().select_related('alergia'),
+            'enfermedades': ficha.enfermedades.all().select_related('enfermedad'),
+            'medicamentos': ficha.medicamentos.all().select_related('medicamento'),
+            'cirugias': ficha.cirugias.all().select_related('cirugia'),
             'contactos': voluntario.contactos_emergencia.all()
         })
 

@@ -9,13 +9,11 @@
     <div class="row justify-content-center">
         <div class="col-lg-6 col-md-8">
 
-            <!-- PANEL CATÁLOGO (color turquesa Medicamento) -->
             <div class="panel catalog-form" style="--catalog-color: #20c997; --catalog-text-color: white;">
 
-                <!-- ENCABEZADO -->
                 <div class="panel-header">
-                    <i class="fa-solid fa-pills me-2"></i>
-                    <h3>Crear Nuevo Medicamento</h3>
+                    <i class="fa-solid fa-pills me-2 text-2xl"></i>
+                    <h3 class="text-xl font-bold mb-0">Crear Nuevo Medicamento</h3>
                 </div>
 
                 <div class="panel-body">
@@ -23,58 +21,53 @@
                     <form method="post" id="formMedicamento" class="form-container">
                         {% csrf_token %}
 
-                        <!-- INPUT REAL -->
                         <div class="d-none">
                             {{ form.nombre }}
                         </div>
 
-                        <!-- MENSAJE DE ERROR -->
                         {% if form.nombre.errors %}
                         <div class="alert-custom-error d-flex align-items-center mb-4">
                             <i class="fa-solid fa-circle-exclamation fs-3 me-3"></i>
                             <div>
-                                <strong class="d-block">No se pudo guardar el medicamento:</strong>
-                                <ul class="mb-0 ps-3 small">
+                                <strong class="d-block font-bold text-base">No se pudo guardar el medicamento:</strong>
+                                <ul class="mb-0 ps-3 text-sm font-medium">
                                     <li>{{ form.nombre.errors.0 }}</li>
                                 </ul>
                             </div>
                         </div>
                         {% endif %}
 
-                        <!-- CAMPOS -->
                         <div class="form-group mb-3">
-                            <label class="form-label fw-bold">Nombre del Medicamento *</label>
-                            <input type="text" id="visualNombre" class="form-control" placeholder="Ej: Paracetamol" required>
+                            <label class="form-label text-sm font-bold">Nombre del Medicamento *</label>
+                            <input type="text" id="visualNombre" class="form-control text-base font-regular" placeholder="Ej: Paracetamol" required>
                         </div>
 
                         <div class="form-group mb-3">
-                            <label class="form-label fw-bold">Dosis *</label>
+                            <label class="form-label text-sm font-bold">Dosis *</label>
                             <div class="input-group">
-                                <input type="text" id="visualDosis" class="form-control" placeholder="500" required>
-                                <span class="input-group-text bg-light">mg</span>
+                                <input type="text" id="visualDosis" class="form-control text-base font-regular" placeholder="500" required>
+                                <span class="input-group-text bg-light text-sm font-medium">mg</span>
                             </div>
                         </div>
 
                         <div class="form-group mb-4">
-                            <label class="form-label fw-bold">Laboratorio / Marca (Opcional)</label>
-                            <input type="text" id="visualLab" class="form-control" placeholder="Ej: Chile, Bagó">
+                            <label class="form-label text-sm font-bold">Laboratorio / Marca (Opcional)</label>
+                            <input type="text" id="visualLab" class="form-control text-base font-regular" placeholder="Ej: Chile, Bagó">
                         </div>
 
-                        <!-- VISTA PREVIA -->
-                        <div class="alert alert-light border small text-muted mb-4">
+                        <div class="alert alert-light border text-sm text-muted mb-4 font-medium">
                             <i class="fa-solid fa-eye me-1"></i>
                             <strong>Se guardará como:</strong>
-                            <span id="vistaPrevia" class="fw-bold text-success">---</span>
+                            <span id="vistaPrevia" class="font-bold text-success">---</span>
                         </div>
 
-                        <!-- BOTONES -->
                         <div class="form-actions text-end">
                             <a href="{% url 'gestion_medica:ruta_lista_medicamentos' %}"
-                               class="btn btn-outline-secondary btn-lg catalog-btn me-2">
+                               class="btn btn-outline-secondary btn-lg catalog-btn me-2 text-base font-bold">
                                 <i class="fa-solid fa-times me-1"></i> Cancelar
                             </a>
 
-                            <button type="submit" class="btn btn-catalog-turquoise btn-lg catalog-btn">
+                            <button type="submit" class="btn btn-catalog-turquoise btn-lg catalog-btn text-base font-bold">
                                 <i class="fa-solid fa-save me-1"></i> Guardar
                             </button>
                         </div>

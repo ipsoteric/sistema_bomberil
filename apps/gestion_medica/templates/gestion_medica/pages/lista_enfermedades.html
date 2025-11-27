@@ -13,10 +13,10 @@
 
     <div class="card catalogo-card">
         <div class="card-header header-enfermedad d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold"><i class="fa-solid fa-virus me-2"></i>Enfermedades</h5>
+            <h5 class="mb-0 text-xl font-bold"><i class="fa-solid fa-virus me-2"></i>Enfermedades</h5>
 
             <a href="{% url 'gestion_medica:ruta_crear_enfermedad' %}"
-               class="btn btn-enfermedad btn-sm fw-bold">
+               class="btn btn-enfermedad btn-sm text-sm font-bold">
                 <i class="fa-solid fa-plus me-1"></i> Nueva
             </a>
         </div>
@@ -25,16 +25,16 @@
             <table class="table table-striped table-catalogo mb-0">
                 <thead>
                     <tr>
-                        <th class="ps-4">Nombre</th>
+                        <th class="ps-4 text-sm font-bold">Nombre</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in object_list %}
                     <tr>
-                        <td class="ps-4 fw-bold">{{ item.nombre }}</td>
+                        <td class="ps-4 text-base font-medium">{{ item.nombre }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td class="text-center py-3 text-muted">Sin registros</td></tr>
+                    <tr><td class="text-center py-3 text-muted text-base font-regular">Sin registros</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

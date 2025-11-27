@@ -14,10 +14,10 @@
                     <i class="fas fa-pills position-absolute text-white-50" style="font-size: 8rem; right: -10px; bottom: -20px; opacity: 0.15;"></i>
                     <div class="row align-items-center">
                         <div class="col-md-8">
-                            <h5 class="text-white-50 text-uppercase font-weight-bold mb-1 ls-1">
+                            <h5 class="text-white-50 text-sm font-bold text-uppercase mb-1 ls-1">
                                 <i class="fas fa-file-medical me-2"></i>Ficha Médica
                             </h5>
-                            <h2 class="font-weight-bold text-white mb-0">
+                            <h2 class="text-2xl font-black text-white mb-0">
                                 {{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut|title }}
                             </h2>
                         </div>
@@ -28,10 +28,10 @@
             <div class="card shadow-lg border-0" style="border-radius: 15px;">
                 <div class="card-header bg-white py-3 border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="font-weight-bold text-secondary mb-0">
+                        <h5 class="text-xl font-bold text-secondary mb-0">
                             <i class="fas fa-pen-to-square text-info-custom me-2"></i>Modificar Tratamiento
                         </h5>
-                        <span class="badge bg-info-soft text-info-custom border border-info rounded-pill px-3 py-2">
+                        <span class="badge bg-info-soft text-info-custom border border-info rounded-pill px-3 py-2 text-xs font-bold">
                             <i class="fas fa-tag me-1"></i> ID: {{ item.id }}
                         </span>
                     </div>
@@ -42,31 +42,35 @@
                         {% csrf_token %}
                         
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Medicamento</label>
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Medicamento</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-info">
                                 <span class="input-group-text bg-white border-0 text-info-custom ps-4">
                                     <i class="fas fa-capsules"></i>
                                 </span>
-                                {{ form.medicamento }}
+                                <div class="form-control-clean text-base font-medium flex-grow-1 d-flex align-items-center">
+                                    {{ form.medicamento }}
+                                </div>
                             </div>
                         </div>
 
                         <div class="mb-5">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Dosis y Frecuencia</label>
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Dosis y Frecuencia</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-info">
                                 <span class="input-group-text bg-white border-0 text-info-custom ps-4">
                                     <i class="fas fa-stopwatch"></i>
                                 </span>
-                                {{ form.dosis_frecuencia }}
+                                <div class="flex-grow-1">
+                                    {{ form.dosis_frecuencia }} </div>
                             </div>
                         </div>
 
                         <div class="d-grid gap-3">
-                            <button type="submit" class="btn btn-info-custom btn-lg rounded-pill shadow-sm hover-elevate-info fw-bold py-3 text-white">
+                            <button type="submit" class="btn btn-info-custom btn-lg rounded-pill shadow-sm hover-elevate-info font-bold text-base py-3 text-white">
                                 <i class="fas fa-save me-2"></i> GUARDAR CAMBIOS
                             </button>
                             
-                            <a href="{% url 'gestion_medica:ruta_medicamentos_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-light btn-lg rounded-pill border text-muted fw-bold py-3">
+                            <a href="{% url 'gestion_medica:ruta_medicamentos_paciente' pk=ficha.voluntario.usuario.id %}" 
+                               class="btn btn-light btn-lg rounded-pill border text-muted font-bold text-base py-3">
                                 CANCELAR Y VOLVER
                             </a>
                         </div>
@@ -81,7 +85,10 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('input, select').forEach(el => el.classList.add('form-control-clean'));
+        document.querySelectorAll('input, select').forEach(el => {
+            el.classList.add('form-control-clean');
+            el.classList.add('text-base'); // Aplicar tamaño base a los inputs
+        });
     });
 </script>
 {% endblock %}

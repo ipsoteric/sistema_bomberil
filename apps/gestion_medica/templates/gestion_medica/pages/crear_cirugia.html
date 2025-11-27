@@ -10,51 +10,47 @@
     <div class="row justify-content-center">
         <div class="col-lg-6 col-md-8">
 
-            <!-- PANEL CIRUGÍA (AHORA MORADO) -->
             <div class="panel catalog-form" style="--catalog-color: #6f42c1; --catalog-text-color: white;">
                 
-                <!-- HEADER -->
                 <div class="panel-header">
-                    <i class="fas fa-scalpel-path me-2"></i>
+                    <i class="fas fa-scalpel-path me-2 text-2xl"></i>
                     {% if form.instance.pk %}
-                        <h3>Modificar Cirugía: {{ form.instance.nombre }}</h3>
+                        <h3 class="text-xl font-bold mb-0">Modificar Cirugía: {{ form.instance.nombre }}</h3>
                     {% else %}
-                        <h3>Crear Nueva Cirugía</h3>
+                        <h3 class="text-xl font-bold mb-0">Crear Nueva Cirugía</h3>
                     {% endif %}
                 </div>
 
-                <!-- BODY -->
                 <div class="panel-body">
 
                     <form method="post" class="form-container">
                         {% csrf_token %}
                         {{ form.non_field_errors }}
 
-                        <!-- CAMPO -->
                         <div class="form-group mb-3">
-                            <label for="{{ form.nombre.id_for_label }}" class="form-label">
+                            <label for="{{ form.nombre.id_for_label }}" class="form-label text-sm font-bold">
                                 {{ form.nombre.label }}
                                 <span class="required text-danger">*</span>
                             </label>
 
-                            {{ form.nombre }}
+                            <div class="text-base font-regular">
+                                {{ form.nombre }}
+                            </div>
 
                             {% for error in form.nombre.errors %}
-                                <div class="text-danger small">{{ error }}</div>
+                                <div class="text-danger text-sm font-bold mt-1">{{ error }}</div>
                             {% endfor %}
                         </div>
 
-                        <!-- BOTONES -->
                         <div class="form-actions text-end mt-4">
 
                             <a href="{% url 'gestion_medica:ruta_lista_cirugias' %}"
-                               class="btn btn-outline-secondary btn-lg catalog-btn me-2">
+                               class="btn btn-outline-secondary btn-lg catalog-btn me-2 text-base font-bold">
                                 <i class="fas fa-times me-1"></i> Cancelar
                             </a>
 
-                            <!-- BOTÓN GUARDAR MORADO -->
                             <button type="submit"
-                                    class="btn btn-lg catalog-btn"
+                                    class="btn btn-lg catalog-btn text-base font-bold"
                                     style="background-color: #6f42c1; color:white;">
                                 <i class="fas fa-save me-1"></i> Guardar Cirugía
                             </button>

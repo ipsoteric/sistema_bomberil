@@ -15,10 +15,10 @@
                     
                     <div class="row align-items-center">
                         <div class="col-md-8">
-                            <h5 class="text-white-50 text-uppercase font-weight-bold mb-1 ls-1">
+                            <h5 class="text-white-50 text-sm font-bold text-uppercase mb-1 ls-1">
                                 <i class="fas fa-file-medical me-2"></i>Historial Clínico
                             </h5>
-                            <h2 class="font-weight-bold text-white mb-0">
+                            <h2 class="text-2xl font-black text-white mb-0">
                                 {{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut|title }}
                             </h2>
                         </div>
@@ -29,10 +29,10 @@
             <div class="card shadow-lg border-0" style="border-radius: 15px;">
                 <div class="card-header bg-white py-3 border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="font-weight-bold text-secondary mb-0">
+                        <h5 class="text-xl font-bold text-secondary mb-0">
                             <i class="fas fa-pen-to-square text-warning-dark me-2"></i>Editar Registro
                         </h5>
-                        <span class="badge bg-warning-soft text-warning-dark border border-warning rounded-pill px-3 py-2">
+                        <span class="badge bg-warning-soft text-warning-dark border border-warning rounded-pill px-3 py-2 text-xs font-bold">
                             <i class="fas fa-tag me-1"></i> ID: {{ item.id }}
                         </span>
                     </div>
@@ -43,34 +43,39 @@
                         {% csrf_token %}
                         
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Diagnóstico</label>
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Diagnóstico</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-warning">
                                 <span class="input-group-text bg-white border-0 text-warning-dark ps-4">
                                     <i class="fas fa-stethoscope"></i>
                                 </span>
-                                {{ form.enfermedad }}
+                                <div class="form-control-clean flex-grow-1 d-flex align-items-center">
+                                    {{ form.enfermedad }}
+                                </div>
                             </div>
                             {% if form.enfermedad.errors %}
-                                <div class="text-danger small mt-2 ms-3 fw-bold">{{ form.enfermedad.errors.0 }}</div>
+                                <div class="text-danger text-sm font-bold mt-2 ms-3">{{ form.enfermedad.errors.0 }}</div>
                             {% endif %}
                         </div>
 
                         <div class="mb-5">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Estado / Tratamiento</label>
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Estado / Tratamiento</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-warning">
                                 <span class="input-group-text bg-white border-0 text-warning-dark ps-4">
                                     <i class="fas fa-comment-medical"></i>
                                 </span>
-                                {{ form.observaciones }}
+                                <div class="flex-grow-1">
+                                    {{ form.observaciones }}
+                                </div>
                             </div>
                         </div>
 
                         <div class="d-grid gap-3">
-                            <button type="submit" class="btn btn-warning-custom btn-lg rounded-pill shadow-sm hover-elevate-warning fw-bold py-3 text-white">
+                            <button type="submit" class="btn btn-warning-custom btn-lg rounded-pill shadow-sm hover-elevate-warning font-bold text-base py-3 text-white">
                                 <i class="fas fa-save me-2"></i> GUARDAR CAMBIOS
                             </button>
                             
-                            <a href="{% url 'gestion_medica:ruta_enfermedad_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-light btn-lg rounded-pill border text-muted fw-bold py-3">
+                            <a href="{% url 'gestion_medica:ruta_enfermedad_paciente' pk=ficha.voluntario.usuario.id %}" 
+                               class="btn btn-light btn-lg rounded-pill border text-muted font-bold text-base py-3">
                                 CANCELAR Y VOLVER
                             </a>
                         </div>
@@ -85,9 +90,9 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Aplicar estilos 'clean' a los inputs automáticamente
         document.querySelectorAll('input, select, textarea').forEach(el => {
             el.classList.add('form-control-clean');
+            el.classList.add('text-base');
         });
     });
 </script>

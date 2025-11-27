@@ -6,23 +6,19 @@
 {% block contenido %}
 <div class="container-fluid">
 
-    <!-- COLUMNA CENTRAL ÚNICA -->
-    <!-- Alinea perfectamente el encabezado y el formulario al mismo ancho -->
     <div class="row justify-content-center">
         <div class="col-lg-8 col-xl-6">
 
-            <!-- 1. ENCABEZADO DE CONTEXTO (Tema Verde) -->
             <div class="card border-0 shadow-sm mb-4 bg-gradient-success text-white overflow-hidden" style="border-radius: 15px;">
                 <div class="card-body p-4 position-relative">
-                    <!-- Icono decorativo de fondo -->
                     <i class="fas fa-user-edit position-absolute text-white-50" style="font-size: 8rem; right: -10px; bottom: -20px; opacity: 0.2;"></i>
                     
                     <div class="row align-items-center">
                         <div class="col-md-10">
-                            <h5 class="text-white-50 text-uppercase font-weight-bold mb-1 ls-1">
+                            <h5 class="text-white-50 text-sm font-bold text-uppercase mb-1 ls-1">
                                 <i class="fas fa-file-medical me-2"></i>Ficha Médica
                             </h5>
-                            <h2 class="font-weight-bold text-white mb-0">
+                            <h2 class="text-2xl font-black text-white mb-0">
                                 {{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut|title }}
                             </h2>
                         </div>
@@ -30,14 +26,12 @@
                 </div>
             </div>
 
-            <!-- 2. TARJETA DE EDICIÓN (Estilo Robusto) -->
             <div class="card shadow-lg border-0" style="border-radius: 15px;">
                 <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                    <h5 class="font-weight-bold text-secondary mb-0">
+                    <h5 class="text-xl font-bold text-secondary mb-0">
                         <i class="fas fa-pen-to-square text-success me-2"></i>Editar Contacto
                     </h5>
-                    <!-- Badge del ID -->
-                    <span class="badge bg-success-soft text-success border border-success-light px-3 py-2 rounded-pill">
+                    <span class="badge bg-success-soft text-success border border-success-light px-3 py-2 rounded-pill text-xs font-bold">
                         <i class="fas fa-id-badge me-1"></i> ID: {{ contacto.id }}
                     </span>
                 </div>
@@ -46,51 +40,53 @@
                     <form method="post" class="needs-validation">
                         {% csrf_token %}
                         
-                        <!-- Nombre -->
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Nombre del Contacto</label>
-                            <!-- Clase 'input-group-focus-success' activa el brillo verde al escribir -->
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Nombre del Contacto</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-success">
                                 <span class="input-group-text bg-white border-0 text-success ps-4">
                                     <i class="fas fa-user"></i>
                                 </span>
-                                {{ form.nombre_completo }}
+                                <div class="flex-grow-1">
+                                    {{ form.nombre_completo }}
+                                </div>
                             </div>
                             {% if form.nombre_completo.errors %}
-                                <div class="text-danger small mt-2 ms-3 fw-bold">{{ form.nombre_completo.errors.0 }}</div>
+                                <div class="text-danger text-sm font-bold mt-2 ms-3">{{ form.nombre_completo.errors.0 }}</div>
                             {% endif %}
                         </div>
 
-                        <!-- Parentesco -->
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Relación / Parentesco</label>
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Relación / Parentesco</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-success">
                                 <span class="input-group-text bg-white border-0 text-success ps-4">
                                     <i class="fas fa-users"></i>
                                 </span>
-                                {{ form.parentesco }}
+                                <div class="flex-grow-1">
+                                    {{ form.parentesco }}
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Teléfono -->
                         <div class="mb-5">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Teléfono Móvil</label>
+                            <label class="form-label text-muted font-bold text-sm text-uppercase">Teléfono Móvil</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-success">
-                                <span class="input-group-text bg-success text-white border-0 fw-bold px-3 ps-4">+56</span>
-                                {{ form.telefono }}
+                                <span class="input-group-text bg-success text-white border-0 font-bold px-3 ps-4">+56</span>
+                                <div class="flex-grow-1">
+                                    {{ form.telefono }}
+                                </div>
                             </div>
                             {% if form.telefono.errors %}
-                                <div class="text-danger small mt-2 ms-3 fw-bold">{{ form.telefono.errors.0 }}</div>
+                                <div class="text-danger text-sm font-bold mt-2 ms-3">{{ form.telefono.errors.0 }}</div>
                             {% endif %}
                         </div>
 
-                        <!-- Botones de Acción -->
                         <div class="d-grid gap-3">
-                            <button type="submit" class="btn btn-success btn-lg rounded-pill shadow-sm hover-elevate fw-bold py-3">
+                            <button type="submit" class="btn btn-success btn-lg rounded-pill shadow-sm hover-elevate font-bold text-base py-3">
                                 <i class="fas fa-save me-2"></i> GUARDAR CAMBIOS
                             </button>
                             
-                            <a href="{% url 'gestion_medica:ruta_contacto_emergencia' pk=ficha.voluntario.usuario.id %}" class="btn btn-light btn-lg rounded-pill border text-muted fw-bold py-3">
+                            <a href="{% url 'gestion_medica:ruta_contacto_emergencia' pk=ficha.voluntario.usuario.id %}" 
+                               class="btn btn-light btn-lg rounded-pill border text-muted font-bold text-base py-3">
                                 CANCELAR Y VOLVER
                             </a>
                         </div>
@@ -103,15 +99,13 @@
     </div>
 </div>
 
-<!-- Script específico para validación numérica y estilos de input -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // 1. Aplicar estilo 'clean' a los inputs generados por Django
         document.querySelectorAll('input, select').forEach(el => {
             el.classList.add('form-control-clean');
+            el.classList.add('text-base');
         });
 
-        // 2. Validación de solo números para el teléfono
         const telefonoInputs = document.querySelectorAll('.telefono-input');
         telefonoInputs.forEach(function(input) {
             input.addEventListener('input', function(e) {
