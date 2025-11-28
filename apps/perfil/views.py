@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.views import View
@@ -6,12 +6,12 @@ from django.contrib.auth.views import PasswordChangeView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from django.utils import timezone
-from datetime import date # Importante para el cálculo de edad
+from datetime import date
 import io
 from xhtml2pdf import pisa
 
 from .forms import EditarPerfilForm
+from apps.common.mixins import AuditoriaMixin
 
 # Importamos modelos necesarios
 from apps.gestion_usuarios.models import Membresia
@@ -74,7 +74,7 @@ class CambiarContrasenaView(PasswordChangeView):
 # VISTAS DE DESCARGA (CON RUTAS CORREGIDAS A 'PAGES')
 # =============================================================================
 
-class DescargarMiHojaVidaView(LoginRequiredMixin, View):
+class DescargarMiHojaVidaView(LoginRequiredMixin, AuditoriaMixin, View):
     def get(self, request):
         try:
             voluntario = Voluntario.objects.get(usuario=request.user)
@@ -105,6 +105,15 @@ class DescargarMiHojaVidaView(LoginRequiredMixin, View):
             if not pdf.err:
                 response = HttpResponse(result.getvalue(), content_type='application/pdf')
                 response['Content-Disposition'] = f'attachment; filename="Hoja_Vida_{request.user.rut}.pdf"'
+
+                # Auditoría (Registramos que descargó su propia ficha)
+                self.auditar(
+                    verbo="Descargó su hoja de vida",
+                    objetivo=request.user,
+                    objetivo_repr=request.user.get_full_name,
+                    detalles={'accion': 'Visualización Propia Ficha'}
+                )
+
                 return response
             return HttpResponse("Error al generar PDF", status=500)
 
@@ -113,44 +122,54 @@ class DescargarMiHojaVidaView(LoginRequiredMixin, View):
             return redirect('perfil:ver')
 
 
-class DescargarMiFichaMedicaView(LoginRequiredMixin, View):
+class VerMiFichaMedicaView(LoginRequiredMixin, AuditoriaMixin, View):
+    """
+    Permite al usuario autenticado visualizar su propia ficha médica
+    usando el mismo diseño de impresión que el módulo de gestión.
+    """
+    
     def get(self, request):
         try:
-            voluntario = Voluntario.objects.get(usuario=request.user)
-            ficha = get_object_or_404(FichaMedica, voluntario=voluntario)
+            # 1. Buscamos la ficha asociada al usuario logueado (request.user)
+            # Mantenemos las optimizaciones (select_related/prefetch_related) para no golpear la BD múltiples veces
+            ficha = FichaMedica.objects.select_related(
+                'voluntario', 'voluntario__usuario', 'voluntario__domicilio_comuna', 
+                'grupo_sanguineo', 'sistema_salud'
+            ).prefetch_related(
+                'alergias__alergia', 'enfermedades__enfermedad', 'medicamentos__medicamento', 
+                'cirugias__cirugia', 'voluntario__contactos_emergencia'
+            ).get(voluntario__usuario=request.user)
             
-            # Lógica de cálculo de edad (copiada de viewsmedica.py)
+            # 2. Auditoría (Registramos que vio su propia ficha)
+            self.auditar(
+                verbo="visualizó su propia ficha clínica",
+                objetivo=request.user,
+                detalles={'accion': 'Visualización Propia Ficha'}
+            )
+
+            # 3. Lógica de cálculo de edad (Reutilizada)
+            voluntario = ficha.voluntario
             fecha_nac = voluntario.fecha_nacimiento or voluntario.usuario.birthdate
             edad = "S/I"
+            
             if fecha_nac: 
                 today = date.today()
                 edad = today.year - fecha_nac.year - ((today.month, today.day) < (fecha_nac.month, fecha_nac.day))
 
-            context = {
-                'voluntario': voluntario,
+            # 4. Renderizamos la MISMA plantilla que usas para el reporte administrativo
+            return render(request, "gestion_medica/pages/imprimir_ficha.html", {
                 'ficha': ficha,
+                'voluntario': voluntario,
                 'edad': edad,
-                'fecha_reporte': date.today(),
-                # Relaciones para la ficha
-                'alergias': ficha.alergias.all().select_related('alergia'), 
-                'enfermedades': ficha.enfermedades.all().select_related('enfermedad'),
-                'medicamentos': ficha.medicamentos.all().select_related('medicamento'),
-                'cirugias': ficha.cirugias.all().select_related('cirugia'),
-                'contactos': voluntario.contactos_emergencia.all()
-            }
+                'alergias': ficha.alergias.all(),
+                'enfermedades': ficha.enfermedades.all(),
+                'medicamentos': ficha.medicamentos.all(),
+                'cirugias': ficha.cirugias.all(),
+                'contactos': voluntario.contactos_emergencia.all(),
+                'fecha_reporte': date.today()
+            })
 
-            # RUTA CORREGIDA: Apunta exactamente a donde lo tienes en gestion_medica
-            html_string = render_to_string("gestion_medica/pages/imprimir_ficha.html", context)
-            
-            result = io.BytesIO()
-            pdf = pisa.pisaDocument(io.BytesIO(html_string.encode("UTF-8")), result)
-
-            if not pdf.err:
-                response = HttpResponse(result.getvalue(), content_type='application/pdf')
-                response['Content-Disposition'] = f'attachment; filename="Ficha_Medica_{request.user.rut}.pdf"'
-                return response
-            return HttpResponse("Error al generar PDF", status=500)
-
-        except (Voluntario.DoesNotExist, FichaMedica.DoesNotExist):
-            messages.error(request, "No hay ficha médica disponible.")
-            return redirect('perfil:ver')
+        except FichaMedica.DoesNotExist:
+            # Manejo de error si el usuario no tiene ficha creada
+            messages.error(request, "No se encontró una ficha médica asociada a tu cuenta.")
+            return redirect('perfil:ver') # O la ruta que prefieras

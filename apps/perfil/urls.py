@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import VerPerfilView, EditarPerfilView, CambiarContrasenaView, DescargarMiHojaVidaView, DescargarMiFichaMedicaView
+from .views import VerPerfilView, EditarPerfilView, CambiarContrasenaView, DescargarMiHojaVidaView, VerMiFichaMedicaView
 
 app_name = 'perfil'
 
@@ -14,5 +14,5 @@ urlpatterns = [
     path('cambiar-contrasena/', CambiarContrasenaView.as_view(), name='cambiar_contrasena'),
 
     path('descargar/hoja-vida/', DescargarMiHojaVidaView.as_view(), name='descargar_hoja_vida'),
-    path('descargar/ficha-medica/', DescargarMiFichaMedicaView.as_view(), name='descargar_ficha_medica'),
+    path('descargar/ficha-medica/', VerMiFichaMedicaView.as_view(), name='descargar_ficha_medica'),
 ]
