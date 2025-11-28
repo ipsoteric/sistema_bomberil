@@ -97,6 +97,54 @@ class EstacionActivaRequiredMixin(AccessMixin):
 
 
 
+class EstacionContextMixin(AccessMixin):
+    """
+    Mixin 'Blando': Intenta obtener la estación activa de la sesión.
+    Si existe, la carga en self.estacion_activa.
+    Si NO existe, self.estacion_activa será None (y no redirige ni da error).
+    Ideal para el Portal, Perfil o Home.
+    """
+    def dispatch(self, request, *args, **kwargs):
+        self.estacion_activa = None
+        self.estacion_activa_id = request.session.get('active_estacion_id')
+        
+        if self.estacion_activa_id:
+            try:
+                self.estacion_activa = Estacion.objects.get(id=self.estacion_activa_id)
+            except Estacion.DoesNotExist:
+                # Si el ID en sesión es inválido, limpiamos silenciosamente
+                request.session.pop('active_estacion_id', None)
+                self.estacion_activa_id = None
+        
+        # Continuamos con la vista sin importar si encontramos estación o no
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        # Inyectamos la estación al template automáticamente
+        context = super().get_context_data(**kwargs)
+        context['estacion_activa'] = self.estacion_activa
+        return context
+
+
+
+
+class BaseEstacionMixin(
+    LoginRequiredMixin, 
+    ModuleAccessMixin, 
+    EstacionActivaRequiredMixin
+):
+    """
+    Este "super-mixin" agrupa las 3 validaciones más comunes
+    del proyecto:
+    1. Que el usuario esté logueado.
+    2. Que el usuario tenga acceso al módulo actual.
+    3. Que el usuario tenga una estación activa en su sesión.
+    """
+    pass
+
+
+
+
 class ObjectInStationRequiredMixin(AccessMixin):
     """
     Versión mejorada que verifica si un objeto pertenece a la estación activa
@@ -136,23 +184,6 @@ class ObjectInStationRequiredMixin(AccessMixin):
             )
 
         return super().dispatch(request, *args, **kwargs)
-
-
-
-
-class BaseEstacionMixin(
-    LoginRequiredMixin, 
-    ModuleAccessMixin, 
-    EstacionActivaRequiredMixin
-):
-    """
-    Este "super-mixin" agrupa las 3 validaciones más comunes
-    del proyecto:
-    1. Que el usuario esté logueado.
-    2. Que el usuario tenga acceso al módulo actual.
-    3. Que el usuario tenga una estación activa en su sesión.
-    """
-    pass
 
 
 
