@@ -100,7 +100,9 @@
         </a>
         {% endif %}
 
-        {# Módulo: Mi cuenta #}
+    {% endif %}
+
+    {# Módulo: Mi cuenta #}
         <a href="{% url 'perfil:ver' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
             <div class="modulo__header">
                 <img src="{% static 'portal/imagenes/modulo_mi_perfil.png' %}">
@@ -112,8 +114,6 @@
                 </p>
             </div>
         </a>
-
-    {% endif %}
 
 </div>
 
