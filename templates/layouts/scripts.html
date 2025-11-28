@@ -39,3 +39,55 @@ src="https://cdn.datatables.net/2.3.2/js/dataTables.js">
 
 {# Tom Select JS #}
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+
+{# Toastify.js CDN #}
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<!--
+{# Toastify.js LOCAL #}
+<script type="text/javascript" src="{% static 'lib/toastify-js/src/toastify.js' %}"></script>
+-->
+<script>
+    {% if messages %}
+        {% for message in messages %}
+            
+            // 1. Definir colores según el tipo de mensaje (Paleta Profesional)
+            // Usamos arrays para gradientes sutiles
+            let bgColors = {
+                'debug': "linear-gradient(to right, #6c757d, #495057)",   // Gris Táctico
+                'info': "linear-gradient(to right, #0d6efd, #0a58ca)",    // Azul Institucional
+                'success': "linear-gradient(to right, #198754, #157347)", // Verde Éxito
+                'warning': "linear-gradient(to right, #fd7e14, #e8590c)", // Naranja Precaución (Bomberos)
+                'error': "linear-gradient(to right, #dc3545, #b02a37)"    // Rojo Alarma
+            };
+
+            // Mapeo de tags de Django a nuestras claves
+            let tag = "{{ message.tags }}";
+            if (tag === 'danger') tag = 'error'; // Fix Bootstrap naming
+
+            // Selección de color (Fallback a azul si no coincide)
+            let currentBg = bgColors[tag] || bgColors['info'];
+
+            // 2. Ejecutar el Toast
+            Toastify({
+                text: "{{ message }}",
+                duration: 6000,           // 4 segundos
+                close: true,              // Botón de cerrar (X) minimalista
+                gravity: "bottom",           // top o bottom
+                position: "right",        // right, center, left
+                stopOnFocus: true,        // Parar timer al pasar el mouse
+                style: {
+                    background: currentBg,
+                    borderRadius: "8px",   // Bordes sutiles modernos
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)", // Sombra suave "elevada"
+                    fontFamily: "system-ui, -apple-system, sans-serif", // Fuente nativa limpia
+                    padding: "12px 20px",
+                    //fontSize: "0.95rem"
+                },
+                className: "text-md font-medium",
+                onClick: function(){} // Callback opcional
+            }).showToast();
+
+        {% endfor %}
+    {% endif %}
+</script>
