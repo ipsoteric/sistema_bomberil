@@ -5,6 +5,7 @@ from django.db.models import Q, Count
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import JsonResponse
 from django.utils import timezone
 
@@ -74,13 +75,14 @@ class MantenimientoInicioView(BaseEstacionMixin, TemplateView):
 
 # === GESTIÓN DE PLANES ===
 
-class PlanMantenimientoListView(BaseEstacionMixin, ListView):
+class PlanMantenimientoListView(BaseEstacionMixin, PermissionRequiredMixin, ListView):
     """
     Vista para listar los planes de mantenimiento.
     Incluye búsqueda, paginación y filtrado estricto por Estación Activa.
     """
     model = PlanMantenimiento
     template_name = 'gestion_mantenimiento/pages/lista_planes.html'
+    permission_required = 'gestion_mantenimiento.accion_gestion_mantenimiento_ver_ordenes'
     context_object_name = 'planes'
     paginate_by = 10  # Elementos por página
 
@@ -116,7 +118,7 @@ class PlanMantenimientoListView(BaseEstacionMixin, ListView):
 
 
 
-class PlanMantenimientoCrearView(BaseEstacionMixin, AuditoriaMixin, CreateView):
+class PlanMantenimientoCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, CreateView):
     """
     Vista para crear un nuevo plan de mantenimiento.
     Asigna automáticamente la estación activa al plan.
@@ -124,6 +126,7 @@ class PlanMantenimientoCrearView(BaseEstacionMixin, AuditoriaMixin, CreateView):
     model = PlanMantenimiento
     form_class = PlanMantenimientoForm
     template_name = 'gestion_mantenimiento/pages/crear_plan.html'
+    permission_required = 'gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes'
     success_url = reverse_lazy('gestion_mantenimiento:ruta_lista_planes')
 
     def get_context_data(self, **kwargs):
@@ -162,13 +165,14 @@ class PlanMantenimientoCrearView(BaseEstacionMixin, AuditoriaMixin, CreateView):
 
 
 
-class PlanMantenimientoGestionarView(BaseEstacionMixin, ObjectInStationRequiredMixin, DetailView):
+class PlanMantenimientoGestionarView(BaseEstacionMixin, PermissionRequiredMixin, ObjectInStationRequiredMixin, DetailView):
     """
     Vista principal para gestionar los activos de un plan específico.
     Muestra la lista actual y provee la interfaz para añadir/quitar.
     """
     model = PlanMantenimiento
     template_name = 'gestion_mantenimiento/pages/gestionar_plan.html'
+    permission_required = 'gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes'
     context_object_name = 'plan'
     station_lookup = 'estacion' # Para ObjectInStationRequiredMixin
 
@@ -187,7 +191,7 @@ class PlanMantenimientoGestionarView(BaseEstacionMixin, ObjectInStationRequiredM
 
 
 
-class PlanMantenimientoEditarView(BaseEstacionMixin, ObjectInStationRequiredMixin, AuditoriaMixin, UpdateView):
+class PlanMantenimientoEditarView(BaseEstacionMixin, PermissionRequiredMixin, ObjectInStationRequiredMixin, AuditoriaMixin, UpdateView):
     """
     Vista para editar un plan existente.
     Protegida por ObjectInStationRequiredMixin para asegurar propiedad.
@@ -195,6 +199,7 @@ class PlanMantenimientoEditarView(BaseEstacionMixin, ObjectInStationRequiredMixi
     model = PlanMantenimiento
     form_class = PlanMantenimientoForm
     template_name = 'gestion_mantenimiento/pages/editar_plan.html'
+    permission_required = 'gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes'
     success_url = reverse_lazy('gestion_mantenimiento:ruta_lista_planes')
     station_lookup = 'estacion' # Define el campo para verificar la propiedad
 
@@ -227,13 +232,14 @@ class PlanMantenimientoEditarView(BaseEstacionMixin, ObjectInStationRequiredMixi
 
 
 
-class PlanMantenimientoEliminarView(BaseEstacionMixin, ObjectInStationRequiredMixin, AuditoriaMixin, DeleteView):
+class PlanMantenimientoEliminarView(BaseEstacionMixin, PermissionRequiredMixin, ObjectInStationRequiredMixin, AuditoriaMixin, DeleteView):
     """
     Vista para eliminar un plan de mantenimiento.
     Protegida para asegurar que solo se borren planes de la propia estación.
     """
     model = PlanMantenimiento
     template_name = 'gestion_mantenimiento/pages/eliminar_plan.html'
+    permission_required = 'gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes'
     success_url = reverse_lazy('gestion_mantenimiento:ruta_lista_planes')
     station_lookup = 'estacion'
 
@@ -267,149 +273,15 @@ class PlanMantenimientoEliminarView(BaseEstacionMixin, ObjectInStationRequiredMi
 
 
 
-# --- APIs para Interactividad AJAX ---
-class ApiBuscarActivoParaPlanView(BaseEstacionMixin, View):
-    """
-    API: Busca activos de la estación que NO estén ya en el plan actual.
-    GET params: q (búsqueda), plan_id
-    """
-    def get(self, request, *args, **kwargs):
-        query = request.GET.get('q', '').strip()
-        plan_id = request.GET.get('plan_id')
-
-        if not query or len(query) < 2:
-            return JsonResponse({'results': []})
-
-        # 1. Obtener el plan para saber qué excluir
-        plan = get_object_or_404(PlanMantenimiento, id=plan_id, estacion=self.estacion_activa)
-        
-        # 2. Filtrar activos:
-        # - Pertenecen a mi estación
-        # - Coinciden con nombre o código
-        # - NO están ya en este plan
-        activos = Activo.objects.filter(
-            estacion=self.estacion_activa
-        ).filter(
-            Q(codigo_activo__icontains=query) | 
-            Q(producto__producto_global__nombre_oficial__icontains=query)
-        ).exclude(
-            configuraciones_plan__plan=plan
-        ).select_related(
-            'producto__producto_global', 
-            'compartimento__ubicacion', 
-        )[:10] # Limitar resultados
-
-        # 3. Serializar
-        results = []
-        for activo in activos:
-            ubicacion_str = f"{activo.compartimento.ubicacion.nombre} > {activo.compartimento.nombre}" if activo.compartimento else "Sin ubicación"
-            results.append({
-                'id': activo.id,
-                'codigo': activo.codigo_activo,
-                'nombre': activo.producto.producto_global.nombre_oficial,
-                'ubicacion': ubicacion_str,
-                'imagen_url': activo.producto.producto_global.imagen_thumb_small.url if activo.producto.producto_global.imagen_thumb_small else None
-            })
-
-        return JsonResponse({'results': results})
-
-
-
-
-class ApiAnadirActivoEnPlanView(BaseEstacionMixin, View):
-    """
-    API: Añade un activo a un plan.
-    POST body: { plan_id, activo_id }
-    """
-    def post(self, request, plan_pk, *args, **kwargs):
-        try:
-            data = json.loads(request.body)
-            activo_id = data.get('activo_id')
-            
-            # Validaciones de seguridad
-            plan = get_object_or_404(PlanMantenimiento, pk=plan_pk, estacion=self.estacion_activa)
-            activo = get_object_or_404(Activo, pk=activo_id, estacion=self.estacion_activa)
-
-            # Crear la relación si no existe
-            config, created = PlanActivoConfig.objects.get_or_create(
-                plan=plan,
-                activo=activo,
-                defaults={
-                    'horas_uso_en_ultima_mantencion': activo.horas_uso_totales 
-                    # Inicializamos con las horas actuales para que empiece a contar desde ahora
-                }
-            )
-
-            if not created:
-                return JsonResponse({'status': 'error', 'message': 'El activo ya está en el plan.'}, status=400)
-
-            messages.success(request, f"Activo {activo.codigo_activo} añadido al plan.")
-            return JsonResponse({'status': 'ok'})
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-
-
-
-class ApiQuitarActivoDePlanView(BaseEstacionMixin, View):
-    """
-    API: Quita un activo de un plan.
-    DELETE: URL param pk (id de PlanActivoConfig)
-    """
-    def delete(self, request, pk, *args, **kwargs):
-        try:
-            # Validamos que la configuración pertenezca a un plan de MI estación
-            config = get_object_or_404(PlanActivoConfig, pk=pk, plan__estacion=self.estacion_activa)
-            activo_nombre = config.activo.codigo_activo
-            config.delete()
-            
-            messages.warning(request, f"Activo {activo_nombre} removido del plan.")
-            return JsonResponse({'status': 'ok'})
-            
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-
-
-
-class ApiTogglePlanActivoView(BaseEstacionMixin, View):
-    """
-    API: Cambia el estado 'activo_en_sistema' de un plan (On/Off).
-    POST: URL param pk (id del PlanMantenimiento)
-    """
-    def post(self, request, pk, *args, **kwargs):
-        try:
-            # 1. Buscar el plan asegurando que pertenece a la estación activa
-            plan = get_object_or_404(PlanMantenimiento, pk=pk, estacion=self.estacion_activa)
-            
-            # 2. Toggle del booleano
-            plan.activo_en_sistema = not plan.activo_en_sistema
-            plan.save(update_fields=['activo_en_sistema'])
-            
-            # 3. Respuesta
-            estado_texto = "Activado" if plan.activo_en_sistema else "Desactivado"
-            return JsonResponse({
-                'status': 'ok',
-                'nuevo_estado': plan.activo_en_sistema,
-                'mensaje': f'Plan {estado_texto} correctamente.'
-            })
-            
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-
-
-
 # === GESTIÓN DE ÓRDENES DE TRABAJO ===
-
-class OrdenMantenimientoListView(BaseEstacionMixin, ListView):
+class OrdenMantenimientoListView(BaseEstacionMixin, PermissionRequiredMixin, ListView):
     """
     Bandeja de Entrada de Órdenes de Trabajo.
     Muestra las órdenes filtradas por estado y estación.
     """
     model = OrdenMantenimiento
     template_name = 'gestion_mantenimiento/pages/lista_ordenes.html'
+    permission_required = 'gestion_mantenimiento.accion_gestion_mantenimiento_ver_ordenes'
     context_object_name = 'ordenes'
     paginate_by = 15
 
@@ -465,13 +337,14 @@ class OrdenMantenimientoListView(BaseEstacionMixin, ListView):
 
 
 
-class OrdenCorrectivaCreateView(BaseEstacionMixin, AuditoriaMixin, CreateView):
+class OrdenCorrectivaCreateView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, CreateView):
     """
     Vista para crear una Orden de Mantenimiento Correctiva (sin plan).
     """
     model = OrdenMantenimiento
     form_class = OrdenCorrectivaForm
     template_name = 'gestion_mantenimiento/pages/crear_orden_correctiva.html'
+    permission_required = 'gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_ordenes'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -506,13 +379,14 @@ class OrdenCorrectivaCreateView(BaseEstacionMixin, AuditoriaMixin, CreateView):
 
 
 
-class OrdenMantenimientoDetalleView(BaseEstacionMixin, ObjectInStationRequiredMixin, DetailView):
+class OrdenMantenimientoDetalleView(BaseEstacionMixin, PermissionRequiredMixin, ObjectInStationRequiredMixin, DetailView):
     """
     Panel de control para ejecutar una orden de trabajo específica.
     Muestra los activos involucrados y permite registrar tareas.
     """
     model = OrdenMantenimiento
     template_name = 'gestion_mantenimiento/pages/gestionar_orden.html'
+    permission_required = 'gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_ordenes'
     context_object_name = 'orden'
     station_lookup = 'estacion'
 
@@ -554,228 +428,3 @@ class OrdenMantenimientoDetalleView(BaseEstacionMixin, ObjectInStationRequiredMi
         }
 
         return context
-
-
-
-
-# --- APIs DE FLUJO DE TRABAJO ---
-
-class ApiCambiarEstadoOrdenView(BaseEstacionMixin, AuditoriaMixin, View):
-    """
-    API: Cambia el estado global de la orden (INICIAR / FINALIZAR / CANCELAR).
-    POST: { accion: 'iniciar' | 'finalizar' | 'cancelar' }
-    """
-    def post(self, request, pk, *args, **kwargs):
-        try:
-            orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=self.estacion_activa)
-            data = json.loads(request.body)
-            accion = data.get('accion')
-
-            if accion == 'iniciar':
-                if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
-                    return JsonResponse({'status': 'error', 'message': 'La orden no está pendiente.'}, status=400)
-                
-                orden.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
-                orden.save()
-
-                # INTEGRACIÓN: Poner activos en "EN REPARACIÓN"
-                # Buscamos el estado en la DB (asumiendo que existen esos nombres según tu contexto)
-                try:
-                    estado_reparacion = Estado.objects.get(nombre__iexact="EN REPARACIÓN")
-                    orden.activos_afectados.update(estado=estado_reparacion)
-                except Estado.DoesNotExist:
-                    pass # Si no existe el estado, ignoramos (o logueamos warning)
-
-                messages.success(request, "Orden iniciada. Los activos pasaron a estado 'En Reparación'.")
-
-            elif accion == 'finalizar':
-                # Validar que todos tengan registro? Opcional. Por ahora permitimos cierre flexible.
-                orden.estado = OrdenMantenimiento.EstadoOrden.REALIZADA
-                orden.fecha_cierre = timezone.now()
-                orden.save()
-                messages.success(request, "Orden finalizada exitosamente.")
-
-            elif accion == 'cancelar':
-                orden.estado = OrdenMantenimiento.EstadoOrden.CANCELADA
-                orden.fecha_cierre = timezone.now()
-                orden.save()
-                # INTEGRACIÓN: Devolver activos a "DISPONIBLE" si se cancela
-                try:
-                    estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
-                    orden.activos_afectados.update(estado=estado_disponible)
-                except Estado.DoesNotExist:
-                    pass
-                messages.info(request, "Orden cancelada.")
-
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Acción no válida.'}, status=400)
-
-            return JsonResponse({'status': 'ok'})
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-
-
-
-class ApiRegistrarTareaMantenimientoView(BaseEstacionMixin, View):
-    """
-    API: Crea un RegistroMantenimiento para un activo específico dentro de la orden.
-    POST: { activo_id, notas, exitoso (bool) }
-    """
-    def post(self, request, pk, *args, **kwargs):
-        try:
-            orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=self.estacion_activa)
-            
-            if orden.estado != OrdenMantenimiento.EstadoOrden.EN_CURSO:
-                return JsonResponse({'status': 'error', 'message': 'Debe INICIAR la orden antes de registrar tareas.'}, status=400)
-
-            data = json.loads(request.body)
-            activo_id = data.get('activo_id')
-            notas = data.get('notas')
-            fue_exitoso = data.get('exitoso', True)
-
-            activo = get_object_or_404(Activo, pk=activo_id, estacion=self.estacion_activa)
-
-            # 1. Crear el Registro (Bitácora)
-            # Usamos update_or_create para permitir editar la nota si vuelven a guardar
-            registro, created = RegistroMantenimiento.objects.update_or_create(
-                orden_mantenimiento=orden,
-                activo=activo,
-                defaults={
-                    'usuario_ejecutor': request.user,
-                    'fecha_ejecucion': timezone.now(),
-                    'notas': notas,
-                    'fue_exitoso': fue_exitoso
-                }
-            )
-
-            # 2. INTEGRACIÓN: Actualizar estado del Activo Físico
-            if fue_exitoso:
-                # Si la mantención fue buena, el activo vuelve a estar operativo
-                try:
-                    nuevo_estado = Estado.objects.get(nombre__iexact="DISPONIBLE")
-                    activo.estado = nuevo_estado
-                except Estado.DoesNotExist:
-                    pass
-            else:
-                # Si falló, queda No Operativo o En Reparación
-                try:
-                    nuevo_estado = Estado.objects.get(nombre__iexact="NO OPERATIVO") # O 'PENDIENTE REVISIÓN'
-                    activo.estado = nuevo_estado
-                except Estado.DoesNotExist:
-                    pass
-            
-            activo.save()
-            
-            # 3. Actualizar configuración del Plan (si aplica) para resetear contadores
-            # Solo si es exitoso y viene de un plan
-            if fue_exitoso and orden.plan_origen:
-                plan_config = PlanActivoConfig.objects.filter(plan=orden.plan_origen, activo=activo).first()
-                if plan_config:
-                    plan_config.fecha_ultima_mantencion = timezone.now()
-                    plan_config.horas_uso_en_ultima_mantencion = activo.horas_uso_totales
-                    plan_config.save()
-
-            return JsonResponse({'status': 'ok', 'mensaje': 'Registro guardado.'})
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-
-
-
-class ApiBuscarActivoParaOrdenView(BaseEstacionMixin, View):
-    """
-    Busca activos para agregar a una ORDEN específica.
-    Excluye los que ya están en la orden.
-    """
-    def get(self, request, *args, **kwargs):
-        query = request.GET.get('q', '').strip()
-        orden_id = request.GET.get('orden_id')
-
-        if not query or len(query) < 2:
-            return JsonResponse({'results': []})
-
-        orden = get_object_or_404(OrdenMantenimiento, id=orden_id, estacion=self.estacion_activa)
-        
-        # Buscar activos de la estación que NO estén en esta orden
-        activos = Activo.objects.filter(
-            estacion=self.estacion_activa
-        ).filter(
-            Q(codigo_activo__icontains=query) | 
-            Q(producto__producto_global__nombre_oficial__icontains=query)
-        ).exclude(
-            ordenes_mantenimiento=orden
-        ).select_related(
-            'producto__producto_global', 
-            'compartimento__ubicacion'
-        )[:10]
-
-        results = []
-        for activo in activos:
-            ubicacion_str = "Sin ubicación"
-            if activo.compartimento:
-                 ubicacion_str = f"{activo.compartimento.ubicacion.nombre} > {activo.compartimento.nombre}"
-            
-            results.append({
-                'id': activo.id,
-                'codigo': activo.codigo_activo,
-                'nombre': activo.producto.producto_global.nombre_oficial,
-                'ubicacion': ubicacion_str,
-                'imagen_url': activo.producto.producto_global.imagen_thumb_small.url if activo.producto.producto_global.imagen_thumb_small else None
-            })
-
-        return JsonResponse({'results': results})
-
-
-
-
-class ApiAnadirActivoOrdenView(BaseEstacionMixin, View):
-    """
-    Añade un activo a la lista de 'activos_afectados' de una orden.
-    """
-    def post(self, request, pk, *args, **kwargs):
-        try:
-            orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=self.estacion_activa)
-            
-            if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
-                return JsonResponse({'status': 'error', 'message': 'Solo se pueden agregar activos a órdenes PENDIENTES.'}, status=400)
-
-            data = json.loads(request.body)
-            activo_id = data.get('activo_id')
-            activo = get_object_or_404(Activo, pk=activo_id, estacion=self.estacion_activa)
-
-            orden.activos_afectados.add(activo)
-            
-            messages.success(request, f"Activo {activo.codigo_activo} añadido a la orden.")
-            return JsonResponse({'status': 'ok'})
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-
-
-
-class ApiQuitarActivoOrdenView(BaseEstacionMixin, View):
-    """
-    Quita un activo de la orden.
-    """
-    def post(self, request, pk, *args, **kwargs):
-        try:
-            orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=self.estacion_activa)
-            
-            if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
-                return JsonResponse({'status': 'error', 'message': 'Solo se pueden quitar activos de órdenes PENDIENTES.'}, status=400)
-
-            data = json.loads(request.body)
-            activo_id = data.get('activo_id')
-            activo = get_object_or_404(Activo, pk=activo_id, estacion=self.estacion_activa)
-
-            orden.activos_afectados.remove(activo)
-
-            messages.warning(request, f"Activo {activo.codigo_activo} quitado de la orden.")
-            return JsonResponse({'status': 'ok'})
-            
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
