@@ -298,6 +298,7 @@ class AreaCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, 
     
 
     def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error al crear el almacén. Por favor revisa los datos.") # <--- AGREGAR
         context = self.get_context_data(form=form)
         return render(self.request, self.template_name, context)
 
@@ -525,6 +526,7 @@ class AreaEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin,
 
 
     def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error al actualizar el almacén. Revisa los campos.")
         context = self.get_context_data(form=form)
         return render(self.request, self.template_name, context)
 
@@ -932,6 +934,10 @@ class CompartimentoCrearView(BaseEstacionMixin, PermissionRequiredMixin, Auditor
             f'Compartimento "{self.object.nombre}" creado exitosamente en {self.ubicacion.nombre}.'
         )
         return response
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
+        return super().form_invalid(form)
 
     def get_success_url(self):
         """
@@ -1323,6 +1329,11 @@ class ProductoGlobalCrearView(BaseEstacionMixin, PermissionRequiredMixin, Audito
         )
         messages.success(self.request, f'Producto Global "{self.object.nombre_oficial}" creado exitosamente.')
         return response
+    
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error al crear el producto global. Revisa los datos ingresados.")
+        return super().form_invalid(form)
 
 
 
@@ -1531,6 +1542,10 @@ class ProductoLocalEditView(BaseEstacionMixin, PermissionRequiredMixin, Auditori
         except Exception as e:
             messages.error(self.request, f'Ha ocurrido un error inesperado: {e}')
             return self.form_invalid(form)
+        
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
+        return super().form_invalid(form)
 
 
 
@@ -1853,6 +1868,8 @@ class ProveedorCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMi
         """
         Renderiza la plantilla con los errores de validación.
         """
+        messages.error(self.request, "Hubo un error al registrar el proveedor. Por favor, revisa los campos marcados en rojo.")
+
         context = {
             'proveedor_form': proveedor_form,
             'contacto_form': contacto_form
@@ -2011,6 +2028,10 @@ class ContactoPersonalizadoCrearView(BaseEstacionMixin, PermissionRequiredMixin,
         except Exception as e:
             messages.error(self.request, f"Error inesperado: {e}")
             return self.form_invalid(form)
+        
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
+        return super().form_invalid(form)
 
     def get_success_url(self):
         return reverse('gestion_inventario:ruta_detalle_proveedor', kwargs={'pk': self.proveedor.pk})
@@ -2864,6 +2885,10 @@ class AjustarStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventory
         except Exception as e:
             messages.error(self.request, f"Error crítico: {e}")
             return self.form_invalid(form)
+        
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
+        return super().form_invalid(form)
 
     def get_success_url(self):
         return reverse('gestion_inventario:ruta_stock_actual')
@@ -2960,6 +2985,10 @@ class BajaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, StationInve
         except Exception as e:
             messages.error(self.request, f"Error al procesar la baja: {e}")
             return self.form_invalid(form)
+        
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo procesar la baja. Revisa los campos del formulario.")
+        return super().form_invalid(form)
 
 
 
@@ -3078,6 +3107,10 @@ class ExtraviadoExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, Stati
         except Exception as e:
             messages.error(self.request, f"Error inesperado: {e}")
             return self.form_invalid(form)
+        
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo procesar el reporte de extravío. Revisa los campos del formulario.")
+        return super().form_invalid(form)
 
 
 
@@ -3187,6 +3220,10 @@ class ConsumirStockLoteView(BaseEstacionMixin, PermissionRequiredMixin, Inventor
         except Exception as e:
             messages.error(self.request, f"Error al guardar el consumo: {e}")
             return self.form_invalid(form)
+        
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
+        return super().form_invalid(form)
 
 
 
@@ -3310,6 +3347,10 @@ class TransferenciaExistenciaView(BaseEstacionMixin, PermissionRequiredMixin, St
         except Exception as e:
             messages.error(self.request, f"Error crítico al transferir: {e}")
             return self.form_invalid(form)
+        
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
+        return super().form_invalid(form)
 
 
 
@@ -3893,6 +3934,10 @@ class DestinatarioCreateView(BaseEstacionMixin, PermissionRequiredMixin, Auditor
         except Exception as e:
             messages.error(self.request, f"Error inesperado al crear destinatario: {e}")
             return self.form_invalid(form)
+        
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
+        return super().form_invalid(form)
 
 
 
@@ -3960,6 +4005,10 @@ class DestinatarioEditView(BaseEstacionMixin, PermissionRequiredMixin, Auditoria
         except Exception as e:
             messages.error(self.request, f"Error inesperado al actualizar: {e}")
             return self.form_invalid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
+        return super().form_invalid(form)
 
 
 
