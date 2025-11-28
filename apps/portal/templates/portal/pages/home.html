@@ -8,83 +8,112 @@
 
 <div class="portal__modulos">
 
-    {# Módulo: Gestión de Inventario #}
-    <a href="{% url 'gestion_inventario:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
-        <div class="modulo__header">
-            <img src="{% static 'portal/imagenes/modulo_inventario2.jpg' %}">
-        </div>
-        <div class="modulo__body">
-            <span class="fs_grande color_primario_variante">Inventario</span>
-            <p class="fs_normal color_primario_variante">
-                Controla el ciclo de vida de tu equipamiento. Gestiona stock, bodegas, ubicaciones y unidades en tiempo real.
-            </p>
-        </div>
-    </a>
+    {% if request.session.active_estacion_id %}
 
-    {# Módulo: Gestión de Mantenimiento de Herramientas #}
-    <a href="{% url 'gestion_mantenimiento:ruta_inicio' %}" class="portal__modulo fondo_secundario_variante hover_scale hover_color">
-        <div class="modulo__header">
-            <img src="{% static 'portal/imagenes/modulo_mantenimiento.jpg' %}">
-        </div>
-        <div class="modulo__body">
-            <span class="fs_grande color_primario_variante">Mantenimiento de Herramientas</span>
-            <p class="fs_normal color_primario_variante">
-                Asegura la operatividad de tus equipos. Planifica mantenimientos, registra reparaciones y consulta el historial de cada herramienta.
-            </p>
-        </div>
-    </a>
+        {# Módulo: Gestión de Inventario #}
+        {% if perms.gestion_usuarios.acceso_gestion_inventario %}
+        <a href="{% url 'gestion_inventario:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+            <div class="modulo__header">
+                <img src="{% static 'portal/imagenes/modulo_inventario2.jpg' %}">
+            </div>
+            <div class="modulo__body">
+                <span class="fs_grande color_primario_variante">Inventario</span>
+                <p class="fs_normal color_primario_variante">
+                    Controla el ciclo de vida de tu equipamiento. Gestiona stock, bodegas, ubicaciones y unidades en tiempo real.
+                </p>
+            </div>
+        </a>
+        {% endif %}
 
-    {# Módulo: Gestión de Usuarios y permisos #}
-    <a href="{% url 'gestion_usuarios:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
-        <div class="modulo__header">
-            <img src="{% static 'portal/imagenes/modulo_usuarios.jpg' %}">
-        </div>
-        <div class="modulo__body">
-            <span class="fs_grande color_primario_variante">Usuarios y permisos</span>
-            <p class="fs_normal color_primario_variante">
-                Controla el acceso a la plataforma. Crea perfiles de usuario, asigna roles y gestiona los permisos para cada módulo del sistema.
-            </p>
-        </div>
-    </a>
+        {# Módulo: Gestión de Mantenimiento de Herramientas #}
+        {% if perms.gestion_usuarios.acceso_gestion_mantenimiento %}
+        <a href="{% url 'gestion_mantenimiento:ruta_inicio' %}" class="portal__modulo fondo_secundario_variante hover_scale hover_color">
+            <div class="modulo__header">
+                <img src="{% static 'portal/imagenes/modulo_mantenimiento.jpg' %}">
+            </div>
+            <div class="modulo__body">
+                <span class="fs_grande color_primario_variante">Mantenimiento de Herramientas</span>
+                <p class="fs_normal color_primario_variante">
+                    Asegura la operatividad de tus equipos. Planifica mantenimientos, registra reparaciones y consulta el historial de cada herramienta.
+                </p>
+            </div>
+        </a>
+        {% endif %}
 
-    {# Módulo: Gestión Voluntarios #}
-    <a href="{% url 'gestion_voluntarios:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
-        <div class="modulo__header">
-            <img src="{% static 'portal/imagenes/modulo_voluntarios.png' %}">
-        </div>
-        <div class="modulo__body">
-            <span class="fs_grande color_primario_variante">Voluntarios</span>
-            <p class="fs_normal color_primario_variante">
-                Gestiona la ficha personal y la trayectoria de cada voluntario. Registra su historial, méritos, formación y especialidades.
-            </p>
-        </div>
-    </a>
+        {# Módulo: Gestión de Usuarios y permisos #}
+        {% if perms.gestion_usuarios.acceso_gestion_usuarios %}
+        <a href="{% url 'gestion_usuarios:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+            <div class="modulo__header">
+                <img src="{% static 'portal/imagenes/modulo_usuarios.jpg' %}">
+            </div>
+            <div class="modulo__body">
+                <span class="fs_grande color_primario_variante">Usuarios y permisos</span>
+                <p class="fs_normal color_primario_variante">
+                    Controla el acceso a la plataforma. Crea perfiles de usuario, asigna roles y gestiona los permisos para cada módulo del sistema.
+                </p>
+            </div>
+        </a>
+        {% endif %}
 
-    {# Módulo: Gestión Médica #}
-    <a href="{% url 'gestion_medica:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
-        <div class="modulo__header">
-            <img src="{% static 'portal/imagenes/modulo_medico.jpg' %}">
-        </div>
-        <div class="modulo__body">
-            <span class="fs_mediana color_primario_variante">Fichas médicas</span>
-            <p class="fs_normal color_primario_variante">
-                Registra y consulta información médica clave para la seguridad y el bienestar de tus voluntarios en todo momento.
-            </p>
-        </div>
-    </a>
+        {# Módulo: Gestión Voluntarios #}
+        {% if perms.gestion_usuarios.acceso_gestion_voluntarios %}
+        <a href="{% url 'gestion_voluntarios:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+            <div class="modulo__header">
+                <img src="{% static 'portal/imagenes/modulo_voluntarios.png' %}">
+            </div>
+            <div class="modulo__body">
+                <span class="fs_grande color_primario_variante">Voluntarios</span>
+                <p class="fs_normal color_primario_variante">
+                    Gestiona la ficha personal y la trayectoria de cada voluntario. Registra su historial, méritos, formación y especialidades.
+                </p>
+            </div>
+        </a>
+        {% endif %}
 
-    {# Módulo: Gestión Documental #}
-    <a href="{% url 'gestion_documental:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
-        <div class="modulo__header">
-            <img src="{% static 'portal/imagenes/modulo_documental.jpg' %}">
-        </div>
-        <div class="modulo__body">
-            <span class="fs_grande color_primario_variante">Documentación Histórica</span>
-            <p class="fs_normal color_primario_variante">
-                Preserva el legado de la compañía. Digitaliza y consulta el archivo histórico, manuales y documentos operativos en un solo lugar.
-            </p>
-        </div>
-    </a>
+        {# Módulo: Gestión Médica #}
+        {% if perms.gestion_usuarios.acceso_gestion_medica %}
+        <a href="{% url 'gestion_medica:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+            <div class="modulo__header">
+                <img src="{% static 'portal/imagenes/modulo_medico.jpg' %}">
+            </div>
+            <div class="modulo__body">
+                <span class="fs_mediana color_primario_variante">Fichas médicas</span>
+                <p class="fs_normal color_primario_variante">
+                    Registra y consulta información médica clave para la seguridad y el bienestar de tus voluntarios en todo momento.
+                </p>
+            </div>
+        </a>
+        {% endif %}
+
+        {# Módulo: Gestión Documental #}
+        {% if perms.gestion_usuarios.acceso_gestion_documental %}
+        <a href="{% url 'gestion_documental:ruta_inicio' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+            <div class="modulo__header">
+                <img src="{% static 'portal/imagenes/modulo_documental.jpg' %}">
+            </div>
+            <div class="modulo__body">
+                <span class="fs_grande color_primario_variante">Documentación Histórica</span>
+                <p class="fs_normal color_primario_variante">
+                    Preserva el legado de la compañía. Digitaliza y consulta el archivo histórico, manuales y documentos operativos en un solo lugar.
+                </p>
+            </div>
+        </a>
+        {% endif %}
+
+        {# Módulo: Mi cuenta #}
+        <a href="{% url 'perfil:ver' %}" class="portal__modulo fondo_secundario hover_scale hover_color">
+            <div class="modulo__header">
+                <img src="{% static 'portal/imagenes/modulo_mi_perfil.png' %}">
+            </div>
+            <div class="modulo__body">
+                <span class="fs_grande color_primario_variante">Mi cuenta</span>
+                <p class="fs_normal color_primario_variante">
+                    Gestiona tu información personal y credenciales. Solicita tus documentos.
+                </p>
+            </div>
+        </a>
+
+    {% endif %}
 
 </div>
 
