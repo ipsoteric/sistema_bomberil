@@ -1,18 +1,17 @@
 import json
 from django.views import View
 from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView, TemplateView
-from django.db.models import Q, Count
+from django.db.models import Q, Count, ProtectedError
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.http import JsonResponse
 from django.utils import timezone
 
-from .models import PlanMantenimiento, PlanActivoConfig, OrdenMantenimiento, RegistroMantenimiento
+from .models import PlanMantenimiento, PlanActivoConfig, OrdenMantenimiento
 from .forms import PlanMantenimientoForm, OrdenCorrectivaForm
 from apps.common.mixins import BaseEstacionMixin, ObjectInStationRequiredMixin, AuditoriaMixin
-from apps.gestion_inventario.models import Activo, Estado
+from apps.gestion_inventario.models import Activo
 
 
 class MantenimientoInicioView(BaseEstacionMixin, TemplateView):
@@ -255,20 +254,34 @@ class PlanMantenimientoEliminarView(BaseEstacionMixin, PermissionRequiredMixin, 
 
     def form_valid(self, form):
         nombre_plan = self.object.nombre
-        response = super().form_valid(form)
+        try:
+            # Intentamos eliminar. Si falla por FK, saltará al except.
+            response = super().form_valid(form)
+            
+            # --- AUDITORÍA (Solo si se borró bien) ---
+            self.auditar(
+                verbo="eliminó permanentemente el plan de mantenimiento",
+                objetivo=None, # Ya no existe
+                objetivo_repr=nombre_plan,
+                detalles={'nombre_plan_eliminado': nombre_plan}
+            )
 
-        # 2. --- AUDITORÍA ---
-        # Usamos objetivo=None porque el plan ya no existe en BD,
-        # pero usamos objetivo_repr para que el log sea legible.
-        self.auditar(
-            verbo="eliminó permanentemente el plan de mantenimiento",
-            objetivo=None,
-            objetivo_repr=nombre_plan,
-            detalles={'nombre_plan_eliminado': nombre_plan}
-        )
+            messages.success(self.request, f'El plan "{nombre_plan}" ha sido eliminado correctamente.')
+            return response
 
-        messages.success(self.request, f'El plan "{nombre_plan}" ha sido eliminado correctamente.')
-        return response
+        except ProtectedError:
+            # Si la BD impide borrarlo (ej. tiene órdenes históricas importantes)
+            messages.error(self.request, f"No se puede eliminar el plan '{nombre_plan}' porque tiene registros históricos asociados.")
+            # Redirigimos de vuelta a la lista o al detalle
+            return redirect('gestion_mantenimiento:ruta_lista_planes')
+            
+        except Exception as e:
+            messages.error(self.request, f"Ocurrió un error inesperado al eliminar: {str(e)}")
+            return redirect('gestion_mantenimiento:ruta_lista_planes')
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo eliminar el plan. Por favor revisa los campos marcados en rojo.")
+        return super().form_invalid(form)
 
 
 
@@ -375,6 +388,10 @@ class OrdenCorrectivaCreateView(BaseEstacionMixin, PermissionRequiredMixin, Audi
         # Redirección: Al detalle de la orden (Espacio de Trabajo) para añadir los activos
         # NOTA: Asumimos que la ruta 'ruta_gestionar_orden' existe y espera un <pk>
         return redirect(reverse('gestion_mantenimiento:ruta_gestionar_orden', kwargs={'pk': orden.pk}))
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo crear la orden correctiva. Por favor, revisa los campos marcados en rojo.")
+        return super().form_invalid(form)
 
 
 
