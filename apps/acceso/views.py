@@ -22,6 +22,7 @@ class LoginView(FormView):
             return redirect(self.get_success_url())
         return super().dispatch(request, *args, **kwargs)
 
+
     def form_valid(self, form):
         """
         Se ejecuta solo si el formulario es válido.
@@ -30,17 +31,23 @@ class LoginView(FormView):
         rut = form.cleaned_data.get('rut')
         password = form.cleaned_data.get('password')
 
-        user = authenticate(self.request, rut=rut, password=password)
+        try:
+            user = authenticate(self.request, rut=rut, password=password)
+            if user is None:
+                messages.warning(self.request, "Usuario y/o contraseña incorrectos")
+                return self.form_invalid(form)
 
-        if user is None:
-            messages.warning(self.request, "Usuario y/o contraseña incorrectos")
+            # 1. Iniciar Sesión (Django Auth)
+            login(self.request, user)
+
+            # 2. Lógica de Membresía y Sesión
+            return self._procesar_ingreso_usuario(user)
+        
+        except Exception as e:
+            # Si falla la BD al buscar la membresía o al escribir la sesión
+            messages.error(self.request, f"Error del sistema al intentar ingresar: {str(e)}")
             return self.form_invalid(form)
 
-        # 1. Iniciar Sesión (Django Auth)
-        login(self.request, user)
-
-        # 2. Lógica de Membresía y Sesión
-        return self._procesar_ingreso_usuario(user)
 
     def _procesar_ingreso_usuario(self, user):
         """
@@ -69,6 +76,7 @@ class LoginView(FormView):
             # NO cerramos sesión. Lo enviamos a su perfil para que pueda gestionar sus datos.
             messages.warning(self.request, "Has ingresado sin una estación asignada. Solo puedes editar tu perfil.")
             return redirect('perfil:ver') # Redirige al perfil en lugar de expulsarlo
+
 
     def _configurar_sesion_estacion(self, estacion):
         """
@@ -122,6 +130,20 @@ class CustomPasswordResetView(auth_views.PasswordResetView):
     # URL a la que se redirige tras enviar el correo
     success_url = reverse_lazy('acceso:password_reset_done')
 
+    def form_valid(self, form):
+        try:
+            # Intentamos enviar el correo (super().form_valid lo hace internamente)
+            response = super().form_valid(form)
+            
+            # Si llega aquí, el correo salió (o Django lo encoló)
+            messages.success(self.request, "Se ha enviado un enlace de recuperación a tu correo.")
+            return response
+
+        except Exception as e:
+            # Capturamos errores de SMTP (ConnectionRefused, AuthError, etc.)
+            messages.error(self.request, f"No se pudo enviar el correo: {str(e)}. Contacta a soporte.")
+            return self.form_invalid(form)
+
 
 
 
@@ -156,23 +178,28 @@ class SeleccionarEstacionView(LoginRequiredMixin, UserPassesTestMixin, View):
             messages.error(request, "Debes seleccionar una estación.")
             return redirect('acceso:ruta_seleccionar_estacion')
 
-        estacion = get_object_or_404(Estacion, id=estacion_id)
+        try:
+            estacion = get_object_or_404(Estacion, id=estacion_id)
 
-        # No necesitamos validar membresía porque el mixin garantiza que es Superuser.
-        # Inyectamos la sesión directamente.
-        request.session['active_estacion_id'] = estacion.id
-        request.session['active_estacion_nombre'] = estacion.nombre
+            # No necesitamos validar membresía porque el mixin garantiza que es Superuser.
+            # Inyectamos la sesión directamente.
+            request.session['active_estacion_id'] = estacion.id
+            request.session['active_estacion_nombre'] = estacion.nombre
 
-        # Obtener el logo de la estación
-        if estacion.logo_thumb_small:
-            request.session['active_estacion_logo'] = estacion.logo_thumb_small.url
-        elif estacion.logo:
-            request.session['active_estacion_logo'] = estacion.logo.url
-        else:
-            request.session['active_estacion_logo'] = None
+            # Obtener el logo de la estación
+            if estacion.logo_thumb_small:
+                request.session['active_estacion_logo'] = estacion.logo_thumb_small.url
+            elif estacion.logo:
+                request.session['active_estacion_logo'] = estacion.logo.url
+            else:
+                request.session['active_estacion_logo'] = None
+
+            messages.info(request, f"Modo Administrador: Gestionando {estacion.nombre}")
+            return redirect('portal:ruta_inicio')
         
-        messages.info(request, f"Modo Administrador: Gestionando {estacion.nombre}")
-        return redirect('portal:ruta_inicio')
+        except Exception as e:
+            messages.error(request, f"Error al cambiar de estación: {str(e)}")
+            return redirect('acceso:ruta_seleccionar_estacion')
     
     # Nota de Arquitectura (Para consideración futura)
     # Regla actual de negocio importante: "Un usuario normal (no superuser) nunca podrá cambiar de estación manualmente".
