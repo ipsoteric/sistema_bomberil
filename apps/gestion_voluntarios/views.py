@@ -257,8 +257,7 @@ class VoluntarioAgregarCargoView(BaseEstacionMixin, AuditoriaMixin, PermissionRe
             except Exception as e:
                 messages.error(request, f"Error interno: {e}")
         else:
-            for error in form.errors.values():
-                messages.error(request, error)
+            messages.error(request, "No se pudo agregar el cargo. Revisa los campos del formulario.")
                     
         return redirect('gestion_voluntarios:ruta_ver_voluntario', id=id)
 
@@ -273,26 +272,29 @@ class VoluntarioAgregarReconocimientoView(BaseEstacionMixin, AuditoriaMixin, Per
         form = HistorialReconocimientoForm(request.POST)
         
         if form.is_valid():
-            nuevo_reco = form.save(commit=False)
-            nuevo_reco.voluntario = voluntario
-            nuevo_reco.estacion_registra = self.estacion_activa
-            nuevo_reco.es_historico = form.cleaned_data.get('es_registro_antiguo', False)
-            nuevo_reco.save()
+            try:
+                nuevo_reco = form.save(commit=False)
+                nuevo_reco.voluntario = voluntario
+                nuevo_reco.estacion_registra = self.estacion_activa
+                nuevo_reco.es_historico = form.cleaned_data.get('es_registro_antiguo', False)
+                nuevo_reco.save()
 
-            # --- AUDITORÍA ---
-            nombre_premio = nuevo_reco.tipo_reconocimiento.nombre
-            es_hist = "Histórico" if nuevo_reco.es_historico else "En ceremonia"
-            self.auditar(
-                verbo="otorgó/registró el reconocimiento",
-                objetivo=voluntario.usuario,
-                objetivo_repr=voluntario.usuario.get_full_name,
-                detalles={
-                    'reconocimiento': nombre_premio,
-                    'fecha_evento': str(nuevo_reco.fecha_evento),
-                    'modo': es_hist
-                }
-            )
-            messages.success(request, "Reconocimiento registrado exitosamente.")
+                # --- AUDITORÍA ---
+                nombre_premio = nuevo_reco.tipo_reconocimiento.nombre
+                es_hist = "Histórico" if nuevo_reco.es_historico else "En ceremonia"
+                self.auditar(
+                    verbo="otorgó/registró el reconocimiento",
+                    objetivo=voluntario.usuario,
+                    objetivo_repr=voluntario.usuario.get_full_name,
+                    detalles={
+                        'reconocimiento': nombre_premio,
+                        'fecha_evento': str(nuevo_reco.fecha_evento),
+                        'modo': es_hist
+                    }
+                )
+                messages.success(request, "Reconocimiento registrado exitosamente.")
+            except Exception as e:
+                messages.error(request, f"Error interno al guardar reconocimiento: {e}")
 
         else:
              messages.error(request, "Error en formulario. Verifique fechas.")
@@ -310,26 +312,28 @@ class VoluntarioAgregarSancionView(BaseEstacionMixin, AuditoriaMixin, Permission
         form = HistorialSancionForm(request.POST, request.FILES)
         
         if form.is_valid():
-            nueva_sancion = form.save(commit=False)
-            nueva_sancion.voluntario = voluntario
-            nueva_sancion.estacion_registra = self.estacion_activa
-            nueva_sancion.es_historico = form.cleaned_data.get('es_registro_antiguo', False)
-            nueva_sancion.save()
+            try:
+                nueva_sancion = form.save(commit=False)
+                nueva_sancion.voluntario = voluntario
+                nueva_sancion.estacion_registra = self.estacion_activa
+                nueva_sancion.es_historico = form.cleaned_data.get('es_registro_antiguo', False)
+                nueva_sancion.save()
 
-            # --- AUDITORÍA ---
-            tipo_sancion_str = str(nueva_sancion.tipo_sancion) if hasattr(nueva_sancion, 'tipo_sancion') else "Medida Disciplinaria"
-            self.auditar(
-                verbo="aplicó una medida disciplinaria a",
-                objetivo=voluntario.usuario,
-                objetivo_repr=voluntario.usuario.get_full_name,
-                detalles={
-                    'medida': tipo_sancion_str,
-                    'fecha_incidente': str(nueva_sancion.fecha_evento),
-                    'es_historico': nueva_sancion.es_historico
-                }
-            )
-            
-            messages.warning(request, "Sanción disciplinaria registrada.")
+                # --- AUDITORÍA ---
+                tipo_sancion_str = str(nueva_sancion.tipo_sancion) if hasattr(nueva_sancion, 'tipo_sancion') else "Medida Disciplinaria"
+                self.auditar(
+                    verbo="aplicó una medida disciplinaria a",
+                    objetivo=voluntario.usuario,
+                    objetivo_repr=voluntario.usuario.get_full_name,
+                    detalles={
+                        'medida': tipo_sancion_str,
+                        'fecha_incidente': str(nueva_sancion.fecha_evento),
+                        'es_historico': nueva_sancion.es_historico
+                    }
+                )
+                messages.warning(request, "Sanción disciplinaria registrada.")
+            except Exception as e:
+                messages.error(request, f"Error interno al guardar sanción: {e}")
         else:
              messages.error(request, "Error al registrar sanción. Verifique campos obligatorios.")
              
@@ -367,20 +371,23 @@ class VoluntariosModificarView(BaseEstacionMixin, AuditoriaMixin, PermissionRequ
         voluntario_form = VoluntarioForm(request.POST, request.FILES, instance=voluntario)
 
         if usuario_form.is_valid() and voluntario_form.is_valid():
-            usuario_form.save()
-            voluntario_form.save()
-            
-            # --- AUDITORÍA ---
-            self.auditar(
-                verbo="actualizó la ficha personal de",
-                objetivo=voluntario.usuario,
-                objetivo_repr=voluntario.usuario.get_full_name,
-                detalles={
-                    'cambios_usuario': 'Se modificaron datos de contacto/perfil'
-                }
-            )
-            messages.success(request, f'Datos de {voluntario.usuario.get_full_name} actualizados.')
-            return redirect('gestion_voluntarios:ruta_ver_voluntario', id=voluntario.usuario.id)
+            try:
+                usuario_form.save()
+                voluntario_form.save()
+
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo="actualizó la ficha personal de",
+                    objetivo=voluntario.usuario,
+                    objetivo_repr=voluntario.usuario.get_full_name,
+                    detalles={
+                        'cambios_usuario': 'Se modificaron datos de contacto/perfil'
+                    }
+                )
+                messages.success(request, f'Datos de {voluntario.usuario.get_full_name} actualizados.')
+                return redirect('gestion_voluntarios:ruta_ver_voluntario', id=voluntario.usuario.id)
+            except Exception as e:
+                messages.error(request, f"Error crítico actualizando datos: {e}")
         
         context = {
             'voluntario': voluntario,
@@ -434,9 +441,14 @@ class ProfesionesCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
     def post(self, request):
         form = ProfesionForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Profesión creada.")
-            return redirect('gestion_voluntarios:ruta_cargos_lista')
+            try:
+                form.save()
+                messages.success(request, "Profesión creada.")
+                return redirect('gestion_voluntarios:ruta_cargos_lista')
+            except Exception as e:
+                messages.error(request, f"Error al guardar: {e}")
+        
+        messages.error(request, "Error al crear la profesión. Revisa los datos.")
         return render(request, "gestion_voluntarios/pages/crear_profesion.html", {'form': form})
 
 
@@ -453,9 +465,14 @@ class ProfesionesModificarView(BaseEstacionMixin, PermissionRequiredMixin, View)
         prof = get_object_or_404(Profesion, id=id)
         form = ProfesionForm(request.POST, instance=prof)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Profesión actualizada.")
-            return redirect('gestion_voluntarios:ruta_cargos_lista')
+            try:
+                form.save()
+                messages.success(request, "Profesión actualizada.")
+                return redirect('gestion_voluntarios:ruta_cargos_lista')
+            except Exception as e:
+                messages.error(request, f"Error al guardar: {e}")
+
+        messages.error(request, "Error al modificar la profesión. Revisa los datos.")
         return render(request, "gestion_voluntarios/pages/modificar_profesion.html", {'form': form, 'profesion': prof})
 
 
@@ -470,9 +487,13 @@ class CargosCrearView(BaseEstacionMixin, PermissionRequiredMixin, View):
     def post(self, request):
         form = CargoForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Cargo creado.")
-            return redirect('gestion_voluntarios:ruta_cargos_lista')
+            try:
+                form.save()
+                messages.success(request, "Cargo creado.")
+                return redirect('gestion_voluntarios:ruta_cargos_lista')
+            except Exception as e:
+                messages.error(request, f"Error al guardar: {e}")
+        messages.error(request, "Error al crear cargo. Revisa los datos.")
         return render(request, "gestion_voluntarios/pages/crear_cargo.html", {'form': form})
 
 
@@ -489,9 +510,14 @@ class CargosModificarView(BaseEstacionMixin, PermissionRequiredMixin, View):
         cargo = get_object_or_404(Cargo, id=id)
         form = CargoForm(request.POST, instance=cargo)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Cargo actualizado.")
-            return redirect('gestion_voluntarios:ruta_cargos_lista')
+            try:
+                form.save()
+                messages.success(request, "Cargo actualizado.")
+                return redirect('gestion_voluntarios:ruta_cargos_lista')
+            except Exception as e:
+                messages.error(request, f"Error al guardar: {e}")
+
+        messages.error(request, "Error al modificar el cargo. Revisa los datos.")
         return render(request, "gestion_voluntarios/pages/modificar_cargo.html", {'form': form, 'cargo': cargo})
 
 
@@ -541,7 +567,8 @@ class HojaVidaView(BaseEstacionMixin, PermissionRequiredMixin, View):
             response['Content-Disposition'] = f'inline; filename="HV_{voluntario_full.usuario.rut}.pdf"'
             return response
         
-        return HttpResponse(f'Error al generar PDF: {pdf.err}')
+        messages.error(request, "No se pudo generar el documento PDF. Por favor contacte a soporte.")
+        return redirect('gestion_voluntarios:ruta_ver_voluntario', id=id)
 
 
 
@@ -592,36 +619,40 @@ class ExportarListadoView(BaseEstacionMixin, PermissionRequiredMixin, View):
         if not fmt:
             return render(request, "gestion_voluntarios/pages/exportar_listado.html", {'cargos': Cargo.objects.all()})
 
-        # Generar datos
-        voluntarios = self._get_queryset(request)
-        dataset = self._extract_data(voluntarios)
-        filename = f"Voluntarios_{timezone.now().strftime('%Y-%m-%d')}"
+        try:
+            # Generar datos
+            voluntarios = self._get_queryset(request)
+            dataset = self._extract_data(voluntarios)
+            filename = f"Voluntarios_{timezone.now().strftime('%Y-%m-%d')}"
 
-        if fmt == 'json':
-            return JsonResponse(dataset, safe=False)
-            
-        elif fmt == 'csv':
-            response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
-            writer = csv.writer(response, delimiter=';')
-            writer.writerow(['RUT', 'Nombre', 'Email', 'Teléfono', 'Estado', 'Cargo'])
-            for d in dataset:
-                writer.writerow(d.values())
-            return response
+            if fmt == 'json':
+                return JsonResponse(dataset, safe=False)
 
-        elif fmt == 'excel':
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = "Voluntarios"
-            ws.append(['RUT', 'Nombre', 'Email', 'Teléfono', 'Estado', 'Cargo'])
-            for d in dataset:
-                ws.append(list(d.values()))
-            
-            response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            response['Content-Disposition'] = f'attachment; filename="{filename}.xlsx"'
-            wb.save(response)
-            return response
+            elif fmt == 'csv':
+                response = HttpResponse(content_type='text/csv')
+                response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+                writer = csv.writer(response, delimiter=';')
+                writer.writerow(['RUT', 'Nombre', 'Email', 'Teléfono', 'Estado', 'Cargo'])
+                for d in dataset:
+                    writer.writerow(d.values())
+                return response
+
+            elif fmt == 'excel':
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = "Voluntarios"
+                ws.append(['RUT', 'Nombre', 'Email', 'Teléfono', 'Estado', 'Cargo'])
+                for d in dataset:
+                    ws.append(list(d.values()))
+
+                response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                response['Content-Disposition'] = f'attachment; filename="{filename}.xlsx"'
+                wb.save(response)
+                return response
+        
+        except Exception as e:
+            messages.error(request, f"Error al generar el archivo de exportación: {e}")
+            return redirect('gestion_voluntarios:ruta_exportar_listado')
 
         # ... (Implementar PDF similarmente si se requiere)
-        
         return redirect('gestion_voluntarios:ruta_exportar_listado')
