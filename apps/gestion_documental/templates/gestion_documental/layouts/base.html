@@ -22,7 +22,7 @@
 </head>
 <body class="{% if request.session.dark_mode|default:False %}dark-mode{% endif %}">
     {# Contenedor principal #}
-    <div id="root">
+    <div id="root_no_nav">
 
         {# Header/Encabezado #}
         {% include "layouts/header.html" %}
@@ -32,7 +32,7 @@
         {% include "layouts/menu_desplegable_usuario.html" %}
         
         {# Menú lateral de navegación #}
-        {% include "gestion_documental/layouts/barra_lateral.html" %}
+        {# {% include "gestion_documental/layouts/barra_lateral.html" %} #}
 
         {# Contenido #}
         <main class="main fondo_main">

@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block titulo_ventana %}Archivo Histórico{% endblock %}
-{% block titulo_pagina %}Archivo Histórico{% endblock %}
+{% block titulo_pagina %}{% endblock %}
 
 {% block contenido %}
 <div class="container-fluid mt-4">
@@ -58,10 +58,12 @@
                         </a>
                     </div>
 
-                    {# Botón Subir: Texto Base y Negrita #}
+                    {# PERMISO: GESTIONAR DOCUMENTOS (Crear/Subir) #}
+                    {% if perms.gestion_documental.accion_gestion_documental_gestionar_documentos %}
                     <a href="{% url 'gestion_documental:ruta_subir_documento' %}" class="btn btn-danger text-base font-bold">
                         <i class="fas fa-cloud-upload-alt me-1"></i> Subir
                     </a>
+                    {% endif %}
                 </div>
             </form>
         </div>
@@ -76,7 +78,7 @@
             <div class="col">
                 <div class="card h-100 shadow-sm hover-shadow transition-card">
                     {# Zona de Imagen / Preview #}
-                    <div class="position-relative" style="height: 220px; overflow: hidden; background-color: #f8f9fa;">
+                    <div class="position-relative fondo_secundario" style="height: 220px; overflow: hidden;">
                         {% if doc.preview_imagen %}
                             <img src="{{ doc.preview_imagen.url }}" class="card-img-top h-100 w-100" style="object-fit: contain;" alt="Preview {{ doc.titulo }}">
                         {% else %}
@@ -143,8 +145,8 @@
                             
                             <div class="btn-group">
                                 {# LÓGICA DE ACCESO #}
+                                {# Si NO es confidencial O el usuario tiene permiso de gestionar, puede ver #}
                                 {% if not doc.es_confidencial or perms.gestion_documental.accion_gestion_documental_gestionar_documentos %}
-                                    {# Acceso permitido #}
                                     <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary text-sm font-medium" title="Ver archivo">
                                         <i class="fas fa-eye"></i>
                                     </a>
@@ -155,7 +157,7 @@
                                     </button>
                                 {% endif %}
 
-                                {# Botón Eliminar (Solo para gestores) #}
+                                {# PERMISO: GESTIONAR DOCUMENTOS (Eliminar) #}
                                 {% if perms.gestion_documental.accion_gestion_documental_gestionar_documentos %}
                                     <a href="{% url 'gestion_documental:ruta_eliminar_documento' doc.pk %}" class="btn btn-sm btn-outline-danger text-sm font-medium" title="Eliminar">
                                         <i class="fas fa-trash-alt"></i>
@@ -182,9 +184,12 @@
                             Aún no se han digitalizado documentos para esta estación o los filtros actuales no arrojaron resultados.
                         </p>
 
+                        {# PERMISO: GESTIONAR DOCUMENTOS (Agregar en vacío) #}
+                        {% if perms.gestion_documental.accion_gestion_documental_gestionar_documentos %}
                         <a href="{% url 'gestion_documental:ruta_subir_documento' %}" class="btn btn-outline-danger btn-sm mt-3 text-sm font-medium">
                             <i class="fas fa-plus me-1"></i> Agregar Documento
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             {% endfor %}
@@ -247,12 +252,23 @@
                                 <td class="text-center">
                                     {# ACCIONES (TABLA) #}
                                     <div class="btn-group">
-                                        <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary text-sm font-medium" title="Ver Documento">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="{% url 'gestion_documental:ruta_eliminar_documento' doc.pk %}" class="btn btn-sm btn-outline-danger text-sm font-medium" title="Eliminar">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </a>
+                                        {# Lógica de Confidencialidad en Tabla #}
+                                        {% if not doc.es_confidencial or perms.gestion_documental.accion_gestion_documental_gestionar_documentos %}
+                                            <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary text-sm font-medium" title="Ver Documento">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        {% else %}
+                                            <button class="btn btn-sm btn-outline-secondary text-sm font-medium disabled" title="Restringido" disabled>
+                                                <i class="fas fa-lock"></i>
+                                            </button>
+                                        {% endif %}
+
+                                        {# PERMISO: GESTIONAR DOCUMENTOS (Eliminar en Tabla) #}
+                                        {% if perms.gestion_documental.accion_gestion_documental_gestionar_documentos %}
+                                            <a href="{% url 'gestion_documental:ruta_eliminar_documento' doc.pk %}" class="btn btn-sm btn-outline-danger text-sm font-medium" title="Eliminar">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </a>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>

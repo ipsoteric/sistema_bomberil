@@ -11,6 +11,18 @@
     ;
 }
 
+#root_no_nav {
+    background-color: var(--color-base);
+    display: grid;
+    min-height: 100%;
+    grid-template-columns: var(--navbar-width) auto;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+        "header header"
+        "main main"
+    ;
+}
+
 
 
 
