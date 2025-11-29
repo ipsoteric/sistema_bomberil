@@ -260,41 +260,44 @@ class AreaCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, 
         
 
     def form_valid(self, form):
-        # Guardar sin confirmar para asignar campos
-        ubicacion = form.save(commit=False)
-
-        # Obtener tipo de ubicación "ÁREA". Si no existe, se crea
-        tipo_ubicacion, _ = TipoUbicacion.objects.get_or_create(
-            nombre__iexact=AREA_NOMBRE, 
-            defaults={'nombre': AREA_NOMBRE}
-        )
-        # Asignar tipo de ubicación
-        ubicacion.tipo_ubicacion = tipo_ubicacion
-
-        # Asignar la estación desde la sesión
         try:
-            estacion_obj = self.estacion_activa
-            ubicacion.estacion = estacion_obj
-        except Estacion.DoesNotExist:
-            messages.error(self.request, "La estación activa en sesión no es válida.")
-            # Usamos reverse() aquí porque no es a nivel de clase
-            return redirect(reverse('portal:ruta_inicio'))
+            # Guardar sin confirmar para asignar campos
+            ubicacion = form.save(commit=False)
+
+            # Obtener tipo de ubicación "ÁREA". Si no existe, se crea
+            tipo_ubicacion, _ = TipoUbicacion.objects.get_or_create(
+                nombre__iexact=AREA_NOMBRE, 
+                defaults={'nombre': AREA_NOMBRE}
+            )
+            # Asignar tipo de ubicación
+            ubicacion.tipo_ubicacion = tipo_ubicacion
+
+            # Asignar la estación desde la sesión
+            try:
+                estacion_obj = self.estacion_activa
+                ubicacion.estacion = estacion_obj
+            except Estacion.DoesNotExist:
+                messages.error(self.request, "La estación activa en sesión no es válida.")
+                # Usamos reverse() aquí porque no es a nivel de clase
+                return redirect(reverse('portal:ruta_inicio'))
+
+            # Guardar el objeto final
+            ubicacion.save()
+
+            # --- AUDITORÍA ---
+            self.auditar(
+                verbo="creó el almacén/área",
+                objetivo=ubicacion,
+                objetivo_repr=ubicacion.nombre,
+                detalles={'nombre': ubicacion.nombre}
+            )
+            # Enviar mensaje de éxito
+            messages.success(self.request, f'Almacén/ubicación "{ubicacion.nombre.title()}" creado exitosamente.')
+            return redirect(self.get_success_url(ubicacion.id))
         
-        # Guardar el objeto final
-        ubicacion.save()
-
-        # --- AUDITORÍA ---
-        self.auditar(
-            verbo="creó el almacén/área",
-            objetivo=ubicacion,
-            objetivo_repr=ubicacion.nombre,
-            detalles={'nombre': ubicacion.nombre}
-        )
-
-        # Enviar mensaje de éxito
-        messages.success(self.request, f'Almacén/ubicación "{ubicacion.nombre.title()}" creado exitosamente.')
-
-        return redirect(self.get_success_url(ubicacion.id))
+        except Exception as e:
+            messages.error(self.request, f"Error crítico al crear el almacén: {str(e)}")
+            return self.form_invalid(form)
     
 
     def form_invalid(self, form):
@@ -512,17 +515,22 @@ class AreaEditarView(BaseEstacionMixin, PermissionRequiredMixin, UbicacionMixin,
     
 
     def form_valid(self, form):
-        self.object = form.save()
+        try:
+            self.object = form.save()
 
-        self.auditar(
-                verbo="modificó la información del almacén",
-                objetivo=self.object,
-                objetivo_repr=self.object.nombre,
-                detalles={'campos_modificados': form.changed_data}
-            )
+            self.auditar(
+                    verbo="modificó la información del almacén",
+                    objetivo=self.object,
+                    objetivo_repr=self.object.nombre,
+                    detalles={'campos_modificados': form.changed_data}
+                )
+
+            messages.success(self.request, 'Almacén actualizado correctamente.')
+            return redirect(self.get_success_url())
         
-        messages.success(self.request, 'Almacén actualizado correctamente.')
-        return redirect(self.get_success_url())
+        except Exception as e:
+            messages.error(self.request, f"Error al actualizar el almacén: {str(e)}")
+            return self.form_invalid(form)
 
 
     def form_invalid(self, form):
@@ -903,6 +911,7 @@ class CompartimentoCrearView(BaseEstacionMixin, PermissionRequiredMixin, Auditor
             estacion_id=self.estacion_activa_id
         )
 
+
     def get_context_data(self, **kwargs):
         """
         Override: Añade la ubicación al contexto y mantiene compatibilidad 
@@ -913,31 +922,39 @@ class CompartimentoCrearView(BaseEstacionMixin, PermissionRequiredMixin, Auditor
         context['formulario'] = context.get('form') 
         return context
 
+
     def form_valid(self, form):
         """
         Override: Asigna la relación con la ubicación antes de guardar 
         y añade el mensaje de éxito.
         """
-        form.instance.ubicacion = self.ubicacion
-        response = super().form_valid(form)
-
-        # --- AUDITORÍA ---
-        self.auditar(
-            verbo="creó el compartimento",
-            objetivo=form.instance,
-            objetivo_repr=form.instance.nombre,
-            detalles={'nombre': form.instance.nombre}
-        )
-        
-        messages.success(
-            self.request, 
-            f'Compartimento "{self.object.nombre}" creado exitosamente en {self.ubicacion.nombre}.'
-        )
-        return response
+        try:
+            form.instance.ubicacion = self.ubicacion
+            # Guardamos manualmente para controlar la excepción
+            self.object = form.save()
     
+            # --- AUDITORÍA ---
+            self.auditar(
+                verbo="creó el compartimento",
+                objetivo=form.instance,
+                objetivo_repr=form.instance.nombre,
+                detalles={'nombre': form.instance.nombre}
+            )
+            messages.success(
+                self.request, 
+                f'Compartimento "{self.object.nombre}" creado exitosamente en {self.ubicacion.nombre}.'
+            )
+            return redirect(self.get_success_url())
+        
+        except Exception as e:
+            messages.error(self.request, f"Error al crear el compartimento: {str(e)}")
+            return self.form_invalid(form)
+    
+
     def form_invalid(self, form):
         messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
         return super().form_invalid(form)
+
 
     def get_success_url(self):
         """
@@ -1032,6 +1049,7 @@ class CompartimentoEditView(BaseEstacionMixin, PermissionRequiredMixin, Auditori
     # Definimos cómo se llamará el objeto en el template (por defecto es 'object')
     context_object_name = 'compartimento'
 
+
     def get_queryset(self):
         """
         Override: Filtra el QuerySet base para asegurar que solo se editen 
@@ -1041,25 +1059,34 @@ class CompartimentoEditView(BaseEstacionMixin, PermissionRequiredMixin, Auditori
             ubicacion__estacion_id=self.estacion_activa_id
         ).select_related('ubicacion')
 
+
     def get_success_url(self):
         """
         Override: Define la redirección tras una edición exitosa.
         """
         return reverse('gestion_inventario:ruta_detalle_compartimento', kwargs={'compartimento_id': self.object.id})
 
+
     def form_valid(self, form):
         """
         Override: Hook para ejecutar lógica extra cuando el formulario es válido.
         """
-        # --- AUDITORÍA ---
-        self.auditar(
-            verbo="modificó la información del compartimento",
-            objetivo=self.object,
-            objetivo_repr=self.object.nombre,
-            detalles={'nombre': self.object.nombre}
-        )
-        messages.success(self.request, f"El compartimento '{self.object.nombre}' se actualizó correctamente.")
-        return super().form_valid(form)
+        try:
+            self.object = form.save()
+            # --- AUDITORÍA ---
+            self.auditar(
+                verbo="modificó la información del compartimento",
+                objetivo=self.object,
+                objetivo_repr=self.object.nombre,
+                detalles={'nombre': self.object.nombre}
+            )
+            messages.success(self.request, f"El compartimento '{self.object.nombre}' se actualizó correctamente.")
+            return redirect(self.get_success_url())
+        
+        except Exception as e:
+            messages.error(self.request, f"Error al guardar cambios: {str(e)}")
+            return self.form_invalid(form)
+
 
     def form_invalid(self, form):
         """
@@ -2059,6 +2086,7 @@ class ContactoPersonalizadoEditarView(BaseEstacionMixin, PermissionRequiredMixin
             estacion_especifica_id=self.estacion_activa_id
         ).select_related('proveedor', 'comuna__region')
 
+
     def get_initial(self):
         """
         Pre-pobla campos del formulario que no son del modelo (como 'region').
@@ -2067,6 +2095,7 @@ class ContactoPersonalizadoEditarView(BaseEstacionMixin, PermissionRequiredMixin
         if self.object.comuna:
             initial['region'] = self.object.comuna.region_id
         return initial
+
 
     def get_context_data(self, **kwargs):
         """
@@ -2078,27 +2107,32 @@ class ContactoPersonalizadoEditarView(BaseEstacionMixin, PermissionRequiredMixin
         context['proveedor'] = self.object.proveedor
         return context
 
+
     def form_valid(self, form):
-        self.object = form.save()
-
-        # --- AUDITORÍA ---
-        if form.changed_data:
-            self.auditar(
-                verbo="actualizó el contacto personalizado del proveedor",
-                objetivo=self.object.proveedor,
-                detalles={
-                    'nombre_contacto': self.object.nombre_contacto,
-                    'campos_modificados': form.changed_data
-                }
+        try:
+            self.object = form.save()
+            # --- AUDITORÍA ---
+            if form.changed_data:
+                self.auditar(
+                    verbo="actualizó el contacto personalizado del proveedor",
+                    objetivo=self.object.proveedor,
+                    detalles={
+                        'nombre_contacto': self.object.nombre_contacto,
+                        'campos_modificados': form.changed_data
+                    }
+                )
+            messages.success(
+                self.request, 
+                f'Se ha actualizado el contacto "{self.object.nombre_contacto}".'
             )
+            # Nota: Usamos redirect explícito en lugar de super().form_valid() para controlar el flujo
+            # aunque super().form_valid() también redirige, aquí ya guardamos manualmente arriba.
+            return redirect(self.get_success_url())
+        
+        except Exception as e:
+            messages.error(self.request, f"Error al actualizar el contacto: {str(e)}")
+            return self.form_invalid(form)
 
-        messages.success(
-            self.request, 
-            f'Se ha actualizado el contacto "{self.object.nombre_contacto}".'
-        )
-        # Nota: Usamos redirect explícito en lugar de super().form_valid() para controlar el flujo
-        # aunque super().form_valid() también redirige, aquí ya guardamos manualmente arriba.
-        return redirect(self.get_success_url())
 
     def get_success_url(self):
         return reverse('gestion_inventario:ruta_detalle_proveedor', kwargs={'pk': self.object.proveedor_id})
