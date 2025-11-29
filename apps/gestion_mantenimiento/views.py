@@ -128,34 +128,38 @@ class PlanMantenimientoCrearView(BaseEstacionMixin, PermissionRequiredMixin, Aud
     permission_required = 'gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes'
     success_url = reverse_lazy('gestion_mantenimiento:ruta_lista_planes')
 
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['titulo_pagina'] = 'Crear Plan de Mantenimiento'
         return context
+
 
     def form_valid(self, form):
         """
         Antes de guardar, asignamos la estación activa de la sesión
         al objeto PlanMantenimiento.
         """
-        plan = form.save(commit=False)
-        plan.estacion = self.estacion_activa
-        plan.save()
-
-        # --- AUDITORÍA ---
-        self.auditar(
-            verbo="creó un nuevo plan de mantenimiento preventivo",
-            objetivo=plan,
-            objetivo_repr=plan.nombre,
-            detalles={
-                'nombre_plan': plan.nombre,
-                # Si tienes un campo 'frecuencia' o 'descripcion' en el modelo, 
-                # sería bueno agregarlo aquí también.
-            }
-        )
+        try:
+            plan = form.save(commit=False)
+            plan.estacion = self.estacion_activa
+            plan.save()
+            # --- AUDITORÍA ---
+            self.auditar(
+                verbo="creó un nuevo plan de mantenimiento preventivo",
+                objetivo=plan,
+                objetivo_repr=plan.nombre,
+                detalles={
+                    'nombre_plan': plan.nombre,
+                }
+            )
+            messages.success(self.request, f'El plan "{plan.nombre}" ha sido creado exitosamente.')
+            return super().form_valid(form)
         
-        messages.success(self.request, f'El plan "{plan.nombre}" ha sido creado exitosamente.')
-        return super().form_valid(form)
+        except Exception as e:
+            messages.error(self.request, f"Error crítico al guardar el plan: {str(e)}")
+            return self.form_invalid(form)
+
 
     def form_invalid(self, form):
         messages.error(self.request, 'Por favor corrija los errores en el formulario.')
@@ -202,27 +206,34 @@ class PlanMantenimientoEditarView(BaseEstacionMixin, PermissionRequiredMixin, Ob
     success_url = reverse_lazy('gestion_mantenimiento:ruta_lista_planes')
     station_lookup = 'estacion' # Define el campo para verificar la propiedad
 
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['titulo_pagina'] = f'Editar Plan: {self.object.nombre}'
         return context
 
+
     def form_valid(self, form):
+        try:
+            self.object = form.save()
+            # 2. --- AUDITORÍA ---
+            if form.changed_data:
+                self.auditar(
+                    verbo="actualizó la configuración del plan de mantenimiento",
+                    objetivo=self.object,
+                    objetivo_repr=self.object.nombre,
+                    detalles={
+                        'nombre_plan': self.object.nombre,
+                        'campos_modificados': form.changed_data
+                    }
+                )
+            messages.success(self.request, f'Los cambios en el plan "{self.object.nombre}" se han guardado.')
+            return super().form_valid(form)
+        
+        except Exception as e:
+            messages.error(self.request, f"Error al actualizar el plan: {str(e)}")
+            return self.form_invalid(form)
 
-        # 2. --- AUDITORÍA ---
-        if form.changed_data:
-            self.auditar(
-                verbo="actualizó la configuración del plan de mantenimiento",
-                objetivo=self.object,
-                objetivo_repr=self.object.nombre,
-                detalles={
-                    'nombre_plan': self.object.nombre,
-                    'campos_modificados': form.changed_data
-                }
-            )
-
-        messages.success(self.request, f'Los cambios en el plan "{self.object.nombre}" se han guardado.')
-        return super().form_valid(form)
 
     def form_invalid(self, form):
         messages.error(self.request, 'No se pudieron guardar los cambios. Revise el formulario.')
@@ -365,29 +376,29 @@ class OrdenCorrectivaCreateView(BaseEstacionMixin, PermissionRequiredMixin, Audi
         return context
 
     def form_valid(self, form):
-        orden = form.save(commit=False)
-        # Asignamos datos automáticos
-        orden.estacion = self.estacion_activa
-        orden.tipo_orden = OrdenMantenimiento.TipoOrden.CORRECTIVA
-        orden.estado = OrdenMantenimiento.EstadoOrden.PENDIENTE
-        orden.save()
+        try:
+            orden = form.save(commit=False)
+            # Asignamos datos automáticos
+            orden.estacion = self.estacion_activa
+            orden.tipo_orden = OrdenMantenimiento.TipoOrden.CORRECTIVA
+            orden.estado = OrdenMantenimiento.EstadoOrden.PENDIENTE
+            orden.save()
 
-        # --- AUDITORÍA ---
-        self.auditar(
-            verbo="creó una nueva Orden de Mantenimiento Correctiva",
-            objetivo=orden,
-            objetivo_repr=f"Orden #{orden.id} (Correctiva)",
-            detalles={
-                'descripcion_inicial': orden.descripcion_falla if hasattr(orden, 'descripcion_falla') else 'Sin descripción inicial'
-            }
-        )
-        
-        # Mensaje de éxito
-        messages.success(self.request, f"Orden Correctiva #{orden.id} creada. Ahora añade los activos afectados.")
-        
-        # Redirección: Al detalle de la orden (Espacio de Trabajo) para añadir los activos
-        # NOTA: Asumimos que la ruta 'ruta_gestionar_orden' existe y espera un <pk>
-        return redirect(reverse('gestion_mantenimiento:ruta_gestionar_orden', kwargs={'pk': orden.pk}))
+            # --- AUDITORÍA ---
+            self.auditar(
+                verbo="creó una nueva Orden de Mantenimiento Correctiva",
+                objetivo=orden,
+                objetivo_repr=f"Orden #{orden.id} (Correctiva)",
+                detalles={
+                    'descripcion_inicial': orden.descripcion_falla if hasattr(orden, 'descripcion_falla') else 'Sin descripción inicial'
+                }
+            )
+            messages.success(self.request, f"Orden Correctiva #{orden.id} creada. Ahora añade los activos afectados.")
+            return redirect(reverse('gestion_mantenimiento:ruta_gestionar_orden', kwargs={'pk': orden.pk}))
+    
+        except Exception as e:
+            messages.error(self.request, f"Error del sistema al crear la orden: {str(e)}")
+            return self.form_invalid(form)
     
     def form_invalid(self, form):
         messages.error(self.request, "No se pudo crear la orden correctiva. Por favor, revisa los campos marcados en rojo.")
