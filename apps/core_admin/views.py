@@ -190,6 +190,14 @@ class EstacionEditarView(SuperuserRequiredMixin, UpdateView):
         context['accion'] = "Guardar Cambios"
         return context
     
+    def form_valid(self, form):
+        messages.success(self.request, f"Estación '{form.instance.nombre}' guardada correctamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Error en el formulario. Por favor revisa los campos marcados en rojo.")
+        return super().form_invalid(form)
+    
 
 
 
@@ -207,6 +215,14 @@ class EstacionCrearView(SuperuserRequiredMixin, CreateView):
         context['titulo_pagina'] = "Registrar Nueva Estación"
         context['accion'] = "Crear Estación" # Texto del botón de submit
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Estación '{form.instance.nombre}' guardada correctamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Error en el formulario. Por favor revisa los campos marcados en rojo.")
+        return super().form_invalid(form)
 
 
 
@@ -238,6 +254,10 @@ class EstacionEliminarView(SuperuserRequiredMixin, DeleteView):
                 "(Ubicaciones, Inventario, Usuarios, etc.). Debe eliminar esos registros primero."
             )
             # Redirigimos al detalle para que el usuario vea qué tiene la estación
+            return redirect('core_admin:ruta_ver_estacion', pk=self.object.pk)
+        
+        except Exception as e:
+            messages.error(request, f"Error del sistema al intentar eliminar la estación: {e}")
             return redirect('core_admin:ruta_ver_estacion', pk=self.object.pk)
 
     def get_context_data(self, **kwargs):
@@ -350,6 +370,14 @@ class ProductoGlobalCreateView(SuperuserRequiredMixin, CreateView):
         context['titulo_pagina'] = "Alta de Producto Global"
         context['accion'] = "Crear Producto"
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Producto global '{form.instance.nombre_oficial}' guardado correctamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Error en el formulario. Por favor revisa los campos marcados en rojo.")
+        return super().form_invalid(form)
 
 
 
@@ -372,6 +400,14 @@ class ProductoGlobalUpdateView(SuperuserRequiredMixin, UpdateView):
             "se reflejarán en todas las estaciones que lo tengan en su inventario."
         )
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Producto global '{form.instance.nombre_oficial}' guardado correctamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Error en el formulario. Por favor revisa los campos marcados en rojo.")
+        return super().form_invalid(form)
 
 
 
@@ -398,6 +434,10 @@ class ProductoGlobalDeleteView(SuperuserRequiredMixin, DeleteView):
                 "ya fue importado por una o más estaciones. Debe retirarse de los inventarios locales primero."
             )
             # Redirigimos a la lista para que vea el estado
+            return redirect('core_admin:producto_global_list')
+        
+        except Exception as e:
+            messages.error(request, f"Error inesperado al eliminar el producto: {e}")
             return redirect('core_admin:producto_global_list')
 
     def get_context_data(self, **kwargs):
@@ -463,6 +503,14 @@ class UsuarioCreateView(SuperuserRequiredMixin, CreateView):
         context['accion'] = "Crear Usuario"
         context['subtitulo'] = "Complete los datos de identidad y credenciales de acceso."
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Usuario '{form.instance.get_full_name() or form.instance.username}' guardado exitosamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Error en el formulario. Por favor revisa los campos marcados en rojo.")
+        return super().form_invalid(form)
 
 
 
@@ -482,6 +530,14 @@ class UsuarioUpdateView(SuperuserRequiredMixin, UpdateView):
         # Bandera para ocultar sección de password en el template
         context['is_edit_mode'] = True 
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Usuario '{form.instance.get_full_name() or form.instance.username}' guardado exitosamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Error en el formulario. Por favor revisa los campos marcados en rojo.")
+        return super().form_invalid(form)
 
 
 
@@ -507,18 +563,20 @@ class UsuarioResetPasswordView(SuperuserRequiredMixin, View):
         form = PasswordResetForm({'email': usuario.email})
 
         if form.is_valid():
-            # 4. REUTILIZACIÓN DE TUS PLANTILLAS EXISTENTES
-            form.save(
-                request=request,
-                from_email='noreply@bomberil.cl', # Ojo: Asegúrate que este email esté autorizado en tu settings
-                email_template_name='acceso/emails/password_reset_email.txt',
-                html_email_template_name='acceso/emails/password_reset_email.html',
-                subject_template_name='acceso/emails/password_reset_subject.txt',
-                # extra_email_context={'nombre_usuario': usuario.first_name} 
-            )
-            messages.success(request, f"Se ha enviado el correo de restablecimiento a {usuario.email}.")
+            try:
+                form.save(
+                    request=request,
+                    from_email='noreply@bomberil.cl',
+                    email_template_name='acceso/emails/password_reset_email.txt',
+                    html_email_template_name='acceso/emails/password_reset_email.html',
+                    subject_template_name='acceso/emails/password_reset_subject.txt',
+                )
+                messages.success(request, f"Se ha enviado el correo de restablecimiento a {usuario.email}.")
+            except Exception as e:
+                # Aquí capturamos errores de conexión o SMTP
+                messages.error(request, f"Error crítico enviando el correo: {str(e)}. Intente más tarde.")
         else:
-            messages.error(request, "Error interno al generar el token de recuperación.")
+            messages.error(request, "Error interno al generar el token.")
 
         return redirect('core_admin:ruta_lista_usuarios')
 
@@ -589,6 +647,10 @@ class MembresiaCreateView(SuperuserRequiredMixin, CreateView):
         messages.success(self.request, f"Membresía creada exitosamente para {self.object.usuario} en {self.object.estacion}.")
         return super().form_valid(form)
     
+    def form_invalid(self, form):
+        messages.error(self.request, "Error en el formulario. Por favor revisa los campos marcados en rojo.")
+        return super().form_invalid(form)
+    
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -619,14 +681,19 @@ class UsuarioFinalizarMembresiasView(SuperuserRequiredMixin, View):
         if cantidad > 0:
             # 2. Actualización masiva (Bulk Update)
             # Establecemos estado FINALIZADO y fecha de fin = Hoy
-            membresias_activas.update(
-                estado='FINALIZADO',
-                fecha_fin=timezone.now().date()
-            )
-            messages.success(
-                request, 
-                f"Se han finalizado {cantidad} membresía(s) activa(s) para {usuario.get_full_name}."
-            )
+            try:
+                membresias_activas.update(
+                    estado='FINALIZADO',
+                    fecha_fin=timezone.now().date()
+                )
+                messages.success(
+                    request, 
+                    f"Se han finalizado {cantidad} membresía(s) activa(s) para {usuario.get_full_name}."
+                )
+            except Exception as e:
+                messages.error(request, f"Error del sistema al intentar finalizar las membresías: {e}")
+                return redirect('core_admin:ruta_lista_usuarios', pk=self.object.pk)
+            
         else:
             messages.warning(
                 request, 
@@ -706,6 +773,10 @@ class RolGlobalCreateView(SuperuserRequiredMixin, PermisosMatrixMixin, CreateVie
         
         messages.success(self.request, f"Rol global '{self.object.nombre}' creado con {permisos_seleccionados.count()} permisos.")
         return redirect(self.get_success_url())
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo guardar el Rol. Revisa que el nombre sea único y los datos correctos.")
+        return super().form_invalid(form)
 
 
 
@@ -747,6 +818,10 @@ class RolGlobalUpdateView(SuperuserRequiredMixin, PermisosMatrixMixin, UpdateVie
         
         messages.success(self.request, f"Rol actualizado. Permisos activos: {permisos_seleccionados.count()}.")
         return redirect(self.get_success_url())
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo guardar el Rol. Revisa que el nombre sea único y los datos correctos.")
+        return super().form_invalid(form)
 
 
 
@@ -826,6 +901,14 @@ class MarcaCreateView(SuperuserRequiredMixin, CreateView):
         context['titulo_pagina'] = "Nueva Marca"
         context['accion'] = "Crear Marca"
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Marca '{form.instance.nombre}' guardada correctamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo guardar el registro. Verifica que el nombre no esté duplicado.")
+        return super().form_invalid(form)
 
 
 
@@ -842,6 +925,14 @@ class MarcaUpdateView(SuperuserRequiredMixin, UpdateView):
         context['titulo_pagina'] = f"Editar: {self.object.nombre}"
         context['accion'] = "Guardar Cambios"
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Marca '{form.instance.nombre}' guardada correctamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo guardar el registro. Verifica que el nombre no esté duplicado.")
+        return super().form_invalid(form)
 
 
 
@@ -928,6 +1019,14 @@ class CategoriaCreateView(SuperuserRequiredMixin, CreateView):
         context['titulo_pagina'] = "Nueva Categoría"
         context['accion'] = "Crear Categoría"
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Categoría '{form.instance.nombre}' guardada correctamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo guardar el registro. Verifica que el nombre no esté duplicado.")
+        return super().form_invalid(form)
 
 
 
@@ -944,6 +1043,14 @@ class CategoriaUpdateView(SuperuserRequiredMixin, UpdateView):
         context['titulo_pagina'] = f"Editar: {self.object.nombre}"
         context['accion'] = "Guardar Cambios"
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, f"Categoría '{form.instance.nombre}' guardada correctamente.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "No se pudo guardar el registro. Verifica que el nombre no esté duplicado.")
+        return super().form_invalid(form)
 
 
 
