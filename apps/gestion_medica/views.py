@@ -177,16 +177,18 @@ class MedicoModificarView(BaseEstacionMixin, AuditoriaMixin, PermissionRequiredM
         form = FichaMedicaForm(request.POST, instance=ficha)
 
         if form.is_valid():
-            form.save()
-            
-            self.auditar(
-                verbo="actualizó los datos médicos de",
-                objetivo=ficha.voluntario.usuario,
-                objetivo_repr=ficha.voluntario.usuario.get_full_name,
-                detalles={'cambios': 'Actualización de signos vitales/grupo sanguíneo'}
-            )
-            messages.success(request, f"Datos médicos de {ficha.voluntario.usuario.get_full_name} actualizados.")
-            return redirect('gestion_medica:ruta_informacion_paciente', pk=pk)
+            try:
+                form.save()
+                self.auditar(
+                    verbo="actualizó los datos médicos de",
+                    objetivo=ficha.voluntario.usuario,
+                    objetivo_repr=ficha.voluntario.usuario.get_full_name,
+                    detalles={'cambios': 'Actualización de signos vitales/grupo sanguíneo'}
+                )
+                messages.success(request, f"Datos médicos de {ficha.voluntario.usuario.get_full_name} actualizados.")
+                return redirect('gestion_medica:ruta_informacion_paciente', pk=pk)
+            except Exception as e:
+                messages.error(request, f"Error crítico al actualizar la ficha: {str(e)}")
 
         messages.error(request, "Error al actualizar la ficha. Verifique los datos.")
         return render(request, "gestion_medica/pages/modificar_voluntario.html", {'form': form, 'ficha': ficha})
@@ -369,13 +371,16 @@ class MedicoNumEmergView(SubElementoMedicoBaseView):
         ficha = self.get_ficha(pk)
         form = ContactoEmergenciaForm(request.POST, usuario_dueno=ficha.voluntario.usuario)
         if form.is_valid():
-            contacto = form.save(commit=False)
-            contacto.voluntario = ficha.voluntario
-            contacto.save()
-            
-            self.auditar("agregó un contacto de emergencia a", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'contacto': contacto.nombre_completo})
-            messages.success(request, "Contacto de emergencia agregado.")
-            return redirect('gestion_medica:ruta_contacto_emergencia', pk=pk)
+            try:
+                contacto = form.save(commit=False)
+                contacto.voluntario = ficha.voluntario
+                contacto.save()
+
+                self.auditar("agregó un contacto de emergencia a", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'contacto': contacto.nombre_completo})
+                messages.success(request, "Contacto de emergencia agregado.")
+                return redirect('gestion_medica:ruta_contacto_emergencia', pk=pk)
+            except Exception as e:
+                messages.error(request, f"Error al guardar el contacto: {str(e)}")
 
         messages.error(request, "Error al guardar el contacto.")
         return render(request, "gestion_medica/pages/contacto_emergencia.html", {
@@ -398,10 +403,14 @@ class EditarContactoView(SubElementoMedicoBaseView):
         form = ContactoEmergenciaForm(request.POST, instance=contacto, usuario_dueno=ficha.voluntario.usuario)
         
         if form.is_valid():
-            form.save()
-            messages.success(request, "Contacto actualizado.")
-            return redirect('gestion_medica:ruta_contacto_emergencia', pk=pk)
-            
+            try:
+                form.save()
+                messages.success(request, "Contacto actualizado.")
+                return redirect('gestion_medica:ruta_contacto_emergencia', pk=pk)
+            except Exception as e:
+                messages.error(request, f"Error al guardar los cambios: {e}")
+        
+        messages.error(request, "Error al actualizar el contacto. Revisa los datos.")
         return render(request, "gestion_medica/pages/editar_contacto.html", {'ficha': ficha, 'form': form, 'contacto': contacto})
 
 
@@ -412,10 +421,13 @@ class EliminarContactoView(SubElementoMedicoBaseView):
         ficha = self.get_ficha(pk)
         contacto = get_object_or_404(ContactoEmergencia, id=contacto_id, voluntario=ficha.voluntario)
         nombre = contacto.nombre_completo
-        contacto.delete()
-        
-        self.auditar("eliminó un contacto de emergencia de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'contacto_eliminado': nombre})
-        messages.success(request, "Contacto eliminado correctamente.")
+
+        try:
+            contacto.delete()
+            self.auditar("eliminó un contacto de emergencia de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'contacto_eliminado': nombre})
+            messages.success(request, "Contacto eliminado correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar el contacto: {str(e)}")
         return redirect('gestion_medica:ruta_contacto_emergencia', pk=pk)
 
 
@@ -443,6 +455,8 @@ class MedicoEnfermedadView(SubElementoMedicoBaseView):
                 return redirect('gestion_medica:ruta_enfermedad_paciente', pk=pk)
             except IntegrityError:
                 form.add_error('enfermedad', 'Esta enfermedad ya está registrada.')
+            except Exception as e:
+                messages.error(request, f"Error al guardar los cambios: {e}")
         
         messages.error(request, "Error al registrar enfermedad.")
         return render(request, "gestion_medica/pages/enfermedad_paciente.html", {
@@ -474,9 +488,11 @@ class EditarEnfermedadPacienteView(View): # NO SE USA. PENDIENTE DE ELIMINAR
         
         if form.is_valid():
             form.save()
+            messages.success(request, "Condición actualizada correctamente.")
             # Al guardar, volvemos a la lista de enfermedades
             return redirect('gestion_medica:ruta_enfermedad_paciente', pk=pk)
-            
+        
+        messages.error(request, "Error al actualizar la condición.")
         return render(request, "gestion_medica/pages/editar_enfermedad_paciente.html", {
             'ficha': ficha,
             'form': form,
@@ -491,10 +507,14 @@ class EliminarEnfermedadPacienteView(SubElementoMedicoBaseView):
         ficha = self.get_ficha(pk)
         item = get_object_or_404(FichaMedicaEnfermedad, id=enfermedad_id, ficha_medica=ficha)
         nombre = item.enfermedad.nombre
-        item.delete()
         
-        self.auditar("eliminó un registro de enfermedad de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'enfermedad': nombre})
-        messages.warning(request, "Enfermedad eliminada de la ficha.")
+        try:
+            item.delete()        
+            self.auditar("eliminó un registro de enfermedad de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'enfermedad': nombre})
+            messages.warning(request, "Enfermedad eliminada de la ficha.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar registro: {str(e)}")
+
         return redirect('gestion_medica:ruta_enfermedad_paciente', pk=pk)
 
 
@@ -521,6 +541,8 @@ class MedicoAlergiasView(SubElementoMedicoBaseView):
                 return redirect('gestion_medica:ruta_alergias_paciente', pk=pk)
             except IntegrityError:
                 form.add_error('alergia', 'El paciente ya tiene registrada esta alergia.')
+            except Exception as e:
+                messages.error(request, f"Error al guardar los cambios: {e}")
         
         messages.error(request, "Error al registrar alergia.")
         return render(request, "gestion_medica/pages/alergias_paciente.html", {'ficha': ficha, 'alergias': ficha.alergias.all(), 'form': form})
@@ -533,9 +555,13 @@ class EliminarAlergiaPacienteView(SubElementoMedicoBaseView):
         ficha = self.get_ficha(pk)
         item = get_object_or_404(FichaMedicaAlergia, id=alergia_id, ficha_medica=ficha)
         nombre = item.alergia.nombre
-        item.delete()
-        self.auditar("eliminó un registro de alergia de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'alergia': nombre})
-        messages.warning(request, "Alergia eliminada.")
+
+        try:
+            item.delete()
+            self.auditar("eliminó un registro de alergia de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'alergia': nombre})
+            messages.warning(request, "Alergia eliminada.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar alergia: {str(e)}")
         return redirect('gestion_medica:ruta_alergias_paciente', pk=pk)
 
 
@@ -562,8 +588,10 @@ class MedicoMedicamentosView(SubElementoMedicoBaseView):
                 return redirect('gestion_medica:ruta_medicamentos_paciente', pk=pk)
             except IntegrityError:
                 form.add_error('medicamento', 'Este medicamento ya está asignado.')
+            except Exception as e:
+                messages.error(request, f"Error al asignar medicamento: {str(e)}")
 
-        messages.error(request, "Error al asignar medicamento.")
+        messages.error(request, "Error al asignar medicamento. Revisa los datos.")
         return render(request, "gestion_medica/pages/medicamentos_paciente.html", {'ficha': ficha, 'medicamentos_paciente': ficha.medicamentos.all(), 'form': form})
 
 
@@ -605,9 +633,14 @@ class EliminarMedicamentoPacienteView(SubElementoMedicoBaseView):
         ficha = self.get_ficha(pk)
         item = get_object_or_404(FichaMedicaMedicamento, id=medicamento_id, ficha_medica=ficha)
         nombre = item.medicamento.nombre
-        item.delete()
-        self.auditar("retiró un medicamento de la ficha de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'medicamento': nombre})
-        messages.warning(request, "Medicamento eliminado.")
+
+        try:
+            item.delete()
+            self.auditar("retiró un medicamento de la ficha de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'medicamento': nombre})
+            messages.warning(request, "Medicamento eliminado.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar medicamento: {str(e)}")
+
         return redirect('gestion_medica:ruta_medicamentos_paciente', pk=pk)
 
 
@@ -625,12 +658,16 @@ class MedicoCirugiasView(SubElementoMedicoBaseView):
         ficha = self.get_ficha(pk)
         form = FichaMedicaCirugiaForm(request.POST)
         if form.is_valid():
-            item = form.save(commit=False)
-            item.ficha_medica = ficha
-            item.save()
-            self.auditar("registró antecedentes de cirugía a", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'cirugia': item.cirugia.nombre, 'fecha': str(item.fecha_cirugia)})
-            messages.success(request, "Cirugía registrada.")
-            return redirect('gestion_medica:ruta_cirugias_paciente', pk=pk)
+            try:
+                item = form.save(commit=False)
+                item.ficha_medica = ficha
+                item.save()
+                self.auditar("registró antecedentes de cirugía a", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'cirugia': item.cirugia.nombre, 'fecha': str(item.fecha_cirugia)})
+                messages.success(request, "Cirugía registrada.")
+                return redirect('gestion_medica:ruta_cirugias_paciente', pk=pk)
+            
+            except Exception as e:
+                messages.error(request, f"Error al registrar cirugía: {e}")
 
         messages.error(request, "Error al registrar cirugía.")
         return render(request, "gestion_medica/pages/gestionar_cirugias.html", {'ficha': ficha, 'cirugias': ficha.cirugias.all(), 'form': form})
@@ -670,9 +707,14 @@ class EliminarCirugiaPacienteView(SubElementoMedicoBaseView):
         ficha = self.get_ficha(pk)
         item = get_object_or_404(FichaMedicaCirugia, id=item_id, ficha_medica=ficha)
         nombre = item.cirugia.nombre
-        item.delete()
-        self.auditar("eliminó un registro de cirugía de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'cirugia': nombre})
-        messages.warning(request, "Registro de cirugía eliminado.")
+
+        try:
+            item.delete()
+            self.auditar("eliminó un registro de cirugía de", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'cirugia': nombre})
+            messages.warning(request, "Registro de cirugía eliminado.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar registro: {str(e)}")
+
         return redirect('gestion_medica:ruta_cirugias_paciente', pk=pk)
 
 
@@ -705,9 +747,14 @@ class MedicamentoCrearView(CatalogoMedicoBaseView):
     def post(self, request):
         form = MedicamentoForm(request.POST)
         if form.is_valid():
-            obj = form.save()
-            messages.success(request, f"Medicamento '{obj.nombre}' creado correctamente.")
-            return redirect('gestion_medica:ruta_lista_medicamentos')
+            try:
+                obj = form.save()
+                messages.success(request, f"Medicamento '{obj.nombre}' creado correctamente.")
+                return redirect('gestion_medica:ruta_lista_medicamentos')
+            except Exception as e:
+                messages.error(request, f"Error al crear medicamento: {e}")
+
+        messages.error(request, "Error en el formulario de medicamentos. Revise los datos.")
         return render(request, "gestion_medica/pages/crear_medicamento.html", {'form': form})
 
 
@@ -720,9 +767,14 @@ class MedicamentoUpdateView(CatalogoMedicoBaseView):
         obj = get_object_or_404(Medicamento, pk=pk)
         form = MedicamentoForm(request.POST, instance=obj)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Medicamento actualizado.")
-            return redirect('gestion_medica:ruta_lista_medicamentos')
+            try:
+                form.save()
+                messages.success(request, "Medicamento actualizado.")
+                return redirect('gestion_medica:ruta_lista_medicamentos')
+            except Exception as e:
+                messages.error(request, f"Error al guardar los cambios: {e}")
+
+        messages.error(request, "Error en el formulario de medicamentos. Revise los datos.")
         return render(request, "gestion_medica/pages/crear_medicamento.html", {'form': form})
 
 
@@ -734,6 +786,8 @@ class MedicamentoDeleteView(CatalogoMedicoBaseView):
             messages.success(request, "Medicamento eliminado del catálogo.")
         except ProtectedError:
             messages.error(request, "No se puede eliminar: Hay pacientes usando este medicamento.")
+        except Exception as e:
+            messages.error(request, f"Error inesperado al eliminar: {str(e)}")
         return redirect('gestion_medica:ruta_lista_medicamentos')
 
 
@@ -752,9 +806,13 @@ class AlergiaCrearView(CatalogoMedicoBaseView):
     def post(self, request):
         form = AlergiaForm(request.POST)
         if form.is_valid():
-            obj = form.save()
-            messages.success(request, "Alergia creada.")
-            return redirect('gestion_medica:ruta_lista_alergias')
+            try:
+                obj = form.save()
+                messages.success(request, "Alergia creada.")
+                return redirect('gestion_medica:ruta_lista_alergias')
+            except Exception as e:
+                messages.error(request, f"Error al registrar alergia: {e}")
+        messages.error(request, "Error al crear la alergia. Verifique que no exista.")
         return render(request, "gestion_medica/pages/crear_alergia.html", {'form': form})
 
 
@@ -765,7 +823,9 @@ class AlergiaDeleteView(CatalogoMedicoBaseView):
             obj.delete()
             messages.success(request, "Alergia eliminada.")
         except ProtectedError:
-            messages.error(request, "No se puede eliminar: Hay pacientes con esta alergia registrada.")
+            messages.error(request, "No se puede eliminar: Hay pacientes usando este medicamento.")
+        except Exception as e:
+            messages.error(request, f"Error inesperado al eliminar: {str(e)}")
         return redirect('gestion_medica:ruta_lista_alergias')
 
 
@@ -784,9 +844,13 @@ class EnfermedadCrearView(CatalogoMedicoBaseView):
     def post(self, request):
         form = EnfermedadForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Enfermedad creada.")
-            return redirect('gestion_medica:ruta_lista_enfermedades')
+            try:
+                form.save()
+                messages.success(request, "Enfermedad creada.")
+                return redirect('gestion_medica:ruta_lista_enfermedades')
+            except Exception as e:
+                messages.error(request, f"Error al registrar enfermedad: {e}")
+        messages.error(request, "Error al registrar la enfermedad en el catálogo.")
         return render(request, "gestion_medica/pages/crear_enfermedad.html", {'form': form})
 
 
@@ -797,7 +861,9 @@ class EnfermedadDeleteView(CatalogoMedicoBaseView):
             obj.delete()
             messages.success(request, "Enfermedad eliminada.")
         except ProtectedError:
-            messages.error(request, "No se puede eliminar: Hay pacientes con esta enfermedad.")
+            messages.error(request, "No se puede eliminar: Hay pacientes usando este medicamento.")
+        except Exception as e:
+            messages.error(request, f"Error inesperado al eliminar: {str(e)}")
         return redirect('gestion_medica:ruta_lista_enfermedades')
 
 
@@ -816,9 +882,13 @@ class CirugiaCrearView(CatalogoMedicoBaseView):
     def post(self, request):
         form = CirugiaForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Cirugía creada.")
-            return redirect('gestion_medica:ruta_lista_cirugias')
+            try:
+                form.save()
+                messages.success(request, "Cirugía creada.")
+                return redirect('gestion_medica:ruta_lista_cirugias')
+            except Exception as e:
+                messages.error(request, f"Error al registrar cirugía: {e}")
+        messages.error(request, "Error al crear la cirugía en el catálogo.")
         return render(request, "gestion_medica/pages/crear_cirugia.html", {'form': form})
 
 
@@ -829,5 +899,7 @@ class CirugiaDeleteView(CatalogoMedicoBaseView):
             obj.delete()
             messages.success(request, "Cirugía eliminada.")
         except ProtectedError:
-            messages.error(request, "No se puede eliminar: Hay pacientes con registro de esta cirugía.")
+            messages.error(request, "No se puede eliminar: Hay pacientes usando este medicamento.")
+        except Exception as e:
+            messages.error(request, f"Error inesperado al eliminar: {str(e)}")
         return redirect('gestion_medica:ruta_lista_cirugias')
