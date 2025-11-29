@@ -4,12 +4,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.views.generic import ListView
 from django.contrib import messages
-from django.contrib.auth import login, get_user_model
+from django.contrib.auth import login
 from django.contrib.auth.models import Permission
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.forms import PasswordResetForm
 from django.db import IntegrityError, transaction
-from django.db.models import Q, Count
+from django.db.models import Q, Count, ProtectedError
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseNotAllowed, Http404
 from django.utils import timezone
@@ -23,7 +23,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from .models import Usuario, Membresia, Rol, RegistroActividad
 from .forms import FormularioCrearUsuario, FormularioEditarUsuario, FormularioRol
-from .mixins import UsuarioDeMiEstacionMixin, RolValidoParaEstacionMixin, MembresiaGestionableMixin
+from .mixins import MembresiaGestionableMixin
 from apps.common.mixins import BaseEstacionMixin, AuditoriaMixin
 from .utils import generar_contraseña_segura
 
@@ -556,18 +556,24 @@ class UsuarioEditarView(BaseEstacionMixin, PermissionRequiredMixin, MembresiaGes
             
     # --- 6. Lógica de Formulario ---
     def form_valid(self, form):
-        usuario = form.save()
+        try:
+            usuario = form.save()
 
-        # --- AUDITORÍA (Con Diff de campos) ---
-        if form.changed_data:
-            self.auditar(
-                verbo="modificó la información personal de",
-                objetivo=usuario,
-                detalles={'campos_modificados': form.changed_data}
-            )
+            # --- AUDITORÍA (Con Diff de campos) ---
+            if form.changed_data:
+                self.auditar(
+                    verbo="modificó la información personal de",
+                    objetivo=usuario,
+                    detalles={'campos_modificados': form.changed_data}
+                )
 
-        messages.success(self.request, f"Usuario {usuario.get_full_name.title()} actualizado exitosamente.")
-        return redirect(self.get_success_url())
+            messages.success(self.request, f"Usuario {usuario.get_full_name.title()} actualizado exitosamente.")
+            return redirect(self.get_success_url())
+        
+        except Exception as e:
+            messages.error(self.request, f"Error al actualizar el usuario: {str(e)}")
+            return self.form_invalid(form)
+        
     
     def form_invalid(self, form):
         messages.error(self.request, "Formulario no válido. Por favor, revisa los datos.")
@@ -1004,17 +1010,22 @@ class RolEditarView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, 
     # --- 6. Lógica de Formulario ---
     def form_valid(self, form):
         """Guarda el rol y redirige."""
-        rol = form.save()
-        # --- AUDITORÍA ---
-        if form.changed_data:
-            self.auditar(
-                verbo="modificó la información del rol",
-                objetivo=rol,
-                objetivo_repr=rol.nombre,
-                detalles={'campos_modificados': form.changed_data}
-            )
-        messages.success(self.request, f"Rol '{rol.nombre}' actualizado exitosamente.")
-        return redirect(self.get_success_url())
+        try:
+            rol = form.save()
+            # --- AUDITORÍA ---
+            if form.changed_data:
+                self.auditar(
+                    verbo="modificó la información del rol",
+                    objetivo=rol,
+                    objetivo_repr=rol.nombre,
+                    detalles={'campos_modificados': form.changed_data}
+                )
+            messages.success(self.request, f"Rol '{rol.nombre}' actualizado exitosamente.")
+            return redirect(self.get_success_url())
+    
+        except Exception as e:
+            messages.error(self.request, f"Error al guardar el rol: {str(e)}")
+            return self.form_invalid(form)
 
 
     def form_invalid(self, form):
@@ -1072,6 +1083,7 @@ class RolCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, V
         else:
             return self.form_invalid(form)
 
+
     # --- 5. Lógica de Validación ---
     def form_valid(self, form):
         """
@@ -1079,16 +1091,22 @@ class RolCrearView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin, V
         El formulario se encarga de asignar la estación internamente
         porque se la pasamos en el __init__ (ver get_form).
         """
-        rol = form.save()
-        # --- AUDITORÍA ---
-        self.auditar(
-            verbo="creó el rol personalizado",
-            objetivo=rol,
-            objetivo_repr=rol.nombre,
-            detalles={'nombre': rol.nombre}
-        )
-        messages.success(self.request, "Rol creado correctamente.")
-        return redirect(self.success_url)
+        try:
+            rol = form.save()
+            # --- AUDITORÍA ---
+            self.auditar(
+                verbo="creó el rol personalizado",
+                objetivo=rol,
+                objetivo_repr=rol.nombre,
+                detalles={'nombre': rol.nombre}
+            )
+            messages.success(self.request, "Rol creado correctamente.")
+            return redirect(self.success_url)
+        
+        except Exception as e:
+            messages.error(self.request, f"Error al crear el rol: {str(e)}")
+            return self.form_invalid(form)
+
 
     def form_invalid(self, form):
         """Muestra errores."""
@@ -1205,22 +1223,24 @@ class RolAsignarPermisosView(BaseEstacionMixin, PermissionRequiredMixin, Auditor
         Maneja POST: Guarda la selección de permisos.
         """
         self.object = self.get_object() # Valida y obtiene el rol
-        
         # Obtiene la lista de IDs seleccionados
         selected_ids = request.POST.getlist('permisos')
-        
-        # Actualiza la relación ManyToMany
-        self.object.permisos.set(selected_ids)
 
-        # --- AUDITORÍA ---
-        self.auditar(
-            verbo="actualizó los permisos del rol",
-            objetivo=self.object,
-            objetivo_repr=self.object.nombre,
-            detalles={'total_permisos_asignados': len(selected_ids)}
-        )
+        try:
+            # Actualiza la relación ManyToMany
+            self.object.permisos.set(selected_ids)
+            # --- AUDITORÍA ---
+            self.auditar(
+                verbo="actualizó los permisos del rol",
+                objetivo=self.object,
+                objetivo_repr=self.object.nombre,
+                detalles={'total_permisos_asignados': len(selected_ids)}
+            )
+            messages.success(request, f"Permisos del rol '{self.object.nombre}' actualizados correctamente.")
+
+        except Exception as e:
+            messages.error(request, f"Error al guardar los permisos: {str(e)}")
         
-        messages.success(request, f"Permisos del rol '{self.object.nombre}' actualizados correctamente.")
         return redirect(self.success_url)
 
 
@@ -1267,24 +1287,27 @@ class RolEliminarView(BaseEstacionMixin, PermissionRequiredMixin, AuditoriaMixin
     # --- 4. Manejador POST ---
     def post(self, request, *args, **kwargs):
         """Ejecuta la eliminación del rol."""
-        
         # Volvemos a obtener y validar el objeto antes de borrar
         self.object = self.get_object()
-        
         rol_nombre = self.object.nombre
-        self.object.delete()
 
-        # --- AUDITORÍA ---
-        # Pasamos 'objetivo=None' porque ya no existe en BD, 
-        # pero usamos 'detalles' para persistir el nombre.
-        self.auditar(
-            verbo="eliminó permanentemente el rol",
-            objetivo=None, 
-            objetivo_repr=rol_nombre,
-            detalles={'nombre_rol_eliminado': rol_nombre}
-        )
-        
-        messages.success(request, f"El rol '{rol_nombre.title()}' ha sido eliminado exitosamente.")
+        try:
+            self.object.delete()
+            # --- AUDITORÍA ---
+            # Pasamos 'objetivo=None' porque ya no existe en BD, 
+            self.auditar(
+                verbo="eliminó permanentemente el rol",
+                objetivo=None, 
+                objetivo_repr=rol_nombre,
+                detalles={'nombre_rol_eliminado': rol_nombre}
+            )
+            messages.success(request, f"El rol '{rol_nombre.title()}' ha sido eliminado exitosamente.")
+
+        except ProtectedError:
+            messages.error(request, f"No se puede eliminar el rol '{rol_nombre}' porque está asignado a usuarios activos.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar el rol: {str(e)}")
+
         return redirect(self.success_url)
 
 
@@ -1400,20 +1423,23 @@ class UsuarioAsignarRolesView(BaseEstacionMixin, PermissionRequiredMixin, Membre
             except (ValueError, TypeError):
                 continue
 
-        # --- GUARDADO ---
-        # .set() reemplaza los roles anteriores con la nueva lista limpia
-        self.object.roles.set(roles_para_guardar)
+        try:
+            # --- GUARDADO ---
+            # .set() reemplaza los roles anteriores con la nueva lista limpia
+            self.object.roles.set(roles_para_guardar)
+            # --- AUDITORÍA ---
+            # Registramos sobre el usuario, no sobre la membresía (más legible)
+            self.auditar(
+                verbo="actualizó la asignación de roles de",
+                objetivo=self.object.usuario, 
+                objetivo_repr=self.object.usuario.get_full_name,
+                detalles={'cantidad_roles': len(roles_para_guardar)}
+            )
+            messages.success(request, f"Roles de '{self.object.usuario.get_full_name.title()}' actualizados correctamente.")
 
-        # --- AUDITORÍA ---
-        # Registramos sobre el usuario, no sobre la membresía (más legible)
-        self.auditar(
-            verbo="actualizó la asignación de roles de",
-            objetivo=self.object.usuario, 
-            objetivo_repr=self.object.usuario.get_full_name,
-            detalles={'cantidad_roles': len(roles_para_guardar)}
-        )
-        
-        messages.success(request, f"Roles de '{self.object.usuario.get_full_name.title()}' actualizados correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al asignar roles: {str(e)}")
+
         return redirect(self.get_success_url())
 
 
@@ -1468,25 +1494,28 @@ class UsuarioRestablecerContrasena(BaseEstacionMixin, PermissionRequiredMixin, M
             # Enviamos el correo
             # NOTA: domain_override usualmente espera un dominio (ej: 'bomberil.cl').
             # 'acceso' funciona porque hay una config muy específica,
-            form.save(
-                request=request,
-                from_email='noreply@bomberil.cl',
-                email_template_name='acceso/emails/password_reset_email.txt',
-                html_email_template_name='acceso/emails/password_reset_email.html',
-                subject_template_name='acceso/emails/password_reset_subject.txt',
-                # extra_email_context={'nombre_usuario': usuario_a_resetear.first_name}, # Útil si quieres personalizar el email
-            )
+            try:
+                form.save(
+                    request=request,
+                    from_email='noreply@bomberil.cl',
+                    email_template_name='acceso/emails/password_reset_email.txt',
+                    html_email_template_name='acceso/emails/password_reset_email.html',
+                    subject_template_name='acceso/emails/password_reset_subject.txt',
+                    # extra_email_context={'nombre_usuario': usuario_a_resetear.first_name}, # Útil si quieres personalizar el email
+                )
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo="solicitó el restablecimiento de contraseña para",
+                    objetivo=usuario_a_resetear,
+                    objetivo_repr=usuario_a_resetear.get_full_name,
+                    detalles={'metodo': 'email'}
+                )
+                messages.success(request, f"Se ha enviado un correo para restablecer la contraseña a {usuario_a_resetear.email}.")
+            
+            except Exception as e:
+                messages.error(request, f"Error al enviar el correo: {str(e)}")
 
-            # --- AUDITORÍA ---
-            self.auditar(
-                verbo="solicitó el restablecimiento de contraseña para",
-                objetivo=usuario_a_resetear,
-                objetivo_repr=usuario_a_resetear.get_full_name,
-                detalles={'metodo': 'email'}
-            )
-
-            messages.success(request, f"Se ha enviado un correo para restablecer la contraseña a {usuario_a_resetear.email}.")
-
+        messages.error(request, "Error interno al procesar el correo del usuario.")
         return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': usuario_a_resetear.id}))
 
 
@@ -1619,25 +1648,27 @@ class UsuarioFinalizarMembresiaView(BaseEstacionMixin, PermissionRequiredMixin, 
     # --- 4. Manejador POST ---
     def post(self, request, *args, **kwargs):
         """Ejecuta la finalización."""
-        
         # El mixin asegura que self.object es la membresía vigente
         membresia = self.object
         usuario_nombre = membresia.usuario.get_full_name
         
-        # Actualizamos el estado y la fecha de fin
-        membresia.estado = Membresia.Estado.FINALIZADO
-        membresia.fecha_fin = timezone.now().date()
-        membresia.save()
-
-        # --- AUDITORÍA (Mensaje Claro y Contundente) ---
-        self.auditar(
-            verbo="desvinculó permanentemente de la estación a",
-            objetivo=membresia.usuario,
-            objetivo_repr=membresia.usuario.get_full_name,
-            detalles={'razon': 'Finalización administrativa de membresía'}
-        )
+        try:
+            # Actualizamos el estado y la fecha de fin
+            membresia.estado = Membresia.Estado.FINALIZADO
+            membresia.fecha_fin = timezone.now().date()
+            membresia.save()
+            # --- AUDITORÍA (Mensaje Claro y Contundente) ---
+            self.auditar(
+                verbo="desvinculó permanentemente de la estación a",
+                objetivo=membresia.usuario,
+                objetivo_repr=membresia.usuario.get_full_name,
+                detalles={'razon': 'Finalización administrativa de membresía'}
+            )
+            messages.success(request, f"La membresía de '{usuario_nombre}' ha sido finalizada correctamente.")
         
-        messages.success(request, f"La membresía de '{usuario_nombre}' ha sido finalizada correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al finalizar la membresía: {str(e)}")
+
         return redirect(self.success_url)
 
 
@@ -1840,21 +1871,25 @@ class UsuarioForzarCierreSesionView(BaseEstacionMixin, PermissionRequiredMixin, 
         membresia = self.object 
         usuario_objetivo = membresia.usuario
         
-        # Ya no hay bucles for. La base de datos hace el trabajo duro.
-        # .delete() retorna una tupla: (total_eliminados, diccionario_tipos)
-        deleted_count, _ = Session.objects.filter(user=usuario_objetivo).delete()
+        try:
+            # Ya no hay bucles for. La base de datos hace el trabajo duro.
+            # .delete() retorna una tupla: (total_eliminados, diccionario_tipos)
+            deleted_count, _ = Session.objects.filter(user=usuario_objetivo).delete()
+
+            # --- AUDITORÍA Y MENSAJES ---
+            if deleted_count > 0:
+                self.auditar(
+                    verbo=f"forzó el cierre remoto de {deleted_count} sesión(es) de",
+                    objetivo=usuario_objetivo,
+                    objetivo_repr=usuario_objetivo.get_full_name,
+                    detalles={'sesiones_cerradas': deleted_count}
+                )
+                messages.success(request, f"Se han cerrado exitosamente {deleted_count} sesiones activas de {usuario_objetivo.get_full_name}.")
+            else:
+                messages.info(request, f"El usuario {usuario_objetivo.get_full_name} no tenía sesiones activas.")
         
-        # --- AUDITORÍA Y MENSAJES ---
-        if deleted_count > 0:
-            self.auditar(
-                verbo=f"forzó el cierre remoto de {deleted_count} sesión(es) de",
-                objetivo=usuario_objetivo,
-                objetivo_repr=usuario_objetivo.get_full_name,
-                detalles={'sesiones_cerradas': deleted_count}
-            )
-            messages.success(request, f"Se han cerrado exitosamente {deleted_count} sesiones activas de {usuario_objetivo.get_full_name}.")
-        else:
-            messages.info(request, f"El usuario {usuario_objetivo.get_full_name} no tenía sesiones activas.")
+        except Exception as e:
+            messages.error(request, f"Error al cerrar sesiones: {str(e)}")
 
         return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': usuario_objetivo.id}))
 
@@ -1907,35 +1942,40 @@ class UsuarioImpersonarView(BaseEstacionMixin, UserPassesTestMixin, MembresiaGes
         usuario_objetivo = membresia_objetivo.usuario
         usuario_original = request.user
         
-        # --- AUDITORÍA DE SEGURIDAD ---
-        # Registramos que el admin (request.user actual) va a entrar como otro.
-        self.auditar(
-            verbo="asumió la identidad digital (Impersonación) de",
-            objetivo=usuario_objetivo,
-            objetivo_repr=usuario_objetivo.get_full_name,
-            detalles={'advertencia': 'Inicio de sesión simulada con permisos de superusuario'}
-        )
+        try:
+            # --- AUDITORÍA DE SEGURIDAD ---
+            # Registramos que el admin (request.user actual) va a entrar como otro.
+            self.auditar(
+                verbo="asumió la identidad digital (Impersonación) de",
+                objetivo=usuario_objetivo,
+                objetivo_repr=usuario_objetivo.get_full_name,
+                detalles={'advertencia': 'Inicio de sesión simulada con permisos de superusuario'}
+            )
 
-        # --- IMPERSONACIÓN ---
-        # 1. Guardamos datos clave antes de destruir la sesión
-        estacion_id = self.estacion_activa_id
-        estacion_nombre = self.estacion_activa.nombre
-        impersonator_id = str(usuario_original.id)
+            # --- IMPERSONACIÓN ---
+            # 1. Guardamos datos clave antes de destruir la sesión
+            estacion_id = self.estacion_activa_id
+            estacion_nombre = self.estacion_activa.nombre
+            impersonator_id = str(usuario_original.id)
 
-        # 2. Login del objetivo (Destruye sesión anterior)
-        usuario_objetivo.backend = 'apps.gestion_usuarios.backends.RolBackend'
-        login(request, usuario_objetivo)
+            # 2. Login del objetivo (Destruye sesión anterior)
+            usuario_objetivo.backend = 'apps.gestion_usuarios.backends.RolBackend'
+            login(request, usuario_objetivo)
 
-        # 3. Reconstruir contexto en la NUEVA sesión
-        request.session['active_estacion_id'] = estacion_id
-        request.session['active_estacion_nombre'] = estacion_nombre
+            # 3. Reconstruir contexto en la NUEVA sesión
+            request.session['active_estacion_id'] = estacion_id
+            request.session['active_estacion_nombre'] = estacion_nombre
+
+            # 4. La marca de impersonación
+            request.session['impersonator_id'] = impersonator_id
+            request.session['is_impersonating'] = True
+
+            messages.info(request, f"Estás navegando como {usuario_objetivo.get_full_name} en {estacion_nombre}.")
+            return redirect('portal:ruta_inicio')
         
-        # 4. La marca de impersonación
-        request.session['impersonator_id'] = impersonator_id
-        request.session['is_impersonating'] = True
-        
-        messages.info(request, f"Estás navegando como {usuario_objetivo.get_full_name} en {estacion_nombre}.")
-        return redirect('portal:ruta_inicio')
+        except Exception as e:
+            messages.error(request, f"Error crítico al intentar impersonar: {str(e)}")
+            return redirect('gestion_usuarios:ruta_ver_usuario', id=id)
 
 
 
