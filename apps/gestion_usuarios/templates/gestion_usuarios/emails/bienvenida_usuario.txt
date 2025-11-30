@@ -1,0 +1,16 @@
+{% autoescape off %}
+¡Bienvenido al Bomberil System!
+
+Hola {{ user.first_name }},
+
+Se ha creado una cuenta para ti en el sistema de gestión de la {{ user.membresia_set.first.estacion.nombre }}.
+
+Para activar tu cuenta y configurar tu contraseña, por favor copia y pega el siguiente enlace en tu navegador:
+
+{{ protocol }}://{{ domain }}{% url 'acceso:password_reset_confirm' uidb64=uid token=token %}
+
+Este enlace expirará pronto por seguridad.
+
+Atentamente,
+El equipo de Bomberil System.
+{% endautoescape %}

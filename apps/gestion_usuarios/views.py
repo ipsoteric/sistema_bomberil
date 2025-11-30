@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
+from core.settings import DEFAULT_FROM_EMAIL
 from django.views import View
 from django.views.generic import ListView
 from django.contrib import messages
@@ -24,9 +25,8 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import Usuario, Membresia, Rol, RegistroActividad
 from .forms import FormularioCrearUsuario, FormularioEditarUsuario, FormularioRol
 from .mixins import MembresiaGestionableMixin
+from .utils import servicio_crear_usuario_y_notificar
 from apps.common.mixins import BaseEstacionMixin, AuditoriaMixin, CustomPermissionRequiredMixin
-from .utils import generar_contraseña_segura
-
 
 
 class UsuarioInicioView(BaseEstacionMixin, View):
@@ -410,42 +410,21 @@ class UsuarioCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, Auditor
 
     def form_valid(self, form):
         try:
-            with transaction.atomic():
-                # 1. Obtener la estación (del Mixin)
-                estacion_actual = self.estacion_activa
+            # 4. CREACIÓN DE USUARIO, MEMBRESÍA Y GENERACIÓN DEL CORREO DE BIENVENIDA
+            nuevo_usuario = servicio_crear_usuario_y_notificar(
+                datos_usuario=form.cleaned_data,
+                estacion=self.estacion_activa,
+                request=self.request
+            )
 
-                # 2. Crear el usuario
-                datos_limpios = form.cleaned_data
-                contrasena_plana = generar_contraseña_segura()
+            # 5. Auditoría
+            self.auditar(
+                verbo="creó y envió invitación a",
+                objetivo=nuevo_usuario,
+                detalles={'rut': nuevo_usuario.rut}
+            )
 
-                nuevo_usuario = Usuario.objects.create_user(
-                    password=contrasena_plana,
-                    rut=datos_limpios.get('rut'),
-                    email=datos_limpios.get('correo'),
-                    first_name=datos_limpios.get('nombre'),
-                    last_name=datos_limpios.get('apellido'),
-                    birthdate=datos_limpios.get('fecha_nacimiento'),
-                    phone=datos_limpios.get('telefono'),
-                    avatar=datos_limpios.get('avatar'),
-                )
-
-                # 3. Crear membresía inicial
-                Membresia.objects.create(
-                    usuario=nuevo_usuario,
-                    estacion=estacion_actual,
-                    estado=Membresia.Estado.ACTIVO, # Usando el Enum
-                    fecha_inicio=timezone.now().date()
-                )
-
-                # --- AUDITORÍA ---
-                self.auditar(
-                    verbo="creó el perfil e incorporó a la estación a",
-                    objetivo=nuevo_usuario,
-                    detalles={'rut': datos_limpios.get('rut')}
-                )
-
-            print(f"Contraseña para {nuevo_usuario.email}: {contrasena_plana}")
-            messages.success(self.request, f"Usuario {nuevo_usuario.get_full_name.title()} creado y asignado a la estación exitosamente.")
+            messages.success(self.request, f"Usuario creado. Se ha enviado un correo a {nuevo_usuario.email} para que configure su contraseña.")
             return redirect(self.success_url)
 
         except IntegrityError:
@@ -1505,7 +1484,7 @@ class UsuarioRestablecerContrasena(BaseEstacionMixin, CustomPermissionRequiredMi
             try:
                 form.save(
                     request=request,
-                    from_email='noreply@bomberil.cl',
+                    from_email=DEFAULT_FROM_EMAIL,
                     email_template_name='acceso/emails/password_reset_email.txt',
                     html_email_template_name='acceso/emails/password_reset_email.html',
                     subject_template_name='acceso/emails/password_reset_subject.txt',

@@ -3,6 +3,13 @@ import string
 from django.contrib.admin.models import LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.utils.encoding import force_str
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.template.loader import render_to_string
+from django.core.mail import send_mail
+from django.db import transaction
+from django.utils import timezone
 
 from .models import Usuario, Rol, Membresia, RegistroActividad
 
@@ -93,3 +100,79 @@ def registrar_actividad(actor, verbo, objetivo, estacion):
     except Exception as e:
         # El log nunca debe romper la vista
         print(f"Error al registrar actividad: {e}")
+
+
+
+
+def servicio_crear_usuario_y_notificar(datos_usuario, estacion, request):
+    """
+    Servicio transaccional que crea el usuario, su membresía y 
+    dispara el correo de activación.
+    Retorna el usuario creado.
+    Lanza excepciones si algo falla para que la vista las capture.
+    """
+    # Validamos que el email no venga vacío
+    if not datos_usuario.get('correo'):
+        raise ValueError("El correo electrónico es obligatorio para la activación.")
+
+    with transaction.atomic():
+        # 1. Crear Usuario (Sin password)
+        nuevo_usuario = Usuario.objects.create_user(
+            rut=datos_usuario.get('rut'),
+            email=datos_usuario.get('correo'),
+            first_name=datos_usuario.get('nombre'),
+            last_name=datos_usuario.get('apellido'),
+            birthdate=datos_usuario.get('fecha_nacimiento'),
+            phone=datos_usuario.get('telefono'),
+            avatar=datos_usuario.get('avatar'),
+            password=None,
+            is_active=True
+        )
+
+        # 2. Crear Membresía
+        Membresia.objects.create(
+            usuario=nuevo_usuario,
+            estacion=estacion,
+            estado=Membresia.Estado.ACTIVO,
+            fecha_inicio=timezone.now().date()
+        )
+
+        # 3. Enviar Correo (Lógica extraída)
+        _enviar_email_bienvenida(nuevo_usuario, request, estacion)
+        
+        return nuevo_usuario
+
+def _enviar_email_bienvenida(usuario, request, estacion):
+    """
+    Método privado para manejar la construcción y envío del email.
+    """
+    # Generar Tokens
+    uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+    token = default_token_generator.make_token(usuario)
+    
+    # Contexto para el template
+    contexto = {
+        'email': usuario.email,
+        'domain': request.get_host(),
+        'site_name': 'Bomberil System',
+        'uid': uid,
+        'user': usuario,
+        'token': token,
+        'protocol': 'https' if request.is_secure() else 'http',
+        'estacion_nombre': estacion.nombre,
+    }
+
+    # Renderizar
+    asunto = render_to_string('gestion_usuarios/emails/bienvenida_asunto.txt', context=contexto).strip()
+    mensaje_texto = render_to_string('gestion_usuarios/emails/bienvenida_usuario.txt', context=contexto)
+    mensaje_html = render_to_string('gestion_usuarios/emails/bienvenida_usuario.html', context=contexto)
+
+    # Enviar (Fail loudly)
+    send_mail(
+        subject=asunto,
+        message=mensaje_texto,
+        from_email='noreply@bomberil.cl', # Tu remitente configurado
+        recipient_list=[usuario.email],
+        html_message=mensaje_html,
+        fail_silently=False 
+    )
