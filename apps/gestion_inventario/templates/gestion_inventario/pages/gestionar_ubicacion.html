@@ -25,11 +25,12 @@
             <div class="card shadow-sm mb-4">
                 
                 {# Imagen por defecto dinámica #}
-                <img src="{% if ubicacion.imagen %}{{ ubicacion.imagen.url }}{% elif ubicacion.tipo_ubicacion.nombre == 'VEHÍCULO' %}{% static 'gestion_inventario/imagenes/default_vehiculo.png' %}{% else %}{% static 'gestion_inventario/imagenes/default_almacen.png' %}{% endif %}"
-                     class="card-img-top img-fluid" alt="Imagen {{ ubicacion.nombre }}" style="height: 250px; object-fit: cover;">
+                <img src="{% if ubicacion.imagen_thumb_medium %}{{ ubicacion.imagen_thumb_medium.url }}{% elif ubicacion.tipo_ubicacion.nombre == 'VEHÍCULO' %}{% static 'gestion_inventario/imagenes/default_vehiculo.png' %}{% else %}{% static 'gestion_inventario/imagenes/default_almacen.png' %}{% endif %}"
+                     class="card-img-top img-fluid" alt="Imagen {{ ubicacion.nombre }}" style="height: 250px; object-fit: contain;">
                 
                 <div class="card-body">
                     <h3 class="card-title h5 color_primario fs_mediana mb-1">{{ ubicacion.nombre }}</h3>
+                    <p class="card-text mb-2 color_primario_variante fs_normal">{{ ubicacion.codigo|default:"Sin código" }}</p>
                     <p class="card-text mb-2 color_primario_variante fs_normal">{{ ubicacion.descripcion|default:"Sin descripción" }}</p>
                     
                     {# Mostramos detalles extra si es un vehículo (usando la relación inversa 'detalles_vehiculo') #}

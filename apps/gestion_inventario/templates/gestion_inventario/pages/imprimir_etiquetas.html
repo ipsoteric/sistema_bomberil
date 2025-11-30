@@ -9,188 +9,230 @@
     </span>
 {% endblock %}
 
-{% block extrastyles %}
-<style>
-    /* Estilos para las etiquetas en pantalla */
-    .etiqueta-container {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: start;
-    }
-    .etiqueta {
-        width: 3.5in; /* Ancho */
-        height: 2in; /* Alto */
-        border: 1px dashed #999;
-        padding: 0.25in;
-        margin: 0.1in;
-        display: flex;
-        flex-direction: row;
-        overflow: hidden;
-        background: var(--fondo-secundario-variante);
-    }
-    .etiqueta-qr {
-        flex-shrink: 0;
-        width: 1.5in;
-        height: 1.5in;
-        background: white;
-        padding: 5px;
-    }
-    .etiqueta-qr img {
-        width: 100%;
-        height: 100%;
-    }
-    .etiqueta-info {
-        flex-grow: 1;
-        padding-left: 0.2in;
-        font-family: Arial, sans-serif;
-        font-size: 10pt;
-        color: var(--color-primario);
-        display: flex;
-        flex-direction: column;
-    }
-    .etiqueta-info h5 {
-        font-size: 12pt;
-        font-weight: bold;
-        margin: 0 0 5px 0;
-        word-break: break-word;
-    }
-    .etiqueta-info p {
-        margin: 3px 0 0 0;
-    }
-    .etiqueta-codigo {
-        font-family: 'Courier New', Courier, monospace;
-        font-weight: bold;
-        font-size: 11pt;
-        margin-top: auto; /* Empuja el código al fondo */
-    }
-    
-    /* Panel de control "No Imprimir" */
-    .no-print {
-        margin-bottom: 20px;
-    }
-
-    /* Estilos solo para la impresión */
-    @media print {
-        /* Oculta todo menos el contenedor de etiquetas */
-        body > * {
-            display: none !important;
-        }
-        .etiqueta-container, .etiqueta-container * {
-            visibility: visible !important;
-            display: block !important;
-        }
-        .etiqueta-container {
-            margin: 0;
-            padding: 0;
-        }
-        .etiqueta {
-            display: flex !important;
-            flex-direction: row !important;
-            width: 3.5in; /* Asegura el tamaño en impresión */
-            height: 2in;
-            border: 1px solid #000;
-            color: #000;
-            page-break-inside: avoid; /* Evita cortes */
-            float: left; /* Permite que fluyan */
-            margin: 0.05in;
-        }
-        .etiqueta-info {
-            color: #000 !important;
-        }
-        .etiqueta-qr {
-            background: white !important;
-        }
-    }
-</style>
-{% endblock %}
-
 
 {% block contenido %}
 <div class="container-fluid mt-4">
 
     <div class="no-print">
-        <div class="card shadow-sm mb-4">
+        <div class="card shadow-sm mb-4 border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fs_mediana"><i class="fas fa-print me-2"></i>Centro de Impresión</h5>
+                <span class="badge bg-light text-primary">{{ total_items }} Etiquetas</span>
+            </div>
             <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        {% if impresion_directa %}
-                            <h5 class="fs_mediana">Listos para Imprimir</h5>
-                            <p class="fs_normal color_primario_variante mb-0">
-                                Se encontraron <strong>{{ total_items }}</strong> etiquetas de tu última recepción.
-                            </p>
-                        {% else %}
-                            <h5 class="fs_mediana">Impresión Masiva de Etiquetas</h5>
-                            <p class="fs_normal color_primario_variante mb-0">
-                                Filtra las existencias que deseas etiquetar. Se imprimirán todos los resultados ({{ total_items }} ítems).
-                            </p>
-                        {% endif %}
-                    </div>
-                    <div class="col-md-4 text-end">
-                        <button class="btn btn-primary fs_normal" onclick="window.print()">
-                            <i class="fas fa-print me-1"></i> Imprimir {{ total_items }} Etiqueta{{ total_items|pluralize:"s" }}
-                        </button>
-                    </div>
-                </div>
-                
-                {% if not impresion_directa %}
-                <hr>
-                <form method="get" action="{% url 'gestion_inventario:ruta_imprimir_etiquetas' %}">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-md-4">
-                            <label for="{{ filter_form.ubicacion.id_for_label }}" class="form-label fw-bold fs_pequena">{{ filter_form.ubicacion.label }}</label>
-                            {{ filter_form.ubicacion }}
+                <form id="printConfigForm">
+                    <div class="row align-items-end g-3">
+                        
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Diseño de Información</label>
+                            <select id="layoutSelector" class="form-select fs_normal" onchange="handleConfigChange()">
+                                <option value="detailed" selected>Detallado (Completo)</option>
+                                <option value="minimal">Minimalista (Compacto)</option>
+                            </select>
                         </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-sm btn-outline-primary fs_normal w-100">Filtrar</button>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Tamaño de Papel</label>
+                            <select id="sizeSelector" class="form-select fs_normal" onchange="handleConfigChange()">
+                                <option value="micro">Micro (2.25" x 1.25")</option>
+                                <option value="compact">Compacta (3" x 1.5")</option>
+                                <option value="standard" selected>Estándar (3.5" x 2")</option>
+                                <option value="large">Grande (4" x 2.5")</option>
+                            </select>
+                            <div id="sizeWarning" class="form-text text-danger d-none fs_pequena">
+                                * Tamaño "Micro" solo disponible en diseño Minimalista.
+                            </div>
                         </div>
-                        <div class="col-md-2">
-                            <a href="{% url 'gestion_inventario:ruta_imprimir_etiquetas' %}" class="btn btn-sm btn-outline-secondary fs_normal w-100">Limpiar</a>
+
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-primary w-100 fs_normal" onclick="window.print()">
+                                <i class="fas fa-print me-2"></i> Imprimir
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'gestion_inventario:ruta_imprimir_etiquetas' %}" class="btn btn-outline-secondary w-100 fs_normal">
+                                <i class="fas fa-undo me-1"></i> Volver
+                            </a>
                         </div>
                     </div>
                 </form>
-                {% endif %}
             </div>
         </div>
     </div>
     
-    <div class="etiqueta-container" id="etiqueta-container">
+    <div class="etiqueta-container layout-detailed" id="zona-impresion">
         
+        {# --- LOOP ACTIVOS --- #}
         {% for item in activos %}
         <div class="etiqueta">
             <div class="etiqueta-qr">
-                <img src="{% url 'gestion_inventario:ruta_generar_qr' codigo=item.codigo_activo %}" alt="{{ item.codigo_activo }}">
+                <img src="{% url 'gestion_inventario:ruta_generar_qr' codigo=item.codigo_activo %}" alt="QR">
             </div>
+            
             <div class="etiqueta-info">
-                <h5>{{ item.producto.producto_global.nombre_oficial }}</h5>
-                <p>Ubicación: {{ item.compartimento.ubicacion.nombre }}</p>
-                <p>Compart: {{ item.compartimento.nombre }}</p>
-                <p class="etiqueta-codigo">{{ item.codigo_activo }}</p>
+                <div class="info-header">
+                    {{ item.producto.producto_global.nombre_oficial }}
+                </div>
+                
+                <div class="info-body">
+                    <div class="dato-bloque">
+                        <span class="dato-valor">
+                            <strong>Ubic:</strong> {{ item.compartimento.ubicacion.nombre }}
+                        </span>
+                        <span class="dato-codigo-mini">{{ item.compartimento.ubicacion.codigo }}</span>
+                    </div>
+                    <div class="dato-bloque">
+                        <span class="dato-valor">
+                            <strong>Comp:</strong> {{ item.compartimento.nombre }}
+                        </span>
+                        <span class="dato-codigo-mini">{{ item.compartimento.codigo }}</span>
+                    </div>
+                </div>
+
+                <div class="info-footer">
+                    <span class="badge-tipo">ACT</span>
+                    <span class="main-code">{{ item.codigo_activo }}</span>
+                </div>
             </div>
         </div>
         {% endfor %}
         
+        {# --- LOOP LOTES --- #}
         {% for item in lotes %}
         <div class="etiqueta">
             <div class="etiqueta-qr">
-                <img src="{% url 'gestion_inventario:ruta_generar_qr' codigo=item.codigo_lote %}" alt="{{ item.codigo_lote }}">
+                <img src="{% url 'gestion_inventario:ruta_generar_qr' codigo=item.codigo_lote %}" alt="QR">
             </div>
+            
             <div class="etiqueta-info">
-                <h5>{{ item.producto.producto_global.nombre_oficial }}</h5>
-                <p>Ubicación: {{ item.compartimento.ubicacion.nombre }}</p>
-                <p>Compart: {{ item.compartimento.nombre }}</p>
-                <p>Cant: <strong>{{ item.cantidad }}</strong></p>
-                {% if item.fecha_expiracion %}
-                <p>Vence: <strong>{{ item.fecha_expiracion|date:"d/m/Y" }}</strong></p>
-                {% endif %}
-                <p class="etiqueta-codigo">{{ item.codigo_lote }}</p>
+                <div class="info-header">
+                    {{ item.producto.producto_global.nombre_oficial }}
+                </div>
+                
+                <div class="info-body">
+                    <div class="dato-bloque">
+                        <span class="dato-valor">
+                            <strong>Ubic:</strong> {{ item.compartimento.ubicacion.nombre }}
+                        </span>
+                        <span class="dato-codigo-mini">{{ item.compartimento.ubicacion.codigo }}</span>
+                    </div>
+                    <div class="dato-bloque">
+                        <span class="dato-valor">
+                            <strong>Cant:</strong> {{ item.cantidad }} 
+                            {% if item.fecha_expiracion %}
+                             | <strong>Vence:</strong> {{ item.fecha_expiracion|date:"d/m/y" }}
+                            {% endif %}
+                        </span>
+                        <span class="dato-codigo-mini">{{ item.codigo_lote }}</span>
+                    </div>
+                </div>
+
+                <div class="info-footer">
+                    <span class="badge-tipo">LOT</span>
+                    <span class="main-code">{{ item.codigo_lote }}</span>
+                </div>
             </div>
         </div>
         {% endfor %}
         
-        {% if total_items == 0 %}
-            <p class="fs_normal text-muted">No hay etiquetas para mostrar con los filtros seleccionados.</p>
-        {% endif %}
     </div>
-
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    /**
+     * Controlador Maestro de Configuración
+     * Maneja las dependencias entre Layout y Tamaño
+     */
+    function handleConfigChange() {
+        const layoutSelect = document.getElementById('layoutSelector');
+        const sizeSelect = document.getElementById('sizeSelector');
+        const warningText = document.getElementById('sizeWarning');
+        const container = document.getElementById('zona-impresion');
+        
+        let layout = layoutSelect.value;
+        let size = sizeSelect.value;
+
+        // --- LÓGICA DE RESTRICCIÓN ---
+        
+        // 1. Si elige Detallado, "Micro" está prohibido.
+        if (layout === 'detailed') {
+            // Deshabilitar la opción Micro visualmente
+            sizeSelect.querySelector('option[value="micro"]').disabled = true;
+            
+            // Si estaba en Micro, forzar salto a Compact
+            if (size === 'micro') {
+                sizeSelect.value = 'compact';
+                size = 'compact';
+                // warningText.classList.remove('d-none'); // Mostrar aviso
+                setTimeout(() => warningText.classList.add('d-none'), 4000); // Ocultar aviso
+            } else {
+                sizeSelect.querySelector('option[value="micro"]').disabled = true;
+            }
+        } else {
+            // En Minimalista, Micro está permitido
+            sizeSelect.querySelector('option[value="micro"]').disabled = false;
+        }
+
+        // --- APLICAR CLASES ---
+        container.classList.remove('layout-detailed', 'layout-minimal');
+        container.classList.add(layout === 'minimal' ? 'layout-minimal' : 'layout-detailed');
+
+        // --- APLICAR VARIABLES CSS (MEDIDAS) ---
+        const root = document.documentElement;
+
+        if (size === 'micro') {
+            // TAMAÑO MICRO (Solo Minimalista) - Fuentes MUY reducidas
+            root.style.setProperty('--card-width', '2.25in');
+            root.style.setProperty('--card-height', '1.25in');
+            root.style.setProperty('--padding-inner', '2mm'); // Menos padding
+            root.style.setProperty('--qr-size', '0.9in'); // QR dominante
+            
+            // Fuentes Tiny
+            root.style.setProperty('--font-title', '7pt'); // Título pequeño
+            root.style.setProperty('--font-badge', '5pt'); // Badge minúsculo
+            root.style.setProperty('--font-main-code', '6pt'); // Código legible pero pequeño
+            
+        } else if (size === 'compact') {
+            root.style.setProperty('--card-width', '3in');
+            root.style.setProperty('--card-height', '1.5in');
+            root.style.setProperty('--padding-inner', '3mm');
+            root.style.setProperty('--qr-size', '1.1in');
+            
+            root.style.setProperty('--font-title', '9pt');
+            root.style.setProperty('--font-body', '8pt');
+            root.style.setProperty('--font-code', '6pt');
+            root.style.setProperty('--font-main-code', '8pt');
+            root.style.setProperty('--font-badge', '6pt');
+
+        } else if (size === 'standard') {
+            root.style.setProperty('--card-width', '3.5in');
+            root.style.setProperty('--card-height', '2in');
+            root.style.setProperty('--padding-inner', '4mm');
+            root.style.setProperty('--qr-size', '1.25in');
+            
+            root.style.setProperty('--font-title', '10pt');
+            root.style.setProperty('--font-body', '8pt');
+            root.style.setProperty('--font-code', '7pt');
+            root.style.setProperty('--font-main-code', '9pt');
+            root.style.setProperty('--font-badge', '7pt');
+
+        } else if (size === 'large') {
+            root.style.setProperty('--card-width', '4in');
+            root.style.setProperty('--card-height', '2.5in');
+            root.style.setProperty('--padding-inner', '5mm');
+            root.style.setProperty('--qr-size', '1.5in');
+            
+            root.style.setProperty('--font-title', '12pt');
+            root.style.setProperty('--font-body', '10pt');
+            root.style.setProperty('--font-code', '8pt');
+            root.style.setProperty('--font-main-code', '10pt');
+            root.style.setProperty('--font-badge', '8pt');
+        }
+    }
+
+    // Inicializar al cargar
+    document.addEventListener('DOMContentLoaded', handleConfigChange);
+</script>
 {% endblock %}

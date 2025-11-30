@@ -79,7 +79,7 @@
                 </div>
             </div>
             {% if cabecera_form.non_field_errors %}
-                <div class="alert alert-danger mt-3 fs_normal">
+                <div class="alert alert-danger mt-3 color_blanco">
                     {% for error in cabecera_form.non_field_errors %}
                         {{ error }}<br>
                     {% endfor %}
@@ -97,10 +97,17 @@
             
             <div class="row justify-content-center">
                 <div class="col-md-8">
-                    <label for="scan-input" class="form-label fw-bold fs_pequena">Escanear Código (QR o Barras)</label>
-                    <input type="text" class="form-control" id="scan-input" placeholder="Esperando escaneo...">
+                    <label for="scan-select" class="form-label fw-bold fs_pequena">Buscar o Escanear Ítem</label>
+
+                    <select id="scan-select" class="form-control" placeholder="Escriba código o nombre del producto...">
+                    </select>
+
                     <div class="scan-feedback mt-1">
                         <span id="scan-feedback-text" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-text fs_pequena text-muted">
+                        <i class="fas fa-info-circle"></i> Puede escanear con la pistola o escribir para buscar manualmente.
                     </div>
                 </div>
             </div>
@@ -147,68 +154,98 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     
-    // --- Selectores del DOM ---
-    const scanInput = document.getElementById('scan-input');
+    // --- 1. Selectores del DOM ---
     const feedbackText = document.getElementById('scan-feedback-text');
     const itemsTableBody = document.querySelector('#items-prestados-table tbody');
     const noItemsRow = document.getElementById('no-items-row');
     const itemCountSpan = document.getElementById('item-count');
     const hiddenJsonInput = document.getElementById('items-json-input');
     const prestamoForm = document.getElementById('prestamo-form');
+    const scanSelectEl = document.getElementById('scan-select');
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // La URL de la API se obtiene de forma robusta.
-    // Usamos '0000' como un placeholder que REEMPLAZAREMOS.
-    const apiUrlTemplate = "{% url 'gestion_inventario:api_buscar_item_prestamo' codigo='0000' %}";
-    // --- FIN DE LA CORRECCIÓN ---
+    // URL de la API de búsqueda
+    const apiUrl = "{% url 'api:api_buscar_prestables' %}";
 
-    // --- Estado de la App (en JS) ---
+    // --- 2. Configuración de TomSelect (Buscador Inteligente) ---
+    const tsScan = new TomSelect(scanSelectEl, {
+        valueField: 'id',
+        labelField: 'texto_mostrar',
+        searchField: ['nombre', 'codigo'],
+        placeholder: "Escriba código o nombre...",
+        maxItems: 1,
+        load: function(query, callback) {
+            if (!query.length) return callback();
+            
+            fetch(apiUrl + '?q=' + encodeURIComponent(query))
+                .then(response => response.json())
+                .then(json => {
+                    callback(json.items);
+                }).catch(() => {
+                    callback();
+                });
+        },
+        onChange: function(value) {
+            if (!value) return;
+            
+            // Recuperar datos y procesar
+            const itemData = this.options[value];
+            const itemProcesado = {
+                id: itemData.real_id,
+                tipo: itemData.tipo,
+                codigo: itemData.codigo,
+                nombre: itemData.nombre,
+                max_qty: itemData.max_qty
+            };
+
+            addItem(itemProcesado);
+
+            // Limpiar y re-enfocar
+            this.clear(); 
+            this.clearOptions();
+            this.control_input.focus(); 
+        },
+        render: {
+            option: function(item, escape) {
+                const colorClass = item.tipo === 'activo' ? 'text-primary' : 'text-success';
+                const icon = item.tipo === 'activo' ? 'fa-barcode' : 'fa-boxes';
+                return `<div class="py-2 d-flex align-items-center">
+                            <i class="fas ${icon} ${colorClass} me-2 fs-4"></i>
+                            <div>
+                                <div class="fw-bold">${escape(item.nombre)}</div>
+                                <div class="small text-muted">Cód: ${escape(item.codigo)}</div>
+                            </div>
+                        </div>`;
+            }
+        }
+    });
+
+    // --- 3. Estado de la Aplicación ---
     let itemsPrestados = [];
     try {
-        // Restaurar desde el input oculto (en caso de error de POST)
         itemsPrestados = JSON.parse(hiddenJsonInput.value || '[]');
     } catch (e) {
-        console.error("Error al parsear JSON de items: ", hiddenJsonInput.value);
+        console.error("Error al parsear JSON inicial", e);
         itemsPrestados = [];
     }
 
+    // --- 4. Funciones de Lógica ---
 
-    /**
-     * Pone el foco en el input de escaneo
-     */
-    function focusScanInput() {
-        scanInput.focus();
-        scanInput.select();
-    }
-
-    /**
-     * Muestra un mensaje de feedback (error o éxito)
-     */
     function showFeedback(message, isError = false) {
         feedbackText.textContent = message;
         feedbackText.className = isError ? 'text-danger' : 'text-success';
-        
-        // Limpiar mensaje después de 3 seg
         setTimeout(() => {
-            if (feedbackText.textContent === message) {
-                feedbackText.textContent = '';
-            }
+            if (feedbackText.textContent === message) feedbackText.textContent = '';
         }, 3000);
     }
-    
-    /**
-     * Actualiza la tabla HTML basado en el array 'itemsPrestados'
-     */
+
     function renderTabla() {
-        itemsTableBody.innerHTML = ''; // Limpiar tabla
+        itemsTableBody.innerHTML = ''; 
         
         if (itemsPrestados.length === 0) {
             itemsTableBody.appendChild(noItemsRow);
         } else {
             itemsPrestados.forEach((item, index) => {
                 const tr = document.createElement('tr');
-                tr.dataset.index = index; // Guardar el índice
-                
                 const cantidad = item.tipo === 'activo' ? 1 : item.cantidad_prestada;
                 
                 tr.innerHTML = `
@@ -227,144 +264,79 @@ document.addEventListener('DOMContentLoaded', function() {
         itemCountSpan.textContent = itemsPrestados.length;
     }
 
-    /**
-     * Actualiza el input oculto con la data JSON
-     */
     function actualizarInputOculto() {
         hiddenJsonInput.value = JSON.stringify(itemsPrestados);
     }
 
-    /**
-     * Maneja la adición de un ítem (después del fetch)
-     */
     function addItem(itemData) {
-        // 1. Revisar si ya está en la lista
+        // Validar duplicados
         const esDuplicado = itemsPrestados.some(item => 
             item.tipo === itemData.tipo && item.id === itemData.id
         );
         if (esDuplicado) {
-            showFeedback(`Error: El ítem ${itemData.codigo} ya fue escaneado.`, true);
+            showFeedback(`El ítem ${itemData.codigo} ya está en la lista.`, true);
             return;
         }
         
-        // 2. Si es Lote, pedir cantidad
+        // Lógica de Lotes (Pedir cantidad)
         if (itemData.tipo === 'lote') {
-            const qty = prompt(`Ítem: ${itemData.nombre}\nCódigo: ${itemData.codigo}\n\n¿Cuántas unidades desea prestar? (Máx: ${itemData.max_qty})`, itemData.max_qty);
-            
+            const qty = prompt(`Ítem: ${itemData.nombre}\nDisp: ${itemData.max_qty}\n\nIngrese cantidad a prestar:`, 1);
             const cantidadPrestada = parseInt(qty, 10);
             
             if (isNaN(cantidadPrestada) || cantidadPrestada <= 0) {
-                showFeedback("Cancelado. Cantidad no válida.", true);
-                return;
+                return; // Cancelado por el usuario
             }
             if (cantidadPrestada > itemData.max_qty) {
-                showFeedback(`Error: No puede prestar más de ${itemData.max_qty} unidades.`, true);
+                showFeedback(`Error: Solo hay ${itemData.max_qty} unidades disponibles.`, true);
                 return;
             }
             itemData.cantidad_prestada = cantidadPrestada;
         }
 
-        // 3. Añadir a la lista y actualizar UI
         itemsPrestados.push(itemData);
         renderTabla();
         actualizarInputOculto();
         showFeedback(`Agregado: ${itemData.nombre}`, false);
     }
 
-    /**
-     * Maneja el escaneo (llamada a la API)
-     */
-    async function handleScan() {
-        const codigo = scanInput.value.trim().toUpperCase();
-        if (codigo === '') return;
+    // --- 5. Manejadores de Eventos ---
 
-        scanInput.disabled = true; // Bloquear input
-        showFeedback("Buscando...", false);
-
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Construimos la URL final reemplazando el placeholder
-        const finalUrl = apiUrlTemplate.replace('0000', encodeURIComponent(codigo));
-        // --- FIN DE LA CORRECCIÓN ---
-
-        try {
-            const response = await fetch(finalUrl); // Usamos la URL corregida
-            const data = await response.json();
-
-            if (!response.ok) {
-                // Error (404, 400) - Este es el flujo que SÍ funciona
-                throw new Error(data.error || 'Error desconocido');
-            }
-            
-            // Éxito
-            addItem(data);
-
-        } catch (error) {
-            // Aquí es donde veías el error para códigos válidos (por la URL mala)
-            // y donde verás los errores para códigos inválidos (correctamente)
-            showFeedback(`Error: ${error.message}`, true);
-        } finally {
-            // Limpiar y re-enfocar
-            scanInput.disabled = false;
-            scanInput.value = '';
-            focusScanInput();
-        }
-    }
-
-    /**
-     * Maneja el clic en el botón "Quitar" de la tabla
-     */
-    function handleQuitarItem(e) {
-        if (!e.target.classList.contains('btn-quitar')) {
-            return;
-        }
+    // Eliminar ítem de la tabla
+    itemsTableBody.addEventListener('click', function(e) {
+        if (!e.target.classList.contains('btn-quitar')) return;
+        
         e.preventDefault();
-        
         const index = parseInt(e.target.dataset.index, 10);
-        if (isNaN(index)) return;
-
-        const itemRemovido = itemsPrestados.splice(index, 1)[0];
-        showFeedback(`Quitado: ${itemRemovido.nombre}`, false);
         
-        renderTabla();
-        actualizarInputOculto();
-        focusScanInput();
-    }
-    
-    // --- INICIALIZACIÓN ---
-    
-    // 1. Inicializar TomSelect Básico para el destinatario
-    document.querySelectorAll('.tom-select-basic').forEach(el => {
-        if (!el.tomselect) new TomSelect(el, { create: false, placeholder: "Seleccionar destinatario..."});
-    });
-
-    // 2. Poner foco en el input de escaneo
-    focusScanInput();
-
-    // 3. Listener para el "Enter" en el scan input
-    scanInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Evitar que el form se envíe
-            handleScan();
+        if (!isNaN(index)) {
+            const itemRemovido = itemsPrestados.splice(index, 1)[0];
+            renderTabla();
+            actualizarInputOculto();
+            showFeedback(`Quitado: ${itemRemovido.nombre}`, false);
+            
+            // CORRECCIÓN: Enfocar el TomSelect en lugar del input viejo
+            tsScan.control_input.focus(); 
         }
     });
 
-    // 4. Listener para los botones "Quitar" (usando delegación)
-    itemsTableBody.addEventListener('click', handleQuitarItem);
-    
-    // 5. Renderizar la tabla inicial (si venimos de un error POST)
-    if (itemsPrestados.length > 0) {
-        renderTabla();
-    }
-    
-    // 6. Validar que la lista no esté vacía al enviar
+    // Validación al enviar el formulario
     prestamoForm.addEventListener('submit', (e) => {
         if (itemsPrestados.length === 0) {
             e.preventDefault();
-            showFeedback("Error: Debe escanear al menos un ítem para guardar el préstamo.", true);
-            focusScanInput();
+            showFeedback("Debe agregar al menos un ítem para guardar.", true);
+            tsScan.control_input.focus();
         }
     });
 
+    // Inicializar TomSelects de destinatarios
+    document.querySelectorAll('.tom-select-basic').forEach(el => {
+        if (!el.tomselect) new TomSelect(el, { create: false, placeholder: "Seleccionar..."});
+    });
+
+    // Render inicial por si hay datos de error
+    if (itemsPrestados.length > 0) {
+        renderTabla();
+    }
 });
 </script>
 {% endblock %}

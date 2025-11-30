@@ -441,6 +441,94 @@ class InventarioAnadirProductoLocalAPIView(AuditoriaMixin, APIView):
 
 
 
+class InventarioBuscarExistenciasPrestablesAPI(APIView):
+    """
+    Endpoint para búsqueda tipo 'Typeahead' de existencias.
+    Requiere autenticación y una estación activa (vía Sesión, Header o Membresía).
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva]
+
+    def get(self, request, format=None):
+        # 1. Validación de Parámetros
+        query = request.query_params.get('q', '').strip()
+        
+        if not query:
+            return Response(
+                {"error": "El término de búsqueda no puede estar vacío.", "items": []}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(query) < 2:
+            return Response(
+                {"error": "Ingrese al menos 2 caracteres.", "items": []}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 2. Obtención de la Estación (Inyectada por el Permiso IsEstacionActiva)
+        estacion = request.estacion_activa
+        estacion_id = estacion.id
+
+        try:
+            results = []
+
+            # 3. Búsqueda de ACTIVOS
+            # [cite: 36, 37] Solo estados operativos/disponibles
+            activos = Activo.objects.filter(
+                estacion_id=estacion_id,
+                estado__nombre='DISPONIBLE',
+                estado__tipo_estado__nombre='OPERATIVO'
+            ).filter(
+                Q(codigo_activo__icontains=query) | 
+                Q(producto__producto_global__nombre_oficial__icontains=query) |
+                Q(numero_serie_fabricante__icontains=query)
+            ).select_related('producto__producto_global')[:10]
+
+            for a in activos:
+                results.append({
+                    'id': f"activo_{a.id}",
+                    'real_id': str(a.id),
+                    'tipo': 'activo',
+                    'codigo': a.codigo_activo,
+                    'nombre': a.producto.producto_global.nombre_oficial,
+                    'texto_mostrar': f"[ACTIVO] {a.producto.producto_global.nombre_oficial} ({a.codigo_activo})",
+                    'max_qty': 1
+                })
+
+            # 4. Búsqueda de LOTES
+            # [cite: 32] Lotes fungibles con stock positivo
+            lotes = LoteInsumo.objects.filter(
+                compartimento__ubicacion__estacion_id=estacion_id,
+                estado__nombre='DISPONIBLE',
+                cantidad__gt=0 
+            ).filter(
+                Q(codigo_lote__icontains=query) | 
+                Q(producto__producto_global__nombre_oficial__icontains=query)
+            ).select_related('producto__producto_global')[:10]
+
+            for l in lotes:
+                results.append({
+                    'id': f"lote_{l.id}",
+                    'real_id': str(l.id),
+                    'tipo': 'lote',
+                    'codigo': l.codigo_lote,
+                    'nombre': l.producto.producto_global.nombre_oficial,
+                    'texto_mostrar': f"[LOTE] {l.producto.producto_global.nombre_oficial} ({l.codigo_lote}) - Disp: {l.cantidad}",
+                    'max_qty': l.cantidad
+                })
+
+            return Response({'items': results}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # En producción, usar logger.error(e)
+            print(f"Error en API Búsqueda: {e}")
+            return Response(
+                {"error": "Error interno del servidor."}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+
 # --- VISTAS DE GESTIÓN DE MANTENIMIENTO ---
 class MantenimientoBuscarActivoParaPlanAPIView(APIView):
     """

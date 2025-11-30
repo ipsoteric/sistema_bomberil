@@ -108,6 +108,7 @@ class InventarioInicioView(BaseEstacionMixin, TemplateView):
         lotes_qs = LoteInsumo.objects.filter(compartimento__ubicacion__estacion_id=self.estacion_activa_id)
 
         # 2. KPIs Numéricos: Agregación Condicional (1 consulta por modelo en lugar de N)
+        # A) ACTIVOS: Usamos Count (1 registro = 1 unidad)
         kpis_activos = activos_qs.aggregate(
             operativos=Count('id', filter=Q(estado__tipo_estado__nombre='OPERATIVO')),
             no_operativos=Count('id', filter=Q(estado__tipo_estado__nombre='NO OPERATIVO')),
@@ -115,11 +116,12 @@ class InventarioInicioView(BaseEstacionMixin, TemplateView):
             vencen=Count('id', filter=Q(fecha_expiracion__range=[hoy, fecha_limite_vencimiento]) | Q(fin_vida_util_calculada__range=[hoy, fecha_limite_vencimiento]))
         )
 
+        # B) LOTES: Usamos Sum('cantidad') y Coalesce para evitar None
         kpis_lotes = lotes_qs.aggregate(
-            operativos=Count('id', filter=Q(estado__tipo_estado__nombre='OPERATIVO')),
-            no_operativos=Count('id', filter=Q(estado__tipo_estado__nombre='NO OPERATIVO')),
-            prestamo=Count('id', filter=Q(estado__nombre='EN PRÉSTAMO EXTERNO')),
-            vencen=Count('id', filter=Q(fecha_expiracion__range=[hoy, fecha_limite_vencimiento]))
+            operativos=Coalesce(Sum('cantidad', filter=Q(estado__tipo_estado__nombre='OPERATIVO')), 0),
+            no_operativos=Coalesce(Sum('cantidad', filter=Q(estado__tipo_estado__nombre='NO OPERATIVO')), 0),
+            prestamo=Coalesce(Sum('cantidad', filter=Q(estado__nombre='EN PRÉSTAMO EXTERNO')), 0),
+            vencen=Coalesce(Sum('cantidad', filter=Q(fecha_expiracion__range=[hoy, fecha_limite_vencimiento])), 0)
         )
 
         # KPI: Stock Bajo
@@ -128,7 +130,7 @@ class InventarioInicioView(BaseEstacionMixin, TemplateView):
         # context['kpi_stock_bajo'] = Producto.objects.filter(estacion_id=estacion_activa_id, stock_actual__lt=F('stock_minimo')).count()
         # Por ahora, lo omitimos.
 
-        # Asignación de totales al contexto
+        # 3. Suma de Totales (Ahora sí sumará 4 + 40)
         context['kpi_total_operativas'] = kpis_activos['operativos'] + kpis_lotes['operativos']
         context['kpi_total_no_operativas'] = kpis_activos['no_operativos'] + kpis_lotes['no_operativos']
         context['kpi_total_prestamo'] = kpis_activos['prestamo'] + kpis_lotes['prestamo']
@@ -424,36 +426,76 @@ class UbicacionDeleteView(BaseEstacionMixin, CustomPermissionRequiredMixin, Ubic
         ubicacion_nombre = ubicacion.nombre
         
         try:
-            # Intento de eliminación
-            ubicacion.delete()
+            with transaction.atomic():
+                # 1. Obtener todos los compartimentos de esta ubicación
+                compartimentos = ubicacion.compartimento_set.all()
 
-            # --- AUDITORÍA ---
-            # Pasamos 'objetivo=None' porque ya no existe en BD, 
-            # pero usamos 'detalles' para persistir el nombre.
-            self.auditar(
-                verbo=f"eliminó permanentemente el/la {tipo_nombre.lower()}",
-                objetivo=None, 
-                objetivo_repr=ubicacion_nombre,
-                detalles={'nombre_rol_eliminado': ubicacion_nombre}
-            )
-            
-            messages.success(request, f"El {tipo_nombre.lower()} '{ubicacion_nombre}' ha sido eliminado exitosamente.")
-            
-            # Redirigir a la lista correspondiente
-            if tipo_nombre == 'VEHÍCULO':
-                return redirect(self.get_success_url(tipo_ubicacion = "vehiculos"))
-            else:
-                return redirect(self.get_success_url(tipo_ubicacion = "areas"))
+                # 2. VALIDACIÓN DE EXISTENCIAS (Inventario Físico)
+                # Debemos asegurar que NO haya stock físico antes de borrar nada.
+                tiene_cosas = False
+                for comp in compartimentos:
+                    # Verificamos si hay Activos (serializados) o Lotes (fungibles) [cite: 32]
+                    if hasattr(comp, 'activo_set') and comp.activo_set.exists():
+                        tiene_cosas = True
+                        break
+                    if hasattr(comp, 'loteinsumo_set') and comp.loteinsumo_set.exists():
+                        tiene_cosas = True
+                        break
+                
+                if tiene_cosas:
+                    messages.error(request, f"No se puede eliminar '{ubicacion_nombre}' porque contiene existencias físicas en sus compartimentos. Mueva o dé de baja los ítems primero.")
+                    return redirect('gestion_inventario:ruta_gestionar_ubicacion', ubicacion_id=ubicacion.id)
+
+                # 3. GESTIÓN DEL COMPARTIMENTO "GENERAL"
+                # Filtramos compartimentos que NO sean 'General' (case insensitive)
+                compartimentos_usuario = compartimentos.exclude(nombre__iexact="General")
+
+                if compartimentos_usuario.exists():
+                    # Si hay compartimentos creados por el usuario (ej: "Estante 1"), 
+                    # forzamos a que el usuario los borre manualmente por seguridad.
+                    messages.error(request, f"La ubicación tiene compartimentos personalizados (distintos a 'General'). Elimínelos primero.")
+                    return redirect(self.redirect_url, ubicacion_id=ubicacion.id)
+                
+                # 4. LIMPIEZA AUTOMÁTICA
+                # Si llegamos aquí, sabemos que:
+                # a) No hay stock físico.
+                # b) No hay compartimentos de usuario.
+                # c) Solo queda el compartimento "General" (o ninguno).
+                
+                # Borramos 'General' si existe para liberar el ProtectedError
+                compartimentos.filter(nombre__iexact="General").delete()
+
+
+                # 5. ELIMINACIÓN FINAL DE LA UBICACIÓN
+                ubicacion.delete()
+
+                # --- AUDITORÍA ---
+                # Pasamos 'objetivo=None' porque ya no existe en BD, 
+                # pero usamos 'detalles' para persistir el nombre.
+                self.auditar(
+                    verbo=f"eliminó permanentemente el/la {tipo_nombre.lower()}",
+                    objetivo=None, 
+                    objetivo_repr=ubicacion_nombre,
+                    detalles={'nombre_rol_eliminado': ubicacion_nombre}
+                )
+
+                messages.success(request, f"El {tipo_nombre.lower()} '{ubicacion_nombre}' ha sido eliminado exitosamente.")
+
+                # Redirigir a la lista correspondiente
+                if tipo_nombre == 'VEHÍCULO':
+                    return redirect(self.get_success_url(tipo_ubicacion = "vehiculos"))
+                else:
+                    return redirect(self.get_success_url(tipo_ubicacion = "areas"))
 
         except ProtectedError:
             # Si falla (on_delete=PROTECT), capturamos el error
             messages.error(request, f"No se puede eliminar '{ubicacion_nombre}'. Asegúrese de que todos sus compartimentos (incluido 'General') estén vacíos y hayan sido eliminados primero.")
             # Devolvemos al usuario a la página de gestión
-            return redirect(self.redirect_url, ubicacion_id=ubicacion.id)
+            return redirect('gestion_inventario:ruta_gestionar_ubicacion', ubicacion_id=ubicacion.id)
         
         except Exception as e:
             messages.error(request, f"Ocurrió un error inesperado: {e}")
-            return redirect(self.redirect_url, ubicacion_id=ubicacion.id)
+            return redirect('gestion_inventario:ruta_gestionar_ubicacion', ubicacion_id=ubicacion.id)
 
 
 
@@ -829,6 +871,9 @@ class CompartimentoListaView(BaseEstacionMixin, CustomPermissionRequiredMixin, V
         # 1. Base: Filtrar por la estación activa del Mixin y optimizar relaciones
         qs = Compartimento.objects.filter(
             ubicacion__estacion_id=self.estacion_activa_id
+        ).exclude(
+            # EXCLUSIÓN CLAVE: Quitamos los compartimentos "limbo"
+            ubicacion__tipo_ubicacion__nombre='ADMINISTRATIVA'
         ).select_related(
             'ubicacion', 
             'ubicacion__tipo_ubicacion'
@@ -872,6 +917,8 @@ class CompartimentoListaView(BaseEstacionMixin, CustomPermissionRequiredMixin, V
         # Datos para los filtros (Select)
         ubicaciones = Ubicacion.objects.filter(
             estacion_id=self.estacion_activa_id
+        ).exclude(
+            tipo_ubicacion__nombre='ADMINISTRATIVA'
         ).order_by('nombre')
 
         context = {
@@ -2326,6 +2373,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
     template_name = 'gestion_inventario/pages/recepcion_stock.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_recepcionar_stock"
 
+
     def get(self, request, *args, **kwargs):
         cabecera_form = RecepcionCabeceraForm(estacion=self.estacion_activa)
         detalle_formset = RecepcionDetalleFormSet(
@@ -2336,9 +2384,11 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
         context = {
             'cabecera_form': cabecera_form,
             'detalle_formset': detalle_formset,
-            'product_data_json': self._get_product_data_json()
+            'product_data_json': self._get_product_data_json(),
+            'ubicaciones_data_json': self._get_ubicaciones_data_json()
         }
         return render(request, self.template_name, context)
+
 
     def post(self, request, *args, **kwargs):
         cabecera_form = RecepcionCabeceraForm(request.POST, estacion=self.estacion_activa)
@@ -2363,9 +2413,11 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
         context = {
             'cabecera_form': cabecera_form,
             'detalle_formset': detalle_formset,
-            'product_data_json': self._get_product_data_json()
+            'product_data_json': self._get_product_data_json(),
+            'ubicaciones_data_json': self._get_ubicaciones_data_json()
         }
         return render(request, self.template_name, context)
+
 
     @transaction.atomic
     def _procesar_recepcion(self, cabecera_form, detalle_formset):
@@ -2453,6 +2505,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
         messages.success(self.request, "Recepción de stock guardada correctamente.")
         return self._construir_url_redireccion(nuevos_ids)
 
+
     def _crear_activo(self, data, proveedor, fecha, notas, estado):
         """Helper para crear un Activo y su movimiento."""
         activo = Activo.objects.create(
@@ -2478,6 +2531,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
         )
         return activo.id
 
+
     def _crear_lote(self, data, proveedor, fecha, notas, estado):
         """Helper para crear un Lote y su movimiento."""
         lote = LoteInsumo.objects.create(
@@ -2502,6 +2556,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
         )
         return lote.id
 
+
     def _construir_url_redireccion(self, ids_dict):
         """Construye la URL final (Impresión o Stock) según resultados."""
         if not ids_dict['activos'] and not ids_dict['lotes']:
@@ -2516,6 +2571,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
         
         return f"{base_url}?{'&'.join(params)}"
 
+
     def _get_product_data_json(self):
         """
         Método auxiliar para obtener los datos del producto.
@@ -2527,6 +2583,37 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
         )
         # Convertimos a diccionario {id: data}
         data = {p['id']: {'es_serializado': p['es_serializado'], 'es_expirable': p['es_expirable']} for p in productos}
+        return json.dumps(data)
+    
+
+    def _get_ubicaciones_data_json(self):
+        """
+        Genera una estructura JSON con Ubicaciones y sus Compartimentos,
+        EXCLUYENDO las ubicaciones de tipo 'ADMINISTRATIVA' (el limbo).
+        """
+        # 1. Filtramos ubicaciones que NO sean administrativas
+        ubicaciones = Ubicacion.objects.filter(
+            estacion=self.estacion_activa
+        ).exclude(
+            tipo_ubicacion__nombre='ADMINISTRATIVA'
+        ).prefetch_related('compartimento_set')
+
+        data = {}
+        for ubi in ubicaciones:
+            # 2. Convertimos los compartimentos manualmente para asegurar que el ID sea string
+            compartimentos_list = []
+            for comp in ubi.compartimento_set.all():
+                compartimentos_list.append({
+                    'id': str(comp.id),
+                    'nombre': comp.nombre
+                })
+            
+            # 3. Usamos el ID de ubicación como string para la clave
+            data[str(ubi.id)] = {
+                'nombre': ubi.nombre,
+                'compartimentos': compartimentos_list
+            }
+        
         return json.dumps(data)
 
 
@@ -3273,6 +3360,7 @@ class TransferenciaExistenciaView(BaseEstacionMixin, CustomPermissionRequiredMix
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno"
     success_url = reverse_lazy('gestion_inventario:ruta_stock_actual')
 
+
     def dispatch(self, request, *args, **kwargs):
         # 1. Carga Explícita del Ítem (Mixin)
         self.item = self.get_inventory_item()
@@ -3287,6 +3375,7 @@ class TransferenciaExistenciaView(BaseEstacionMixin, CustomPermissionRequiredMix
 
         return super().dispatch(request, *args, **kwargs)
 
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['item'] = self.item
@@ -3294,8 +3383,6 @@ class TransferenciaExistenciaView(BaseEstacionMixin, CustomPermissionRequiredMix
         kwargs['estacion'] = self.estacion_activa 
         return kwargs
 
-    # NOTA: Eliminamos get_context_data porque StationInventoryObjectMixin 
-    # ya inyecta 'item', 'tipo_item' y 'es_lote' automáticamente.
 
     def form_valid(self, form):
         compartimento_destino = form.cleaned_data['compartimento_destino']
@@ -3382,9 +3469,46 @@ class TransferenciaExistenciaView(BaseEstacionMixin, CustomPermissionRequiredMix
             messages.error(self.request, f"Error crítico al transferir: {e}")
             return self.form_invalid(form)
         
+
     def form_invalid(self, form):
         messages.error(self.request, "Hubo un error en el formulario. Por favor, revisa los datos ingresados.")
         return super().form_invalid(form)
+    
+
+    def get_context_data(self, **kwargs):
+        """
+        Reincorporamos get_context_data para inyectar los datos del selector en cascada.
+        """
+        context = super().get_context_data(**kwargs)
+        context['ubicaciones_data_json'] = self._get_ubicaciones_data_json()
+        return context
+
+
+    def _get_ubicaciones_data_json(self):
+        """
+        Genera JSON {UbicacionID: {nombre, compartimentos: [...]}}
+        Excluyendo 'ADMINISTRATIVA'.
+        """
+        ubicaciones = Ubicacion.objects.filter(
+            estacion=self.estacion_activa
+        ).exclude(
+            tipo_ubicacion__nombre='ADMINISTRATIVA'
+        ).prefetch_related('compartimento_set')
+
+        data = {}
+        for ubi in ubicaciones:
+            compartimentos_list = []
+            for comp in ubi.compartimento_set.all():
+                compartimentos_list.append({
+                    'id': str(comp.id),
+                    'nombre': comp.nombre
+                })
+            
+            data[str(ubi.id)] = {
+                'nombre': ubi.nombre,
+                'compartimentos': compartimentos_list
+            }
+        return json.dumps(data)
 
 
 

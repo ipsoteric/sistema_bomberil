@@ -104,3 +104,26 @@
     </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Configuración de TomSelect en modo "Solo Selección"
+        const tomSelectConfig = {
+            create: false,
+            sortField: { field: "text", direction: "asc" },
+            placeholder: "Buscar proveedor...",
+            allowEmptyOption: true,
+        };
+
+        // Inicializar todos los selects que tengan la clase 'tom-select-basic'
+        document.querySelectorAll('.tom-select-basic').forEach(el => {
+            // Evitamos reinicializar si ya tiene instancia
+            if (!el.tomselect) {
+                new TomSelect(el, tomSelectConfig);
+            }
+        });
+    });
+</script>
+{% endblock %}

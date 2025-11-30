@@ -25,7 +25,7 @@
                         <div class="row g-4">
                             <div class="col-12 col-md-5">
                                 <h5 class="color_primario fs_normal fw-bold">Imagen del Vehículo</h5>
-                                <img src="{% if ubicacion.imagen %}{{ ubicacion.imagen.url }}{% else %}{% static 'gestion_inventario/imagenes/default_vehiculo.png' %}{% endif %}"
+                                <img src="{% if ubicacion.imagen_thumb_medium %}{{ ubicacion.imagen_thumb_medium.url }}{% else %}{% static 'gestion_inventario/imagenes/default_vehiculo.png' %}{% endif %}"
                                      class="img-fluid rounded-3 shadow-sm mb-3" alt="Imagen {{ ubicacion.nombre }}" 
                                      style="height: 250px; width: 100%; object-fit: cover;">
                                 

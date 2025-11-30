@@ -172,8 +172,8 @@
                                 {% for producto in productos %}
                                 <tr>
                                     <td>
-                                        {% if producto.imagen %}
-                                            <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre_oficial }}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;">
+                                        {% if producto.imagen_thumb_small %}
+                                            <img src="{{ producto.imagen_thumb_small.url }}" alt="{{ producto.nombre_oficial }}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;">
                                         {% else %}
                                             <div class="img-thumbnail-placeholder d-flex align-items-center justify-content-center bg-light text-muted" style="width: 60px; height: 60px;">
                                                 <i class="fas fa-image"></i>

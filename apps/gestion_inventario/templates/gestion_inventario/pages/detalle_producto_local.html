@@ -21,10 +21,10 @@
                 </div>
                 <div class="card-body">
                     
-                    {% if producto.producto_global.imagen %}
-                        <img src="{{ producto.producto_global.imagen.url }}" class="img-fluid rounded mb-3" 
+                    {% if producto.producto_global.imagen_thumb_medium %}
+                        <img src="{{ producto.producto_global.imagen_thumb_medium.url }}" class="img-fluid rounded mb-3" 
                              alt="{{ producto.producto_global.nombre_oficial }}" 
-                             style="max-height: 300px; width: 100%; object-fit: cover; border: 1px solid #ddd;">
+                             style="max-height: 300px; width: 100%; object-fit: contain; border: 1px solid #ddd;">
                     {% else %}
                         <div class="mb-3 d-flex align-items-center justify-content-center bg-light rounded text-muted" 
                              style="height: 200px; border: 1px dashed #ccc;">

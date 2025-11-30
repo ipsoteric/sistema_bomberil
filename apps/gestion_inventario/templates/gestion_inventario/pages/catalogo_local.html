@@ -101,8 +101,8 @@
                 <div class="col">
                     <div class="card h-100 shadow-sm product-card">
                         {% with prod_global=prod_local.producto_global %} {# Atajo para no repetir #}
-                        {% if prod_global.imagen %}
-                            <img src="{{ prod_global.imagen.url }}" class="card-img-top" alt="{{ prod_global.nombre_oficial }}">
+                        {% if prod_global.imagen_thumb_medium %}
+                            <img src="{{ prod_global.imagen_thumb_medium.url }}" class="card-img-top" alt="{{ prod_global.nombre_oficial }}" style="object-fit: contain;">
                         {% else %}
                             <div class="card-img-top-placeholder d-flex align-items-center justify-content-center bg-light text-muted">
                                 <i class="fas fa-image fa-3x"></i>
@@ -175,8 +175,8 @@
                                 <tr>
                                     {% with prod_global=prod_local.producto_global %}
                                     <td>
-                                        {% if prod_global.imagen %}
-                                            <img src="{{ prod_global.imagen.url }}" alt="{{ prod_global.nombre_oficial }}" class="img-thumbnail p-0 border-0" style="width: 40px; height: 40px; object-fit: cover;">
+                                        {% if prod_global.imagen_thumb_small %}
+                                            <img src="{{ prod_global.imagen_thumb_small.url }}" alt="{{ prod_global.nombre_oficial }}" class="img-thumbnail p-0 border-0" style="width: 40px; height: 40px; object-fit: cover;">
                                         {% else %}
                                             <div class="img-thumbnail-placeholder d-flex align-items-center justify-content-center bg-light text-muted" style="width: 40px; height: 40px;">
                                                 <i class="fas fa-image"></i>

@@ -3,8 +3,8 @@
 {# Partial para mostrar una tarjeta de vehículo en el slider #}
 <div class="vehiculo-card fondo_secundario_variante slider-item"> {# Añadida clase vehiculo-card #}
     <div class="almacen-card__imagen-contenedor">
-        {% if ubicacion.imagen %}
-            <img src="{{ ubicacion.imagen.url }}" alt="Imagen de {{ ubicacion.nombre }}" class="almacen-card__imagen">
+        {% if ubicacion.imagen_thumb_medium %}
+            <img src="{{ ubicacion.imagen_thumb_medium.url }}" alt="Imagen de {{ ubicacion.nombre }}" class="almacen-card__imagen">
         {% else %}
             {# Puedes poner una imagen por defecto específica para vehículos #}
             <img src="{% static 'gestion_inventario/imagenes/default_vehiculo.png' %}" alt="Imagen por defecto" class="almacen-card__imagen almacen-card__imagen--default">

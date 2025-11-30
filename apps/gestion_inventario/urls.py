@@ -37,7 +37,6 @@ from .views import (
     GenerarQRView,
     ImprimirEtiquetasView,
     CrearPrestamoView,
-    BuscarItemPrestamoJson,
     HistorialPrestamosView,
     GestionarDevolucionView,
     DestinatarioListView,
@@ -128,8 +127,7 @@ urlpatterns = [
 
     # Prestar existencias / Crear préstamo
     path('prestamos/crear/', CrearPrestamoView.as_view(), name='ruta_crear_prestamo'),
-    # Endpoint para buscar existencias para préstamo
-    path('api/prestamo/buscar-item/<str:codigo>/', BuscarItemPrestamoJson.as_view(), name='api_buscar_item_prestamo'),
+    # Endpoint para buscar existencias para préstamo en apps.api (api:api_buscar_prestables)
     path('prestamos/', HistorialPrestamosView.as_view(), name='ruta_historial_prestamos'),
     path('prestamos/<int:prestamo_id>/gestionar/', GestionarDevolucionView.as_view(), name='ruta_gestionar_devolucion'),
 

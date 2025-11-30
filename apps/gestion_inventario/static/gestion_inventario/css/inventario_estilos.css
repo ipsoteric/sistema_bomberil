@@ -9,3 +9,6 @@
 
 /* Tarjeta de Vehículo */
 @import url("vehiculo_card.css");
+
+/* Hoja de impresión de etiquetas */
+@import url('imprimir_etiquetas.css')

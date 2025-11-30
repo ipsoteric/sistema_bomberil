@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         debounceTimer = setTimeout(() => {
-            fetch(`{% url 'gestion_mantenimiento:api_buscar_activo_para_plan' %}?plan_id=${planId}&q=${query}`)
+            fetch(`{% url 'api:api_buscar_activo_para_plan' %}?plan_id=${planId}&q=${query}`)
                 .then(response => response.json())
                 .then(data => {
                     divResultados.innerHTML = '';

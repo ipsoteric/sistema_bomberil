@@ -1,0 +1,91 @@
+<div class="menu-acciones-usuarios"> {# Reutilizamos la clase contenedora de estilos existente #}
+
+    {# --- ACCIONES COMUNES (Ver) --- #}
+    <a class="menu-acciones-usuarios__accion color_negro" href="#">
+        <i class="fa-solid fa-eye"></i> Ver Detalles
+    </a>
+
+    {# --- ACCIONES PARA ACTIVOS SERIALIZADOS --- #}
+    {% if item.producto.es_serializado %}
+        
+        {# Imprimir QR #}
+        <a class="menu-acciones-usuarios__accion color_negro" 
+           href="{% url 'gestion_inventario:ruta_imprimir_etiquetas' %}?activos={{ item.id }}" target="_blank">
+            <i class="fa-solid fa-qrcode"></i> Imprimir Etiqueta
+        </a>
+
+        {# Mover #}
+        <a class="menu-acciones-usuarios__accion color_negro" 
+           href="{% url 'gestion_inventario:ruta_mover_existencia' tipo_item='activo' item_id=item.id %}">
+            <i class="fa-solid fa-truck-moving"></i> Mover
+        </a>
+
+        <div class="dropdown-divider"></div>
+
+        {# Dar de Baja #}
+        <a class="menu-acciones-usuarios__accion color_rojo" 
+           href="{% url 'gestion_inventario:ruta_dar_de_baja_existencia' tipo_item='activo' item_id=item.id %}">
+            <i class="fa-solid fa-thumbs-down"></i> Dar de Baja
+        </a>
+
+        {# Reportar Extravío #}
+        <a class="menu-acciones-usuarios__accion color_rojo" 
+           href="{% url 'gestion_inventario:ruta_extraviado_existencia' tipo_item='activo' item_id=item.id %}">
+            <i class="fa-solid fa-search-minus"></i> Reportar Extravío
+        </a>
+
+        {# Anular #}
+        <a class="menu-acciones-usuarios__accion color_rojo" 
+           href="{% url 'gestion_inventario:ruta_anular_existencia' tipo_item='activo' item_id=item.id %}">
+            <i class="fa-solid fa-times-circle"></i> Anular Registro
+        </a>
+
+    {# --- ACCIONES PARA LOTES DE INSUMOS --- #}
+    {% else %}
+
+        {# Imprimir QR #}
+        <a class="menu-acciones-usuarios__accion color_negro" 
+           href="{% url 'gestion_inventario:ruta_imprimir_etiquetas' %}?lotes={{ item.id }}" target="_blank">
+            <i class="fa-solid fa-qrcode"></i> Imprimir Etiqueta
+        </a>
+
+        {# Consumir #}
+        <a class="menu-acciones-usuarios__accion color_verde" 
+           href="{% url 'gestion_inventario:ruta_consumir_stock_lote' item.id %}">
+            <i class="fa-solid fa-minus-circle"></i> Consumir Stock
+        </a>
+
+        {# Mover #}
+        <a class="menu-acciones-usuarios__accion color_negro" 
+           href="{% url 'gestion_inventario:ruta_mover_existencia' tipo_item='lote' item_id=item.id %}">
+            <i class="fa-solid fa-truck-moving"></i> Mover
+        </a>
+
+        {# Ajustar #}
+        <a class="menu-acciones-usuarios__accion color_negro" 
+           href="{% url 'gestion_inventario:ruta_ajustar_stock_lote' item.id %}">
+            <i class="fa-solid fa-balance-scale"></i> Ajustar Cantidad
+        </a>
+
+        <div class="dropdown-divider"></div>
+
+        {# Dar de Baja #}
+        <a class="menu-acciones-usuarios__accion color_rojo" 
+           href="{% url 'gestion_inventario:ruta_dar_de_baja_existencia' tipo_item='lote' item_id=item.id %}">
+            <i class="fa-solid fa-thumbs-down"></i> Dar de Baja
+        </a>
+
+        {# Reportar Extravío #}
+        <a class="menu-acciones-usuarios__accion color_rojo" 
+           href="{% url 'gestion_inventario:ruta_extraviado_existencia' tipo_item='lote' item_id=item.id %}">
+            <i class="fa-solid fa-search-minus"></i> Reportar Extravío
+        </a>
+
+        {# Anular #}
+        <a class="menu-acciones-usuarios__accion color_rojo" 
+           href="{% url 'gestion_inventario:ruta_anular_existencia' tipo_item='lote' item_id=item.id %}">
+            <i class="fa-solid fa-times-circle"></i> Anular Registro
+        </a>
+
+    {% endif %}
+</div>

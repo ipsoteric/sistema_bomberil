@@ -1,7 +1,7 @@
 {% load static %}
 
 <div class="almacen-card slider-item">
-    <img src="{% if ubicacion.imagen %}{{ ubicacion.imagen.url }}{% else %}{% static 'gestion_inventario/imagenes/default_almacen.png' %}{% endif %}" alt="Imagen del {{ ubicacion.nombre }}">
+    <img src="{% if ubicacion.imagen_thumb_medium %}{{ ubicacion.imagen_thumb_medium.url }}{% else %}{% static 'gestion_inventario/imagenes/default_almacen.png' %}{% endif %}" alt="Imagen del {{ ubicacion.nombre }}">
 
     <div class="almacen-card-body fondo_secundario fs_normal">
         

@@ -23,7 +23,7 @@
                         <div class="row g-4">
                             <div class="col-12 col-md-5">
                                 <h5 class="color_primario fs_mediana fw-bold">Imagen Actual</h5>
-                                <img src="{% if compartimento.imagen %}{{ compartimento.imagen.url }}{% else %}{% static 'gestion_inventario/imagenes/default_compartimento.png' %}{% endif %}"
+                                <img src="{% if compartimento.imagen_thumb_medium %}{{ compartimento.imagen_thumb_medium.url }}{% else %}{% static 'gestion_inventario/imagenes/default_compartimento.png' %}{% endif %}"
                                      class="img-fluid rounded-3 shadow-sm mb-3" alt="Imagen {{ compartimento.nombre }}" 
                                      style="height: 250px; width: 100%; object-fit: cover;">
                                 

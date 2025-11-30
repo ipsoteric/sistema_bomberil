@@ -19,10 +19,11 @@
             <div class="card shadow-sm mb-4">
                 
                 <img src="{% if compartimento.imagen %}{{ compartimento.imagen.url }}{% else %}{% static 'gestion_inventario/imagenes/default_compartimento.png' %}{% endif %}"
-                     class="card-img-top img-fluid" alt="Imagen {{ compartimento.nombre }}" style="height: 250px; object-fit: cover;">
+                     class="card-img-top img-fluid" alt="Imagen {{ compartimento.nombre }}" style="height: 250px; object-fit: contain;">
                 
                 <div class="card-body">
                     <h3 class="card-title h5 color_primario fs_mediana mb-1">{{ compartimento.nombre }}</h3>
+                    <p class="card-text mb-2 color_primario_variante fs_normal">{{ compartimento.codigo|default:"Sin código" }}</p>
                     <p class="card-text mb-2 color_primario_variante fs_normal">{{ compartimento.descripcion|default:"Sin descripción" }}</p>
                     
                     <p class="fs_normal mt-2">

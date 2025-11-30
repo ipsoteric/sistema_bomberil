@@ -44,11 +44,20 @@
                         <hr>
 
                         <div class="row justify-content-center my-4">
-                            <div class="col-md-10">
+                            
+                            <div class="col-md-5 mb-3 mb-md-0">
+                                <label class="form-label fs_normal color_primario_variante fw-bold">Ubicación Destino</label>
+                                <select id="select-ubicacion-filter" class="form-select fs_normal fondo_secundario_variante color_primario">
+                                    <option value="">Filtrar Ubicación...</option>
+                                    </select>
+                            </div>
+
+                            <div class="col-md-5">
                                 <label for="{{ form.compartimento_destino.id_for_label }}" class="form-label fs_normal color_primario_variante fw-bold">{{ form.compartimento_destino.label }} (*)</label>
                                 {{ form.compartimento_destino }}
                                 {% if form.compartimento_destino.errors %}<div class="invalid-feedback d-block">{{ form.compartimento_destino.errors.0 }}</div>{% endif %}
                             </div>
+
                         </div>
 
                         {% if es_lote %}
@@ -89,12 +98,86 @@
 {% endblock %}
 
 {% block scripts %}
+<script id="ubicaciones-data" type="application/json">
+    {{ ubicaciones_data_json|safe }}
+</script>
+
 <script>
-// Inicializar los TomSelect
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.tom-select-basic').forEach(el => {
-        if (!el.tomselect) new TomSelect(el, { create: false, placeholder: 'Seleccionar destino...' });
+    
+    // 1. Obtener datos
+    const ubicacionesData = JSON.parse(document.getElementById('ubicaciones-data').textContent);
+    
+    // 2. Elementos del DOM
+    const ubicacionSelect = document.getElementById('select-ubicacion-filter');
+    const compartimentoSelect = document.getElementById('id_compartimento_destino'); // ID estándar de Django
+
+    // 3. Inicializar TomSelect para Ubicación
+    const tsUbicacion = new TomSelect(ubicacionSelect, {
+        create: false,
+        sortField: { field: "text", direction: "asc" },
+        placeholder: "Seleccione Ubicación...",
+        onChange: function(value) {
+            updateCompartimentos(value);
+        }
     });
+
+    // 4. Inicializar TomSelect para Compartimento (Vacío inicialmente)
+    const tsCompartimento = new TomSelect(compartimentoSelect, {
+        create: false,
+        sortField: { field: "text", direction: "asc" },
+        placeholder: "Seleccione ubicación primero...",
+        valueField: 'id',
+        labelField: 'nombre',
+        searchField: 'nombre',
+        options: [], 
+    });
+
+    // 5. Poblar el selector de Ubicación
+    const ubicacionOptions = [];
+    for (const [id, data] of Object.entries(ubicacionesData)) {
+        ubicacionOptions.push({value: id, text: data.nombre});
+    }
+    tsUbicacion.addOption(ubicacionOptions);
+
+
+    // 6. Función de Actualización (Cascada)
+    function updateCompartimentos(ubicacionId) {
+        tsCompartimento.clear();
+        tsCompartimento.clearOptions();
+
+        if (ubicacionId && ubicacionesData[ubicacionId]) {
+            tsCompartimento.enable();
+            tsCompartimento.addOption(ubicacionesData[ubicacionId].compartimentos);
+            tsCompartimento.settings.placeholder = "Seleccione compartimento...";
+        } else {
+            tsCompartimento.disable();
+            tsCompartimento.settings.placeholder = "Seleccione ubicación primero...";
+        }
+        tsCompartimento.sync(); // Refrescar UI
+    }
+
+    // 7. Manejo de Errores (Repoblar si falla el POST)
+    // Si Django devuelve el formulario con un valor seleccionado, intentamos restaurar la vista.
+    const valorInicialCompartimento = compartimentoSelect.getAttribute('value'); 
+    
+    if (valorInicialCompartimento) {
+        // Buscamos a qué ubicación pertenece
+        for (const [ubiId, ubiData] of Object.entries(ubicacionesData)) {
+            const encontrado = ubiData.compartimentos.find(c => c.id == valorInicialCompartimento);
+            if (encontrado) {
+                tsUbicacion.setValue(ubiId); // Esto disparará el onChange -> updateCompartimentos
+                // Pequeño timeout para asegurar que el onChange termine antes de setear el valor
+                setTimeout(() => {
+                    tsCompartimento.setValue(valorInicialCompartimento);
+                }, 10);
+                break;
+            }
+        }
+    } else {
+        tsCompartimento.disable(); // Bloqueado por defecto
+    }
+
 });
 </script>
 {% endblock %}

@@ -101,9 +101,10 @@
     --portal-menu-z-index: 1;
     --panel-z-index: 3;
     --navbar-z-index: 4;
-    --header-z-index: 5;
-    --banner-z-index: 9999;
-    --dropdown-user-menu-z-index: 6;
+    --header-z-index: 9991;
+    --banner-z-index: 9991;
+    --contextual-menu-z-index:9990;
+    --dropdown-user-menu-z-index: 9992;
     --flash-message-z-index: 200;
 }
 

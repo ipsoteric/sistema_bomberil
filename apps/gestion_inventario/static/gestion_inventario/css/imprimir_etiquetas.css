@@ -1,0 +1,209 @@
+/* --- VARIABLES DINÁMICAS --- */
+    :root {
+        /* Valores por defecto (Estándar) */
+        --card-width: 3.5in;
+        --card-height: 2in;
+        --qr-size: 1.25in;
+        --padding-inner: 4mm;
+        
+        --font-title: 10pt;
+        --font-body: 8pt;
+        --font-code: 7pt;
+        --font-main-code: 9pt;
+        --font-badge: 7pt;
+    }
+
+    /* --- ESTRUCTURA --- */
+    .etiqueta-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 20px;
+    }
+
+    .etiqueta {
+        width: var(--card-width);
+        height: var(--card-height);
+        
+        border: 1px dashed #ccc;
+        background: #fff;
+        padding: var(--padding-inner);
+        
+        display: flex;
+        flex-direction: row;
+        align-items: center; 
+        gap: 3mm;
+        
+        overflow: hidden;
+        box-sizing: border-box;
+        position: relative;
+    }
+
+    /* QR */
+    .etiqueta-qr {
+        flex: 0 0 var(--qr-size);
+        width: var(--qr-size);
+        height: var(--qr-size);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .etiqueta-qr img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        image-rendering: pixelated; 
+    }
+
+    /* INFO */
+    .etiqueta-info {
+        flex: 1; 
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        min-width: 0;
+    }
+
+    .info-header {
+        font-family: Arial, sans-serif;
+        font-weight: bold;
+        font-size: var(--font-title);
+        line-height: 1.1;
+        color: #000;
+        
+        /* Permitir hasta 3 líneas, pero en micro se ajustará */
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        word-wrap: break-word; 
+    }
+
+    .info-body {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex-grow: 1;
+        padding-top: 4px;
+    }
+
+    .dato-bloque {
+        display: flex;
+        flex-direction: column;
+        line-height: 1;
+        margin-bottom: 2px;
+    }
+
+    .dato-valor {
+        font-family: 'Segoe UI', sans-serif;
+        font-size: var(--font-body);
+        color: #000;
+        white-space: normal; 
+        word-break: break-word;
+        line-height: 1.1;
+    }
+
+    .dato-codigo-mini {
+        font-family: 'Consolas', monospace;
+        font-size: var(--font-code);
+        color: #000; /* Negro puro para impresión */
+        letter-spacing: -0.2px;
+        background: #f0f0f0;
+        padding: 0 3px;
+        border-radius: 2px;
+        align-self: flex-start;
+        display: inline-block;
+        border: 1px solid #ddd; /* Borde sutil para que se vea si falla el fondo */
+    }
+
+    /* FOOTER */
+    .info-footer {
+        margin-top: auto;
+        border-top: 2px solid #000;
+        padding-top: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 5px; /* Espacio mínimo entre badge y código */
+    }
+
+    .badge-tipo {
+        font-size: var(--font-badge);
+        background-color: #000 !important; /* Important para sobreescribir estilos de navegador */
+        color: #fff !important;
+        padding: 1px 4px;
+        border-radius: 2px;
+        font-weight: bold;
+        text-transform: uppercase;
+        
+        /* MAGIA PARA IMPRESIÓN */
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        border: 1px solid #000; /* Fallback */
+    }
+
+    .main-code {
+        font-family: 'Courier New', monospace;
+        font-weight: 900;
+        font-size: var(--font-main-code);
+        text-align: right;
+        line-height: 1;
+        white-space: nowrap; /* Evitar que el código se parta */
+    }
+
+    /* --- ESTILOS ESPECÍFICOS: MINIMALISTA --- */
+    .layout-minimal .info-body {
+        display: none !important; 
+    }
+
+    .layout-minimal .info-footer {
+        border-top: none; 
+        padding-top: 0;
+        margin-top: 2px;
+    }
+    
+    .layout-minimal .etiqueta-info {
+        justify-content: center; /* Centrado vertical */
+        gap: 2px;
+    }
+
+    .layout-minimal .info-header {
+        /* En minimalista, damos más espacio al nombre si es necesario */
+        -webkit-line-clamp: 4; 
+        margin-bottom: 2px;
+    }
+
+    /* --- IMPRESIÓN --- */
+    .no-print { margin-bottom: 20px; }
+
+    @media print {
+        @page { size: auto; margin: 2mm; } /* Márgenes mínimos */
+        
+        body { visibility: hidden; background: white; margin: 0; padding: 0; }
+        #zona-impresion, #zona-impresion * { visibility: visible; }
+        
+        #zona-impresion {
+            position: absolute; left: 0; top: 0; width: 100%;
+            display: flex; flex-wrap: wrap; gap: 2mm;
+            padding: 0; margin: 0;
+        }
+        
+        .etiqueta {
+            border: 1px solid #000;
+            break-inside: avoid; page-break-inside: avoid;
+            float: left;
+        }
+        
+        /* Asegurar que los badges se vean negros */
+        .badge-tipo {
+            background-color: #000 !important;
+            color: #fff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        .no-print, header, nav, footer, .sidebar { display: none !important; }
+    }

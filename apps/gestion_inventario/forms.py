@@ -298,14 +298,20 @@ class ProductoLocalEditForm(forms.ModelForm):
         
         super().__init__(*args, **kwargs)
 
-        # Filtrar proveedores para mostrar solo los de la estación actual (si aplica)
-        # O podrías querer mostrar todos los proveedores globales. Ajusta según necesidad.
-        if estacion_actual and 'proveedor_preferido' in self.fields:
-             # Asumiendo que Proveedor tiene un campo 'estacion_creadora' o similar
-             # Si los proveedores son globales, elimina este filtro.
-            self.fields['proveedor_preferido'].queryset = Proveedor.objects.filter(estacion_creadora=estacion_actual).order_by('nombre')
-        elif 'proveedor_preferido' in self.fields:
-             self.fields['proveedor_preferido'].queryset = Proveedor.objects.order_by('nombre')
+        # --- Mostrar TODOS los proveedores ---
+        if 'proveedor_preferido' in self.fields:
+            self.fields['proveedor_preferido'].queryset = Proveedor.objects.all().order_by('nombre')
+            # Opcional: Agregar un placeholder vacío
+
+        # --- Clase CSS para identificarlo en el Template ---
+        self.fields['proveedor_preferido'].widget.attrs.update({
+            'class': 'tom-select-basic form-select fs_normal fondo_secundario color_primario'
+        })
+
+        # Deshabilitar 'es_serializado' si se indica (Se mantiene igual)
+        if disable_es_serializado and 'es_serializado' in self.fields:
+            self.fields['es_serializado'].disabled = True
+            self.fields['es_serializado'].help_text += " (No se puede modificar porque ya existe inventario registrado para este producto)."
 
 
         # Deshabilitar 'es_serializado' si se indica

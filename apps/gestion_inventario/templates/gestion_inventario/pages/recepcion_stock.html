@@ -64,16 +64,25 @@
                 {% for form in detalle_formset %}
                 <div class="detalle-form mb-3 p-3 border rounded-2 fondo_secundario_variante" id="form-{{ forloop.counter0 }}">
                     <div class="row g-2 align-items-center">
-                        <div class="col-lg-3">
+                        <div class="col-lg-2">
                             <label for="{{ form.producto.id_for_label }}" class="form-label fw-bold fs_pequena">Producto</label>
                             {{ form.producto }}
                             {% if form.producto.errors %}<div class="invalid-feedback d-block">{{ form.producto.errors.0 }}</div>{% endif %}
                         </div>
+
+                        <div class="col-lg-2">
+                            <label class="form-label fw-bold fs_pequena">Ubicación</label>
+                            <select class="form-select fs_normal select-ubicacion-filter">
+                                <option value="">Filtrar Ubicación...</option>
+                                </select>
+                        </div>
+
                         <div class="col-lg-2">
                             <label for="{{ form.compartimento_destino.id_for_label }}" class="form-label fw-bold fs_pequena">Destino</label>
                             {{ form.compartimento_destino }}
                             {% if form.compartimento_destino.errors %}<div class="invalid-feedback d-block">{{ form.compartimento_destino.errors.0 }}</div>{% endif %}
                         </div>
+
                         <div class="col-6 col-lg-1">
                             <label for="{{ form.costo_unitario.id_for_label }}" class="form-label fw-bold fs_pequena">Costo U.</label>
                             {{ form.costo_unitario }}
@@ -186,14 +195,18 @@
         </div>
     </div>
 </div>
-<script id="product-data" type="application/json">
-    {{ product_data_json|safe }}
-</script>
 
 {% endblock %}
 
 
 {% block scripts %}
+
+<script id="product-data" type="application/json">
+    {{ product_data_json|safe }}
+</script>
+<script id="ubicaciones-data" type="application/json">
+    {{ ubicaciones_data_json|safe }}
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -203,6 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const formsetContainer = document.getElementById('detalle-formset-container');
     const addButton = document.getElementById('add-detalle-form');
     const totalFormsInput = document.getElementById('id_detalles-TOTAL_FORMS'); // Prefix 'detalles'
+    const ubicacionesData = JSON.parse(document.getElementById('ubicaciones-data').textContent);
     
     const template = document.getElementById('detalle-form-template');
     if (!template) {
@@ -325,12 +339,86 @@ document.addEventListener('DOMContentLoaded', function() {
      * Inicializa los listeners y TomSelect para una fila de formulario (existente o nueva)
      */
     function initializeFormRow(formRow) {
-        
-        // Inicializar Tom Select para el destino
-        const compartimentoSelect = formRow.querySelector('select[name$=\"-compartimento_destino\"]');
-        if (compartimentoSelect && !compartimentoSelect.tomselect) {
-            new TomSelect(compartimentoSelect, { ...tomSelectConfig, placeholder: "Buscar destino..."});
+        // 1. Configurar el Selector de UBICACIÓN (El Filtro)
+        const ubicacionSelect = formRow.querySelector('.select-ubicacion-filter');
+        if (ubicacionSelect && ubicacionSelect.options.length <= 1) { // Evitar repoblar si ya tiene datos
+            for (const [id, data] of Object.entries(ubicacionesData)) {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = data.nombre;
+                ubicacionSelect.appendChild(option);
+            }
         }
+
+        // 2. Configurar el Selector de COMPARTIMENTO (Destino Real)
+        const compartimentoSelect = formRow.querySelector('select[name$=\"-compartimento_destino\"]');
+        let tsCompartimento;
+
+        if (compartimentoSelect) {
+            // Si ya existe una instancia (ej: al clonar), la destruimos para reconfigurarla limpia
+            if (compartimentoSelect.tomselect) {
+                // Guardamos el valor seleccionado actual si estamos editando (post fail)
+                var initialValue = compartimentoSelect.tomselect.getValue();
+                compartimentoSelect.tomselect.destroy();
+            }
+
+            // Inicializamos TomSelect vacío o con opciones filtradas
+            tsCompartimento = new TomSelect(compartimentoSelect, { 
+                ...tomSelectConfig, 
+                placeholder: "Seleccione ubicación primero...",
+                valueField: 'id',
+                labelField: 'nombre',
+                searchField: 'nombre',
+                options: [], // Iniciamos VACÍO para obligar a usar el filtro
+                create: false
+            });
+            
+            // Si Django devolvió el form con error y ya había un valor seleccionado:
+            // Debemos intentar restaurar la ubicación y el compartimento visualmente.
+            const valorActual = compartimentoSelect.getAttribute('value') || initialValue;
+            
+            if (valorActual) {
+                // Buscamos a qué ubicación pertenece este compartimento
+                for (const [ubiId, ubiData] of Object.entries(ubicacionesData)) {
+                    const compEncontrado = ubiData.compartimentos.find(c => c.id == valorActual);
+                    if (compEncontrado) {
+                        ubicacionSelect.value = ubiId; // Seleccionamos la ubicación
+                        // Cargamos las opciones de esa ubicación en TomSelect
+                        tsCompartimento.addOption(ubiData.compartimentos);
+                        tsCompartimento.setValue(valorActual); // Seleccionamos el compartimento
+                        tsCompartimento.settings.placeholder = "Seleccione compartimento...";
+                        tsCompartimento.inputState(); // Refrescar UI
+                        break;
+                    }
+                }
+            } else {
+                 tsCompartimento.disable(); // Deshabilitado hasta elegir ubicación
+            }
+        }
+
+        // 3. Lógica de "Cascada" (Dependencia)
+        if (ubicacionSelect && tsCompartimento) {
+            ubicacionSelect.addEventListener('change', function() {
+                const ubicacionId = this.value;
+                
+                // Limpiamos el compartimento actual
+                tsCompartimento.clear();
+                tsCompartimento.clearOptions();
+
+                if (ubicacionId && ubicacionesData[ubicacionId]) {
+                    // Habilitamos y cargamos las opciones correspondientes
+                    tsCompartimento.enable();
+                    tsCompartimento.addOption(ubicacionesData[ubicacionId].compartimentos);
+                    tsCompartimento.settings.placeholder = "Seleccione compartimento...";
+                } else {
+                    // Si seleccionan "Filtrar...", bloqueamos
+                    tsCompartimento.disable();
+                    tsCompartimento.settings.placeholder = "Seleccione ubicación primero...";
+                }
+                tsCompartimento.sync(); // Forzar actualización visual
+            });
+        }
+        
         
         // Inicializar TomSelect para el producto
         const productoSelectTS = formRow.querySelector('select[name$=\"-producto\"]');
