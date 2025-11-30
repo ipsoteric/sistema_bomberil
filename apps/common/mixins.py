@@ -301,10 +301,22 @@ class CustomPermissionRequiredMixin(PermissionRequiredMixin):
     url_redireccion = 'portal:ruta_inicio'
 
     def handle_no_permission(self):
-        # Si el usuario no está logueado, comportamiento normal (redirigir al login)
+        # 1. Si no está logueado, comportamiento estándar (al Login)
         if not self.request.user.is_authenticated:
             return super().handle_no_permission()
 
-        # Si está logueado pero sin permiso: Mensaje + Redirect
+        # 2. Mensaje de error
         messages.error(self.request, self.mensaje_sin_permiso)
+        print("El usuario no tiene permisos para realizar esta acción")
+
+        # 3. INTENTAR VOLVER ATRÁS
+        # Obtenemos la URL desde donde vino el usuario
+        referer = self.request.META.get('HTTP_REFERER')
+
+        if referer:
+            return redirect(referer)
+        
+        # 4. FALLBACK (Plan B)
+        # Si el usuario escribió la URL directa o el navegador bloqueó el referer,
+        # lo enviamos al inicio por defecto.
         return redirect(self.url_redireccion)
