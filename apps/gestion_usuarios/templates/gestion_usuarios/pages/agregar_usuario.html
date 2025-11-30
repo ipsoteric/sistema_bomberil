@@ -164,6 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             else if (data.status === 'NO_EXISTE') {
                 // --- Caso 3: Usuario no encontrado ---
+                // 1. Capturamos el RUT que el usuario escribió
+                const rutBuscado = buscarInputRUT.value;
+                
+                // 2. Construimos la URL con el parámetro GET
+                // encodeURIComponent es vital para manejar caracteres especiales como puntos o guiones
+                const urlConRut = `${crearUsuarioUrl}?rut=${encodeURIComponent(rutBuscado)}`;
+
                 content = `
                     <div class="alert alert-warning fs_normal" role="alert">
                         <i class="fas fa-info-circle me-1"></i> ${data.mensaje}
@@ -171,8 +178,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="card shadow-sm">
                         <div class="card-body text-center p-4">
                             <p class="fs_normal mb-3">Para agregarlo a la estación, primero debe crear su cuenta de usuario.</p>
-                            <a href="${crearUsuarioUrl}" class="btn btn-success fs_normal">
-                                <i class="fas fa-user-plus me-1"></i> Crear Nuevo Usuario
+                            <a href="${urlConRut}" class="btn btn-success fs_normal">
+                                <i class="fas fa-user-plus me-1"></i> Crear Nuevo Usuario con RUT ${rutBuscado}
                             </a>
                         </div>
                     </div>

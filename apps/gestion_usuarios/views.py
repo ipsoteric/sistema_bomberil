@@ -376,7 +376,15 @@ class UsuarioCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, Auditor
 
     # --- 2. Métodos Helper (Formulario, Contexto) ---
     def get_form(self, data=None, files=None):
-        """Helper para instanciar el formulario (incluye files)."""
+        """Helper para instanciar el formulario (incluye files y valores iniciales)."""
+        
+        # Si es una petición GET (sin datos POST), intentamos pre-llenar
+        if data is None:
+            rut_prellenado = self.request.GET.get('rut') # Capturamos '?rut=...'
+            if rut_prellenado:
+                # 'initial' es la forma correcta de pre-llenar un Django Form
+                return self.form_class(initial={'rut': rut_prellenado})
+        
         return self.form_class(data, files)
 
     def get_context_data(self, **kwargs):
