@@ -40,8 +40,8 @@
                         <button type="submit" class="card station-card h-100 w-100 text-start border-0 shadow-sm p-0">
                             <div class="card-img-wrapper position-relative">
                                 {# Imagen de Fondo: Usar la de la estación o una de stock por defecto #}
-                                {% if estacion.imagen %}
-                                <img src="{{ estacion.imagen.url }}" class="card-img-top" alt="Imagen de {{ estacion.nombre }}">
+                                {% if estacion.imagen_thumb_medium %}
+                                <img src="{{ estacion.imagen_thumb_medium.url }}" class="card-img-top" alt="Imagen de {{ estacion.nombre }}">
                                 {% else %}
                                 <img src="{% static 'portal/imagenes/default-station-cover.jpg' %}" class="card-img-top" alt="Imagen de cuartel de bomberos por defecto">
                                 {% endif %}
@@ -51,8 +51,8 @@
 
                                 {# Logo de la Estación: Centrado y ligeramente más grande #}
                                 <div class="station-logo-overlay">
-                                    {% if estacion.logo %}
-                                    <img src="{{ estacion.logo.url }}" class="station-logo" alt="Logo de {{ estacion.nombre }}">
+                                    {% if estacion.logo_thumb_small %}
+                                    <img src="{{ estacion.logo_thumb_small.url }}" class="station-logo" alt="Logo de {{ estacion.nombre }}">
                                     {% else %}
                                     {# Logo de stock por defecto, ejemplo: un escudo genérico #}
                                     <img src="{% static 'portal/imagenes/default-station-logo.png' %}" class="station-logo" alt="Logo de bomberos por defecto">
