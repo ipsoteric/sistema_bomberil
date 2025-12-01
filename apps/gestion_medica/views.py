@@ -1,5 +1,6 @@
 import base64
 import qrcode
+import csv 
 from io import BytesIO
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
@@ -8,6 +9,9 @@ from django.urls import reverse
 from django.db import IntegrityError
 from django.db.models import Count, ProtectedError
 from datetime import date
+from django.http import HttpResponse
+from apps.common.mixins import BaseEstacionMixin, CustomPermissionRequiredMixin
+from .models import FichaMedica
 
 # --- Imports del Proyecto ---
 from .models import (
@@ -192,6 +196,121 @@ class MedicoModificarView(BaseEstacionMixin, AuditoriaMixin, CustomPermissionReq
         messages.error(request, "Error al actualizar la ficha. Verifique los datos.")
         return render(request, "gestion_medica/pages/modificar_voluntario.html", {'form': form, 'ficha': ficha})
 
+class MedicoExportarCSVView(BaseEstacionMixin, CustomPermissionRequiredMixin, View):
+    permission_required = 'gestion_usuarios.accion_gestion_medica_generar_reportes'
+
+    def get(self, request):
+        # 1. Configurar la respuesta como archivo CSV (que Excel puede abrir)
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="listado_completo_ficha_medica.csv"'
+        
+        # 'utf-8-sig' es importante para que Excel reconozca tildes y ñ correctamente
+        response.write(u'\ufeff'.encode('utf8')) 
+
+        writer = csv.writer(response, delimiter=';') # Usamos punto y coma que es estándar en Excel latam
+
+        # 2. Definir las columnas (Encabezados)
+        encabezados = [
+            'RUT', 
+            'Nombre Completo', 
+            'Fecha Nacimiento',
+            'Edad',
+            'Teléfono Personal',
+            'Grupo Sanguíneo', 
+            'Sistema Salud', 
+            'Peso (kg)',
+            'Altura (mts)',
+            'Presión Arterial',
+            'Alergias',           # Lista separada por comas
+            'Enfermedades',       # Lista separada por comas
+            'Medicamentos',       # Lista separada por comas
+            'Cirugías',           # Lista separada por comas
+            'Contacto Emergencia (Nombre)',
+            'Contacto Emergencia (Teléfono)',
+            'Observaciones Generales'
+        ]
+        writer.writerow(encabezados)
+
+        # 3. Obtener datos filtrados por estación activa
+        estacion = self.estacion_activa
+        fichas = FichaMedica.objects.select_related(
+            'voluntario', 
+            'voluntario__usuario', 
+            'grupo_sanguineo', 
+            'sistema_salud'
+        ).prefetch_related(
+            'alergias__alergia', 
+            'enfermedades__enfermedad',
+            'medicamentos__medicamento',
+            'cirugias__cirugia',
+            'voluntario__contactos_emergencia'
+        ).filter(
+            voluntario__usuario__membresias__estacion=estacion,
+            voluntario__usuario__membresias__estado='ACTIVO'
+        )
+
+        # 4. Escribir fila por fila
+        for ficha in fichas:
+            voluntario = ficha.voluntario
+            usuario = voluntario.usuario
+
+            # --- Cálculos y Formateo de Datos ---
+            
+            # Edad
+            fecha_nac = voluntario.fecha_nacimiento
+            edad = "S/I"
+            if fecha_nac:
+                today = date.today()
+                edad = today.year - fecha_nac.year - ((today.month, today.day) < (fecha_nac.month, fecha_nac.day))
+            
+            # Presión Arterial (juntar sistólica y diastólica en una celda o podrías separarlas)
+            presion = "S/I"
+            if ficha.presion_arterial_sistolica and ficha.presion_arterial_diastolica:
+                presion = f"{ficha.presion_arterial_sistolica}/{ficha.presion_arterial_diastolica}"
+
+            # Contacto de Emergencia (Tomamos el primero si existe)
+            contacto_nombre = "S/I"
+            contacto_fono = "S/I"
+            contactos = voluntario.contactos_emergencia.all()
+            if contactos.exists():
+                primero = contactos.first()
+                contacto_nombre = primero.nombre_completo
+                contacto_fono = primero.telefono
+
+            # Listas de Antecedentes (separadas por coma dentro de su columna)
+            str_alergias = ", ".join([item.alergia.nombre for item in ficha.alergias.all()])
+            str_enfermedades = ", ".join([item.enfermedad.nombre for item in ficha.enfermedades.all()])
+            
+            # Para medicamentos incluimos la dosis si quieres ser detallista
+            lista_meds = []
+            for m in ficha.medicamentos.all():
+                dosis = f" ({m.dosis_frecuencia})" if m.dosis_frecuencia else ""
+                lista_meds.append(f"{m.medicamento.nombre}{dosis}")
+            str_medicamentos = ", ".join(lista_meds)
+
+            str_cirugias = ", ".join([f"{c.cirugia.nombre} ({c.fecha_cirugia or 'S/F'})" for c in ficha.cirugias.all()])
+
+            # --- Escribir la fila ---
+            writer.writerow([
+                usuario.rut,                                    # RUT
+                usuario.get_full_name,                          # Nombre
+                fecha_nac if fecha_nac else "S/I",              # Fecha Nac
+                edad,                                           # Edad
+                voluntario.telefono or "S/I",                   # Teléfono
+                ficha.grupo_sanguineo.nombre if ficha.grupo_sanguineo else "S/I",
+                ficha.sistema_salud.nombre if ficha.sistema_salud else "S/I",
+                ficha.peso_kg or "",                            # Peso
+                ficha.altura_mts or "",                         # Altura
+                presion,                                        # Presión
+                str_alergias,                                   # Alergias
+                str_enfermedades,                               # Enfermedades
+                str_medicamentos,                               # Medicamentos
+                str_cirugias,                                   # Cirugías
+                contacto_nombre,                                # Contacto Nombre
+                contacto_fono,                                  # Contacto Fono
+                ficha.observaciones_generales or ""             # Obs
+            ])
+        return response
 
 
 

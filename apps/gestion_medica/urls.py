@@ -82,4 +82,7 @@ urlpatterns = [
     # --- CATÁLOGO CIRUGÍAS ---
     path('cirugias/', CirugiaListView.as_view(), name="ruta_lista_cirugias"),
     path('cirugias/crear/', CirugiaCrearView.as_view(), name="ruta_crear_cirugia"),
+
+    #--- REPORTES ---
+    path('pacientes/exportar/', MedicoExportarCSVView.as_view(), name="ruta_exportar_lista_medica"),
 ]
