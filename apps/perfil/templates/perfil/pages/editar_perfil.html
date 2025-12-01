@@ -9,9 +9,9 @@
     <div class="row justify-content-center">
         <div class="col-lg-8 col-xl-6">
             <div class="card shadow-sm border-0">
-                <div class="card-body p-4 p-md-5 fs_normal">
+                <div class="card-body p-4 p-md-5">
 
-                    <h4 class="card-title text-center mb-4 fs_grande">Actualiza tu Información</h4>
+                    <h4 class="card-title text-center mb-4 text-xl font-bold color_primario">Actualiza tu Información</h4>
 
                     {# enctype es crucial para la subida de archivos (avatar) #}
                     <form method="post" enctype="multipart/form-data" novalidate>
@@ -21,10 +21,10 @@
                         
                         {# Campo: Nombres #}
                         <div class="mb-3">
-                            <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }}</label>
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label font-bold text-sm">{{ form.first_name.label }}</label>
                             {{ form.first_name }}
                             {% if form.first_name.errors %}
-                                <div class="invalid-feedback d-block">
+                                <div class="invalid-feedback d-block text-sm">
                                     {{ form.first_name.errors.as_text }}
                                 </div>
                             {% endif %}
@@ -32,10 +32,10 @@
                         
                         {# Campo: Apellidos #}
                         <div class="mb-3">
-                            <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }}</label>
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label font-bold text-sm">{{ form.last_name.label }}</label>
                             {{ form.last_name }}
                             {% if form.last_name.errors %}
-                                <div class="invalid-feedback d-block">
+                                <div class="invalid-feedback d-block text-sm">
                                     {{ form.last_name.errors.as_text }}
                                 </div>
                             {% endif %}
@@ -43,10 +43,10 @@
 
                         {# Campo: Teléfono #}
                         <div class="mb-3">
-                            <label for="{{ form.phone.id_for_label }}" class="form-label">{{ form.phone.label }}</label>
+                            <label for="{{ form.phone.id_for_label }}" class="form-label font-bold text-sm">{{ form.phone.label }}</label>
                             {{ form.phone }}
                             {% if form.phone.errors %}
-                                <div class="invalid-feedback d-block">
+                                <div class="invalid-feedback d-block text-sm">
                                     {{ form.phone.errors.as_text }}
                                 </div>
                             {% endif %}
@@ -54,10 +54,10 @@
 
                         {# Campo: Fecha de Nacimiento #}
                         <div class="mb-3">
-                            <label for="{{ form.birthdate.id_for_label }}" class="form-label">{{ form.birthdate.label }}</label>
+                            <label for="{{ form.birthdate.id_for_label }}" class="form-label font-bold text-sm">{{ form.birthdate.label }}</label>
                             {{ form.birthdate }}
                             {% if form.birthdate.errors %}
-                                <div class="invalid-feedback d-block">
+                                <div class="invalid-feedback d-block text-sm">
                                     {{ form.birthdate.errors.as_text }}
                                 </div>
                             {% endif %}
@@ -66,8 +66,8 @@
                         <hr>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{% url 'perfil:ver' %}" class="btn btn-secondary fs_normal">Cancelar</a>
-                            <button type="submit" class="btn btn-primary fs_normal">Guardar Cambios</button>
+                            <a href="{% url 'perfil:ver' %}" class="btn btn-secondary text-base">Cancelar</a>
+                            <button type="submit" class="btn btn-primary text-base font-bold">Guardar Cambios</button>
                         </div>
                     </form>
 

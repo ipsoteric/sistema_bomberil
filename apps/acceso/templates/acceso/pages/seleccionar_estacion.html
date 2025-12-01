@@ -8,15 +8,17 @@
 
 <div class="selection-container d-flex flex-column justify-content-center align-items-center min-vh-75 py-5">
     
-    {# --- ENCABEZADO (igual que antes) --- #}
+    {# --- ENCABEZADO --- #}
     <div class="text-center mb-5 animate-fade-in">
         <div class="mb-3">
-            <i class="fas fa-fire-extinguisher fs_x_grande color_rojo opacity-75"></i>
+            <div class="bg-danger bg-opacity-10 p-3 rounded-circle d-inline-block">
+                <i class="fas fa-fire-extinguisher text-4xl text-danger opacity-75"></i>
+            </div>
         </div>
-        <h1 class="fw-bold color_blanco mb-2">Bienvenido, {{ user.first_name|title }}</h1>
-        <p class="fs_normal color_blanco_variante">
+        <h1 class="text-3xl font-bold text-white mb-2">Bienvenido, {{ user.first_name|title }}</h1>
+        <p class="text-lg text-white-50">
             {% if user.is_superuser %}
-                <span class="badge bg-dark text-white mb-2">MODO ADMINISTRADOR</span><br>
+                <span class="badge bg-dark text-white text-xs mb-2 uppercase tracking-wider">Modo Administrador</span><br>
                 Selecciona la unidad que deseas gestionar hoy.
             {% else %}
                 Selecciona tu cuartel para ingresar al sistema.
@@ -36,54 +38,52 @@
                         {% csrf_token %}
                         <input type="hidden" name="estacion_id" value="{{ estacion.id }}">
                         
-                        {# --- INICIO: CAMBIOS EN LA TARJETA DE ESTACIÓN --- #}
-                        <button type="submit" class="card station-card h-100 w-100 text-start border-0 shadow-sm p-0">
-                            <div class="card-img-wrapper position-relative">
-                                {# Imagen de Fondo: Usar la de la estación o una de stock por defecto #}
+                        {# --- TARJETA DE ESTACIÓN --- #}
+                        <button type="submit" class="card station-card h-100 w-100 text-start border-0 shadow-lg p-0 overflow-hidden hover-lift transition-all">
+                            <div class="card-img-wrapper position-relative" style="height: 160px;">
+                                {# Imagen de Fondo #}
                                 {% if estacion.imagen_thumb_medium %}
-                                <img src="{{ estacion.imagen_thumb_medium.url }}" class="card-img-top" alt="Imagen de {{ estacion.nombre }}">
+                                <img src="{{ estacion.imagen_thumb_medium.url }}" class="card-img-top h-100 w-100 object-fit-cover" alt="Imagen de {{ estacion.nombre }}">
                                 {% else %}
-                                <img src="{% static 'portal/imagenes/default-station-cover.jpg' %}" class="card-img-top" alt="Imagen de cuartel de bomberos por defecto">
+                                <img src="{% static 'portal/imagenes/default-station-cover.jpg' %}" class="card-img-top h-100 w-100 object-fit-cover" alt="Imagen por defecto">
                                 {% endif %}
                                 
-                                {# Overlay para mejorar contraste del texto #}
-                                <div class="card-img-overlay-dark"></div>
+                                {# Overlay oscuro para contraste #}
+                                <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark opacity-50"></div>
 
-                                {# Logo de la Estación: Centrado y ligeramente más grande #}
-                                <div class="station-logo-overlay">
+                                {# Logo de la Estación (flotante) #}
+                                <div class="position-absolute top-50 start-50 translate-middle">
                                     {% if estacion.logo_thumb_small %}
-                                    <img src="{{ estacion.logo_thumb_small.url }}" class="station-logo" alt="Logo de {{ estacion.nombre }}">
+                                    <img src="{{ estacion.logo_thumb_small.url }}" class="rounded-circle border border-2 border-white shadow-sm" style="width: 64px; height: 64px; object-fit: cover; background: white;" alt="Logo">
                                     {% else %}
-                                    {# Logo de stock por defecto, ejemplo: un escudo genérico #}
-                                    <img src="{% static 'portal/imagenes/default-station-logo.png' %}" class="station-logo" alt="Logo de bomberos por defecto">
+                                    <img src="{% static 'portal/imagenes/default-station-logo.png' %}" class="rounded-circle border border-2 border-white shadow-sm" style="width: 64px; height: 64px; object-fit: cover; background: white;" alt="Logo">
                                     {% endif %}
                                 </div>
                             </div>
 
-                            <div class="card-body d-flex flex-column p-4">
+                            <div class="card-body d-flex flex-column p-4 bg-white position-relative">
                                 
                                 {# Contenido de texto #}
-                                <div class="z-index-1">
-                                    <h5 class="card-title fw-bold color_primario mb-1">
+                                <div class="z-index-1 text-center mt-2">
+                                    <h5 class="card-title text-lg font-bold color_primario mb-1">
                                         {{ estacion.nombre|title }}
                                     </h5>
-                                    <p class="card-text fs_pequena text-muted">
-                                        Acceso a funcionalidades.
+                                    <p class="card-text text-sm text-muted">
+                                        Acceso a panel de gestión
                                     </p>
                                 </div>
 
-                                {# Flecha de acción #}
-                                <div class="mt-auto pt-3 text-end z-index-1">
-                                    <span class="btn-circle">
-                                        <i class="fas fa-arrow-right"></i>
+                                {# Flecha de acción (Bottom) #}
+                                <div class="mt-auto pt-3 text-center">
+                                    <span class="text-primary text-sm font-bold text-uppercase letter-spacing-1">
+                                        Ingresar <i class="fas fa-arrow-right ms-1"></i>
                                     </span>
                                 </div>
                                 
-                                {# Barra de acento (hover) #}
-                                <div class="hover-accent"></div>
+                                {# Barra de acento inferior #}
+                                <div class="position-absolute bottom-0 start-0 w-100 bg-primary" style="height: 4px;"></div>
                             </div>
                         </button>
-                        {# --- FIN: CAMBIOS EN LA TARJETA DE ESTACIÓN --- #}
                     </form>
 
                 </div>
@@ -91,24 +91,24 @@
             </div>
             
             {% if user.is_superuser %}
-            <div class="text-center mt-5 opacity-50 fs_pequena animate-fade-in">
+            <div class="text-center mt-5 opacity-50 text-sm text-white animate-fade-in">
                 <i class="fas fa-eye me-1"></i> Visualizando todas las estaciones del sistema.
             </div>
             {% endif %}
 
         {% else %}
             {% if not user.is_superuser %}
-            {# --- ESTADO VACÍO (igual que antes) --- #}
-            <div class="card border-danger shadow-sm mw-500 mx-auto animate-fade-in">
+            {# --- ESTADO VACÍO --- #}
+            <div class="card border-0 shadow-lg mw-500 mx-auto animate-fade-in rounded-3">
                 <div class="card-body text-center p-5">
-                    <div class="mb-3 text-danger">
+                    <div class="mb-3 text-danger bg-danger bg-opacity-10 p-4 rounded-circle d-inline-block">
                         <i class="fas fa-user-lock fa-3x"></i>
                     </div>
-                    <h4 class="fw-bold text-danger">Sin Acceso Asignado</h4>
-                    <p class="fs_normal text-muted">
+                    <h4 class="text-xl font-bold text-danger mb-2">Sin Acceso Asignado</h4>
+                    <p class="text-base text-muted mb-4">
                         No tienes membresías activas en ninguna estación registrada.
                     </p>
-                    <a href="{% url 'acceso:ruta_logout' %}" class="btn btn-outline-danger mt-3">
+                    <a href="{% url 'acceso:ruta_logout' %}" class="btn btn-outline-danger px-4 py-2 text-base">
                         <i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión
                     </a>
                 </div>
@@ -118,5 +118,22 @@
         {% endif %}
     </div>
 </div>
+
+<style>
+    /* Estilos específicos para las tarjetas de estación */
+    .hover-lift {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 3rem rgba(0,0,0,.175)!important;
+    }
+    .object-fit-cover {
+        object-fit: cover;
+    }
+    .letter-spacing-1 {
+        letter-spacing: 1px;
+    }
+</style>
 
 {% endblock %}

@@ -2,7 +2,13 @@
 {# Cargar assets #}{% load static %}
 {# Título de la ventana #} {% block titulo_ventana %}Mi cuenta{% endblock %}
 {# Módulo #} {% block modulo %}Mi Cuenta{% endblock %}
-{# Título de la ventana #} {% block titulo_pagina %}Mi cuenta{% endblock %}
+
+{# Título de la página estilizado #} 
+{% block titulo_pagina %}
+    <span class="text-xl color_primario">
+        <i class="fas fa-user-circle me-2"></i> Mi Cuenta
+    </span>
+{% endblock %}
 
 {% block contenido %}
 <div class="container mt-4">
@@ -17,15 +23,16 @@
                         {# --- SECCIÓN DEL AVATAR --- #}
                         <div id="avatar-container-perfil" 
                         class="position-relative me-3" 
-                        data-api-url="#">                         
-                            <img class="js-avatar-image rounded-circle" 
-                                 src="{% if usuario.avatar %}{{ usuario.avatar.url }}{% else %}{% static 'imagenes/default_avatar.png' %}{% endif %}" 
+                        data-api-url="{% url 'api:api_editar_avatar_usuario' id=usuario.id %}">                        
+                            <img class="js-avatar-image rounded-circle shadow-sm" 
+                                 src="{% if usuario.avatar_thumb_medium %}{{ usuario.avatar_thumb_medium.url }}{% else %}{% static 'imagenes/default_avatar.png' %}{% endif %}" 
                                  alt="Avatar de {{ usuario.first_name }}" 
                                  style="width: 80px; height: 80px; object-fit: cover;">
                             
-                            <span class="js-avatar-upload-button position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
-                                  style="width: 28px; height: 28px; cursor: pointer; border: 2px solid white;">
-                                <i class="fa-solid fa-pen" style="font-size: 0.8rem;"></i>
+                            <span class="js-avatar-upload-button position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" 
+                                  style="width: 32px; height: 32px; cursor: pointer; border: 2px solid white;"
+                                  title="Cambiar foto">
+                                <i class="fa-solid fa-camera text-xs"></i>
                             </span>
 
                             <input type="file" class="js-avatar-upload-input" hidden accept="image/*">
@@ -33,42 +40,46 @@
 
                         {# --- NOMBRE Y CORREO --- #}
                         <div>
-                            <h5 class="mb-0 text-xl font-bold">{{ usuario.first_name }} {{ usuario.last_name }}</h5>
-                            <p class="text-muted mb-0 text-base font-regular">{{ usuario.email }}</p>
+                            <h5 class="mb-0 text-xl font-bold color_primario">{{ usuario.get_full_name|title }}</h5>
+                            <p class="text-muted mb-0 text-base font-regular text-data-code">{{ usuario.email }}</p>
                         </div>
                     </div>
 
                     <hr class="mb-4">
 
                     {# --- LISTA DE DATOS --- #}
-                    <div class="row mb-3">
-                        <div class="col-auto text-sm font-bold">Nombres:</div>
-                        <div class="col text-end text-base font-medium">{{ usuario.first_name|title }}</div>
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-4 text-sm font-bold text-muted text-uppercase">Nombres:</div>
+                        <div class="col text-end text-base font-medium text-dark">{{ usuario.first_name|title }}</div>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-auto text-sm font-bold">Apellidos:</div>
-                        <div class="col text-end text-base font-medium">{{ usuario.last_name|title }}</div>
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-4 text-sm font-bold text-muted text-uppercase">Apellidos:</div>
+                        <div class="col text-end text-base font-medium text-dark">{{ usuario.last_name|title }}</div>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-auto text-sm font-bold">Email:</div>
-                        <div class="col text-end text-base font-medium">{{ usuario.email }}</div>
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-4 text-sm font-bold text-muted text-uppercase">Email:</div>
+                        <div class="col text-end text-base font-medium text-data-code">{{ usuario.email }}</div>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-auto text-sm font-bold">Rut:</div>
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-4 text-sm font-bold text-muted text-uppercase">RUT:</div>
                         <div class="col text-end text-base font-medium text-data-code">{{ usuario.rut|default:"Sin especificar" }}</div>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-auto text-sm font-bold">Teléfono:</div>
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-4 text-sm font-bold text-muted text-uppercase">Teléfono:</div>
                         <div class="col text-end text-base font-medium text-data-code">{{ usuario.phone|default:"Sin especificar" }}</div>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-auto text-sm font-bold">Fecha Nacimiento:</div>
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-4 text-sm font-bold text-muted text-uppercase">Nacimiento:</div>
                         <div class="col text-end text-base font-medium text-data-code">{{ usuario.birthdate|date:"d/m/Y"|default:"Sin especificar" }}</div>
                     </div>
                     
-                    <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-4">
-                        <a href="{% url 'perfil:editar' %}" class="btn btn-primary btn-block-sm text-base font-bold">Editar Información</a>
-                        <a href="{% url 'perfil:cambiar_contrasena' %}" class="btn btn-secondary btn-block-sm text-base font-medium">Cambiar Contraseña</a>
+                    <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-5">
+                        <a href="{% url 'perfil:editar' %}" class="btn btn-primary text-base font-bold px-4">
+                            <i class="fas fa-edit me-2"></i>Editar Información
+                        </a>
+                        <a href="{% url 'perfil:cambiar_contrasena' %}" class="btn btn-outline-secondary text-base font-medium px-4">
+                            <i class="fas fa-key me-2"></i>Cambiar Contraseña
+                        </a>
                     </div>
                 </div>
             </div>
@@ -77,39 +88,48 @@
         {# --- COLUMNA DERECHA: DOCUMENTACIÓN BOMBERIL --- #}
         <div class="col-lg-5 mb-4">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-danger text-white">
+                <div class="card-header bg-danger text-white py-3">
                     <h3 class="m-0 text-lg font-bold"><i class="fas fa-file-alt me-2"></i>Documentación Oficial</h3>
                 </div>
                 <div class="card-body p-4">
                     
                     {% if es_voluntario %}
-                        <p class="text-sm font-regular mb-4">
+                        <p class="text-sm font-regular mb-4 text-muted">
                             Descarga tus certificados y antecedentes actualizados al día de hoy.
                         </p>
 
                         <div class="d-grid gap-3">
                             {# Botón Hoja de Vida #}
-                            <a href="{% url 'perfil:descargar_hoja_vida' %}" class="btn btn-outline-danger text-base font-bold text-start p-3 d-flex align-items-center">
-                                <i class="fas fa-file-invoice fa-2x me-3"></i>
+                            <a href="{% url 'perfil:descargar_hoja_vida' %}" class="btn btn-outline-danger text-base font-bold text-start p-3 d-flex align-items-center shadow-sm hover-shadow">
+                                <div class="bg-danger bg-opacity-10 p-2 rounded-circle me-3 text-danger">
+                                    <i class="fas fa-file-invoice fa-lg"></i>
+                                </div>
                                 <div>
                                     <span class="d-block">Hoja de Vida</span>
                                     <small class="text-xs font-regular text-muted">Historial de cargos y premios</small>
                                 </div>
+                                <i class="fas fa-download ms-auto text-muted"></i>
                             </a>
 
                             {# Botón Ficha Médica #}
-                            <a href="{% url 'perfil:descargar_ficha_medica' %}" class="btn btn-outline-primary text-base font-bold text-start p-3 d-flex align-items-center">
-                                <i class="fas fa-notes-medical fa-2x me-3"></i>
+                            <a href="{% url 'perfil:descargar_ficha_medica' %}" class="btn btn-outline-primary text-base font-bold text-start p-3 d-flex align-items-center shadow-sm hover-shadow">
+                                <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-3 text-primary">
+                                    <i class="fas fa-notes-medical fa-lg"></i>
+                                </div>
                                 <div>
                                     <span class="d-block">Ficha Médica</span>
                                     <small class="text-xs font-regular text-muted">Alergias, grupo sanguíneo, etc.</small>
                                 </div>
+                                <i class="fas fa-download ms-auto text-muted"></i>
                             </a>
                         </div>
                     {% else %}
-                        <div class="alert alert-warning text-sm font-medium">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <strong>Atención:</strong> Tu usuario no tiene un perfil de Voluntario asociado, por lo que no existen documentos para descargar.
+                        <div class="alert alert-warning text-sm font-medium d-flex align-items-center">
+                            <i class="fas fa-exclamation-triangle fs-4 me-3"></i>
+                            <div>
+                                <strong>Atención:</strong><br>
+                                Tu usuario no tiene un perfil de Voluntario asociado, por lo que no existen documentos para descargar.
+                            </div>
                         </div>
                     {% endif %}
 
