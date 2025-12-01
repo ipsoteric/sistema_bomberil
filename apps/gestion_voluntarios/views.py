@@ -40,7 +40,12 @@ class VoluntariosInicioView(BaseEstacionMixin, View):
         estacion = self.estacion_activa
 
         # 1. Métricas rápidas (Count directo en DB)
-        qs_base = Membresia.objects.filter(estacion=estacion)
+        # CORRECCIÓN: Filtramos para que solo considere los estados válidos (ACTIVO/INACTIVO)
+        # o excluimos explícitamente los FINALIZADO.
+        qs_base = Membresia.objects.filter(
+            estacion=estacion
+        ).exclude(estado='FINALIZADO') 
+
         total_voluntarios = qs_base.count()
         voluntarios_activos = qs_base.filter(estado='ACTIVO').count()
         voluntarios_inactivos = qs_base.filter(estado='INACTIVO').count()
@@ -68,8 +73,6 @@ class VoluntariosInicioView(BaseEstacionMixin, View):
             'chart_profes_counts': json.dumps([x['count'] for x in profesiones_data]),
         }
         return render(request, "gestion_voluntarios/pages/home.html", context)
-
-
 
 
 class VoluntariosListaView(BaseEstacionMixin, CustomPermissionRequiredMixin, View):
