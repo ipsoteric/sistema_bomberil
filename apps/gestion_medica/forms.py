@@ -13,6 +13,23 @@ from .models import (
     Enfermedad
 )
 
+OPCIONES_UNIDADES = [
+    ('mg', 'mg (Miligramos)'),
+    ('ml', 'ml (Mililitros)'),
+    ('gr', 'gr (Gramos)'),
+    ('mcg', 'mcg (Microgramos)'),
+    ('g/ml', 'g/ml'),
+    ('mg/ml', 'mg/ml'),
+    ('ui', 'UI (Unidades Int.)'),
+    ('%', '% (Porcentaje)'),
+    ('puff', 'Puff/Inhalación'),
+    ('comp', 'Comprimido(s)'),
+    ('cap', 'Cápsula(s)'),
+    ('gotas', 'Gotas'),
+    ('amp', 'Ampolla'),
+    ('unid', 'Unidad(es)'),
+]
+
 # ==============================================================================
 # 1. FORMULARIOS DE ENTIDAD (FICHA MÉDICA PRINCIPAL y CONTACTOS)
 # ==============================================================================
@@ -120,23 +137,7 @@ class FichaMedicaMedicamentoForm(forms.ModelForm):
 
     unidad = forms.ChoiceField(
         label="Unidad de Medida",
-        choices=[
-            ('mg', 'mg (Miligramos)'),
-            ('ml', 'ml (Mililitros)'),
-            ('gr', 'gr (Gramos)'),
-            ('mcg', 'mcg (Microgramos)'),
-            ('g/ml', 'g/ml'),
-            ('mg/ml', 'mg/ml'),
-            ('ui', 'UI (Unidades Int.)'),
-            ('%', '% (Porcentaje)'),
-            ('puff', 'Puff/Inhalación'),
-            ('comp', 'Comprimido(s)'),
-            ('cap', 'Cápsula(s)'),
-            ('gotas', 'Gotas'),
-            ('amp', 'Ampolla'),
-            ('unid', 'Unidad(es)'),
-        ],
-        # AGREGAMOS LA CLASE 'select-sin-flecha' AL FINAL
+        choices=OPCIONES_UNIDADES, 
         widget=forms.Select(attrs={'class': 'form-select text-center fw-bold select-sin-flecha'})
     )
     
@@ -150,14 +151,13 @@ class FichaMedicaMedicamentoForm(forms.ModelForm):
     freq_tiempo = forms.ChoiceField(
         label="Unidad de Tiempo",
         choices=[
-            ('horas', 'Horas'),     # Puse horas primero porque es lo más común
+            ('horas', 'Horas'),
             ('dias', 'Días'),
             ('minutos', 'Minutos'),
             ('semanas', 'Semanas'),
             ('meses', 'Meses'),
             ('sos', 'S.O.S (Según necesidad)'),
         ],
-        # CAMBIO: Quitamos 'select-sin-flecha' de aquí para que salga la flechita
         widget=forms.Select(attrs={'class': 'form-select text-center fw-bold'}) 
     )
     # --- 3. DURACIÓN / NOTAS ---
@@ -312,17 +312,7 @@ class MedicamentoForm(forms.ModelForm):
     
     unidad = forms.ChoiceField(
         label="Unidad",
-        choices=[
-            ('mg', 'mg (Miligramos)'),
-            ('ml', 'ml (Mililitros)'),
-            ('gr', 'gr (Gramos)'),
-            ('mcg', 'mcg (Microgramos)'),
-            ('g/ml', 'g/ml'),
-            ('mg/ml', 'mg/ml'),
-            ('ui', 'UI (Unidades Int.)'),
-            ('%', '% (Porcentaje)'),
-            ('puff', 'Puff'),
-        ],
+        choices=OPCIONES_UNIDADES,
         widget=forms.Select(attrs={'class': 'form-select text-center fw-bold'})
     )
 

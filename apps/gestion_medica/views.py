@@ -692,24 +692,28 @@ class EliminarAlergiaPacienteView(SubElementoMedicoBaseView):
 class MedicoMedicamentosView(SubElementoMedicoBaseView):
     def get_units_map(self):
         """
-        Helper para generar un JSON que mapea ID_MEDICAMENTO -> UNIDAD.
-        Analiza el final del nombre (ej: '... 500 mg') para detectar la unidad.
+        Helper mejorado: Detecta la unidad incluso si hay etiquetas de riesgo [TAG] al final.
         """
-        # Las mismas claves que definiste en forms.py
-        unidades_validas = ['mg', 'ml', 'gr', 'mcg', 'puff', 'comp', 'cap', 'gotas', 'amp', 'ui', 'unid']
+        # Debe coincidir con las claves de forms.py
+        unidades_validas = ['mg', 'ml', 'gr', 'mcg', 'g/ml', 'mg/ml', 'ui', '%', 'puff', 'comp', 'cap', 'gotas', 'amp', 'unid']
         
         mapa = {}
         medicamentos = Medicamento.objects.all()
         
         for med in medicamentos:
             nombre = med.nombre.lower().strip()
+            
+            # 1. LIMPIEZA: Si tiene etiqueta [ALGO], se la quitamos para analizar
+            # Ej: "warfarina 5 mg [anticoagulante]" -> "warfarina 5 mg"
+            if ' [' in nombre and nombre.endswith(']'):
+                nombre = nombre.split(' [')[0].strip()
+                
+            # 2. DETECCIÓN: Ahora sí buscamos la unidad al final
             for u in unidades_validas:
-                # Verificamos si termina con la unidad (ej: " paracetamol 500 mg")
-                # El espacio antes de {u} es clave para no confundir 'mg' con 'omg'
+                # El espacio antes de {u} es vital
                 if nombre.endswith(f" {u}"):
                     mapa[med.id] = u
                     break
-        
         return json.dumps(mapa)
     def get(self, request, pk):
         ficha = self.get_ficha(pk)
@@ -728,20 +732,19 @@ class MedicoMedicamentosView(SubElementoMedicoBaseView):
             item.ficha_medica = ficha
             try:
                 item.save()
-                self.auditar("asignó un medicamento permanente a", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'medicamento': item.medicamento.nombre, 'dosis': item.dosis_frecuencia})
+                self.auditar("asignó medicamento", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'medicamento': item.medicamento.nombre})
                 messages.success(request, "Medicamento asignado.")
                 return redirect('gestion_medica:ruta_medicamentos_paciente', pk=pk)
             except IntegrityError:
-                form.add_error('medicamento', 'Este medicamento ya está asignado.')
+                form.add_error('medicamento', 'Ya está asignado.')
             except Exception as e:
-                messages.error(request, f"Error al asignar medicamento: {str(e)}")
+                messages.error(request, f"Error: {e}")
 
-        messages.error(request, "Error al asignar medicamento. Revisa los datos.")
         return render(request, "gestion_medica/pages/medicamentos_paciente.html", {
             'ficha': ficha, 
             'medicamentos_paciente': ficha.medicamentos.all(), 
-            'form': form,
-            'units_map': self.get_units_map() # <--- NO OLVIDAR PASARLO AQUÍ TAMBIÉN POR SI FALLA        
+            'form': form, 
+            'units_map': self.get_units_map()
         })
 
 

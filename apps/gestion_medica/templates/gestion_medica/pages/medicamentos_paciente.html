@@ -5,20 +5,22 @@
 
 {% block contenido %}
 <style>
-    .select-sin-flecha {
-        background-image: none !important; /* Quita la flecha SVG de Bootstrap */
-        padding-right: 0.75rem !important; /* Recupera el espacio a la derecha */
-        appearance: none;                  /* Quita la flecha nativa del navegador */
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        cursor: pointer;                   /* Mantiene el cursor de mano */
-    }
-    
-    /* Opcional: Color de fondo suave al pasar el mouse para indicar que es clickable */
-    .select-sin-flecha:hover {
-        background-color: #f8f9fa;
+    .select-bloqueado {
+        background-image: none !important; /* Quita flecha SVG Bootstrap */
+        -webkit-appearance: none;          /* Quita flecha Chrome/Safari */
+        -moz-appearance: none;             /* Quita flecha Firefox */
+        appearance: none;
+        padding-right: 0.75rem !important; /* Recupera espacio a la derecha */
+        background-color: #e9ecef;         /* Fondo gris (disabled look) */
+        pointer-events: none;              /* IMPIDE EL CLICK */
+        border-color: #ced4da;
+        color: #495057;
+        font-weight: bold;
+        text-align: center;
+        cursor: default;
     }
 </style>
+
 <div class="container-fluid">
 
     <div class="card border-0 shadow-sm mb-4 bg-gradient-info text-white overflow-hidden" style="border-radius: 15px;">
@@ -38,7 +40,7 @@
                     </p>
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                    <a href="{% url 'gestion_medica:ruta_informacion_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-light text-info-custom fw-bold shadow-sm rounded-pill px-4 py-2">
+                    <a href="{% url 'gestion_medica:ruta_informacion_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-outline-light fw-bold shadow-sm rounded-pill px-4 py-2">
                         <i class="fas fa-arrow-left me-2"></i> Volver a Ficha
                     </a>
                 </div>
@@ -72,30 +74,45 @@
                             {% endif %}
                         </div>
 
-                        <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">2. Dosis</label>
-                            <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-info">
-                                <span class="input-group-text bg-white border-0 text-info-custom ps-4">
-                                    <i class="fas fa-flask"></i>
-                                </span>
-                                {{ form.cantidad }}
-                                {{ form.unidad }} </div>
+                        <div class="row g-2 mb-4">
+                            <div class="col-6">
+                                <label class="form-label text-muted font-weight-bold small text-uppercase">Cantidad</label>
+                                <div class="input-group shadow-sm rounded-pill border input-group-focus-info">
+                                    {{ form.cantidad }}
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label text-muted font-weight-bold small text-uppercase">Unidad</label>
+                                <div class="input-group shadow-sm rounded-pill border">
+                                    {{ form.unidad }}
+                                </div>
+                            </div>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">3. Frecuencia</label>
+                            <label class="form-label text-muted font-weight-bold small text-uppercase">Frecuencia</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-info">
-                                <span class="input-group-text bg-white border-0 text-info-custom ps-4">
+                                <span class="input-group-text bg-white border-0 text-info-custom ps-3">
                                     <i class="fas fa-clock"></i>&nbsp;Cada
                                 </span>
                                 {{ form.freq_numero }}
-                                {{ form.freq_tiempo }} </div>
+                                {{ form.freq_tiempo }}
+                            </div>
                         </div>
-                        
+
+                        <div class="mb-4">
+                            <label class="form-label text-muted font-weight-bold small text-uppercase">Duración / Notas</label>
+                            <div class="input-group input-group-lg shadow-sm rounded-pill border input-group-focus-info">
+                                <span class="input-group-text bg-white border-0 text-info-custom ps-4">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </span>
+                                {{ form.duracion }}
+                            </div>
+                        </div>
 
                         <div class="d-grid mt-5">
                             <button type="submit" class="btn btn-info-custom w-100 btn-lg rounded-pill shadow-sm hover-elevate-info fw-bold py-3 text-white">
-                                <i class="fas fa-save me-2"></i> GUARDAR ASIGNACIÓN
+                                <i class="fas fa-save me-2"></i> GUARDAR TRATAMIENTO
                             </button>
                         </div>
                     </form>
@@ -118,7 +135,7 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="ps-4 py-3 text-uppercase text-muted small font-weight-bold" style="width: 35%;">Medicamento</th>
+                                        <th class="ps-4 py-3 text-uppercase text-muted small font-weight-bold">Medicamento</th>
                                         <th class="py-3 text-uppercase text-muted small font-weight-bold">Posología</th>
                                         <th class="pe-4 py-3 text-end text-uppercase text-muted small font-weight-bold">Acciones</th>
                                     </tr>
@@ -132,34 +149,21 @@
                                                      style="width: 45px; height: 45px; font-size: 1.2rem;">
                                                     <i class="fas fa-tablets"></i>
                                                 </div>
-                                                <div>
-                                                    <span class="h5 mb-0 font-weight-bold text-dark d-block">{{ item.medicamento.nombre }}</span>
-                                                </div>
+                                                <span class="h5 mb-0 font-weight-bold text-dark">{{ item.medicamento.nombre }}</span>
                                             </div>
                                         </td>
-
                                         <td class="py-4">
                                             <div class="d-flex align-items-center text-secondary">
                                                 <i class="fas fa-clock me-2 text-info-custom opacity-50"></i>
-                                                <span class="fw-bold">{{ item.dosis_frecuencia|default:"Según indicación médica" }}</span>
+                                                <span class="fw-bold">{{ item.dosis_frecuencia|default:"Según indicación" }}</span>
                                             </div>
                                         </td>
-
                                         <td class="pe-4 text-end">
                                             <a href="{% url 'gestion_medica:ruta_editar_medicamento_paciente' pk=ficha.voluntario.usuario.id medicamento_id=item.id %}" 
-                                               class="btn btn-white btn-sm text-info-custom shadow-sm border me-1" 
-                                               data-bs-toggle="tooltip" title="Modificar dosis"
-                                               style="width: 35px; height: 35px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-pen"></i>
-                                            </a>
-
-                                            <form action="{% url 'gestion_medica:ruta_eliminar_medicamento_paciente' pk=ficha.voluntario.usuario.id medicamento_id=item.id %}" method="POST" class="d-inline" onsubmit="return confirm('¿Retirar el medicamento {{ item.medicamento.nombre }}?');">
+                                               class="btn btn-white btn-sm text-info-custom shadow-sm border me-1 rounded-circle" style="width:35px;height:35px;"><i class="fas fa-pen"></i></a>
+                                            <form action="{% url 'gestion_medica:ruta_eliminar_medicamento_paciente' pk=ficha.voluntario.usuario.id medicamento_id=item.id %}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar?');">
                                                 {% csrf_token %}
-                                                <button type="submit" class="btn btn-white btn-sm text-danger shadow-sm border" 
-                                                        data-bs-toggle="tooltip" title="Retirar asignación" 
-                                                        style="width: 35px; height: 35px; border-radius: 50%;">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
+                                                <button type="submit" class="btn btn-white btn-sm text-danger shadow-sm border rounded-circle" style="width:35px;height:35px;"><i class="fas fa-trash-alt"></i></button>
                                             </form>
                                         </td>
                                     </tr>
@@ -169,11 +173,8 @@
                         </div>
                     {% else %}
                         <div class="text-center py-5">
-                            <div class="mb-3 p-4 rounded-circle bg-light d-inline-block">
-                                <i class="fas fa-prescription fa-3x text-info-custom opacity-50"></i>
-                            </div>
-                            <h4 class="text-gray-600 font-weight-bold mt-2">Sin Medicamentos</h4>
-                            <p class="text-muted mb-0">No hay tratamientos farmacológicos registrados actualmente.</p>
+                            <h4 class="text-gray-600 font-weight-bold">Sin Medicamentos</h4>
+                            <p class="text-muted">No hay tratamientos registrados.</p>
                         </div>
                     {% endif %}
                 </div>
@@ -192,49 +193,27 @@
             }
         });
 
-        // 2. MAPA DE UNIDADES (Inyectado desde Django)
-        const mapUnits = {{ units_map|safe }};
+        // 2. CONFIGURACIÓN DEL SELECTOR DE UNIDAD
+        const mapUnits = {{ units_map|safe }}; // Recibe el JSON desde la vista
         const selectUnidad = document.getElementById('id_unidad');
         
-        // Función para gestionar el bloqueo
-        function bloquearUnidad(valor) {
-            // Nombre para el input oculto
-            const hiddenId = 'unidad_hidden_input';
-            let hiddenInput = document.getElementById(hiddenId);
+        // FORZAMOS EL BLOQUEO VISUAL SIEMPRE (Esté seleccionado algo o no)
+        // Esto oculta la flecha y lo pone gris desde el inicio.
+        selectUnidad.classList.add('select-bloqueado');
+        selectUnidad.classList.remove('form-select');
+        selectUnidad.classList.add('form-control'); // Look de input normal
 
-            if (valor) {
-                // A) BLOQUEAR: Si hay unidad detectada
-                selectUnidad.value = valor;
-                selectUnidad.classList.add('bg-light'); // Gris visual
-                selectUnidad.style.pointerEvents = 'none'; // No clickable
-                selectUnidad.setAttribute('readonly', true); // Solo lectura
-                
-                // Truco para enviar el dato aunque el select parezca bloqueado:
-                // Creamos un input oculto con el mismo nombre 'unidad'
-                if (!hiddenInput) {
-                    hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = 'unidad'; // El nombre que espera Django forms.py
-                    hiddenInput.id = hiddenId;
-                    selectUnidad.parentNode.appendChild(hiddenInput);
-                    
-                    // Al "deshabilitar" el select real, su valor no se envía,
-                    // así que enviamos el del oculto en su lugar.
-                    selectUnidad.disabled = true; 
-                }
-                hiddenInput.value = valor;
+        // Preparamos el input oculto para enviar el dato aunque esté disabled
+        const hiddenId = 'unidad_hidden_input';
+        let hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'unidad'; 
+        hiddenInput.id = hiddenId;
+        hiddenInput.value = selectUnidad.value; 
+        selectUnidad.parentNode.appendChild(hiddenInput);
 
-            } else {
-                // B) DESBLOQUEAR: Si no hay unidad (medicamento manual o sin mapeo)
-                selectUnidad.disabled = false;
-                selectUnidad.classList.remove('bg-light');
-                selectUnidad.style.pointerEvents = 'auto';
-                selectUnidad.removeAttribute('readonly');
-                
-                // Borramos el input oculto para que valga lo que diga el select
-                if (hiddenInput) hiddenInput.remove();
-            }
-        }
+        // Bloqueo funcional (no se puede cambiar)
+        selectUnidad.disabled = true;
 
         // 3. INICIALIZAR TOM SELECT
         const selectBuscable = document.querySelector('.select-busqueda');
@@ -243,17 +222,16 @@
             new TomSelect(selectBuscable, {
                 create: false,
                 sortField: { field: "text", direction: "asc" },
-                placeholder: 'Escriba para buscar...',
+                placeholder: 'Buscar...',
                 allowEmptyOption: true,
                 maxOptions: 50,
                 dropdownParent: 'body',
                 
                 onChange: function(value) {
-                    // Si encontramos el ID en el mapa, bloqueamos. Si no, liberamos.
+                    // Si encontramos una unidad en el mapa, la aplicamos
                     if (value && mapUnits[value]) {
-                        bloquearUnidad(mapUnits[value]);
-                    } else {
-                        bloquearUnidad(null); // Desbloquear si no tiene unidad definida
+                        selectUnidad.value = mapUnits[value];
+                        hiddenInput.value = mapUnits[value];
                     }
                 }
             });
