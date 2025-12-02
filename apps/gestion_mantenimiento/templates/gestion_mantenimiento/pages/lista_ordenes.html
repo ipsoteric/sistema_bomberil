@@ -27,7 +27,7 @@
         </div>
         <div class="col-12 col-md-4 text-md-end">
             {# PERMISO: Crear Orden (Gestionar) #}
-            {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_ordenes %}
+            {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes %}
             <a href="{% url 'gestion_mantenimiento:ruta_crear_orden_correctiva' %}" class="btn btn-danger shadow-sm text-base">
                 <i class="fas fa-exclamation-circle me-2"></i>Nueva Orden Correctiva
             </a>
@@ -147,7 +147,7 @@
                             {# Columna Acciones #}
                             <td class="text-end pe-4">
                                 {# PERMISO: Ver Órdenes (mínimo para entrar al detalle) #}
-                                {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_ver_ordenes %}
+                                {% if perms.gestion_usuarios.accion_gestion_mantenimiento_ver_ordenes %}
                                 <a href="{% url 'gestion_mantenimiento:ruta_gestionar_orden' orden.pk %}" class="btn btn-sm btn-primary shadow-sm text-xs">
                                     Gestionar <i class="fas fa-arrow-right ms-1"></i>
                                 </a>

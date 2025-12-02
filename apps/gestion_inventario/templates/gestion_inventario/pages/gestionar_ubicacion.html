@@ -73,7 +73,7 @@
 
                     {# PERMISO: Gestionar Ubicaciones (Crear, Editar, Eliminar) #}
                     {% if ubicacion.tipo_ubicacion.nombre != 'ADMINISTRATIVA' %}
-                        {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_ubicaciones %}
+                        {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones %}
                         <div class="d-grid gap-2 d-md-flex mt-3 pt-3 border-top flex-wrap">
                             <a class="btn btn-primary btn-sm text-base flex-fill" href="{% url 'gestion_inventario:ruta_crear_compartimento' ubicacion.id %}">
                                 <i class="fa-solid fa-plus me-1"></i> Compartimento
@@ -118,7 +118,7 @@
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <h5 class="card-title mb-0 color_primario font-bold text-base">{{ c.nombre }}</h5>
                                         {# PERMISO: Ver Stock (para ver detalle del compartimento) #}
-                                        {% if perms.gestion_inventario.accion_gestion_inventario_ver_stock %}
+                                        {% if perms.gestion_usuarios.accion_gestion_inventario_ver_stock %}
                                         <a href="{% url 'gestion_inventario:ruta_detalle_compartimento' c.id %}" class="btn btn-sm btn-light text-primary border rounded-circle" title="Ver contenido">
                                             <i class="fas fa-chevron-right"></i>
                                         </a>

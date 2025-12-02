@@ -138,7 +138,7 @@
                         <div class="d-flex justify-content-between mt-5">
                             
                             {# PERMISO: Gestionar Planes (Eliminar) #}
-                            {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes %}
+                            {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_planes %}
                             <a href="{% url 'gestion_mantenimiento:ruta_eliminar_plan' form.instance.pk %}" class="btn btn-outline-danger border-0 text-base">
                                 <i class="fas fa-trash-alt me-1"></i> Eliminar Plan
                             </a>
@@ -152,7 +152,7 @@
                                 </a>
                                 
                                 {# PERMISO: Gestionar Planes (Guardar) #}
-                                {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes %}
+                                {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_planes %}
                                 <button type="submit" class="btn btn-primary px-4 text-base">
                                     <i class="fas fa-save me-1"></i> Guardar Cambios
                                 </button>

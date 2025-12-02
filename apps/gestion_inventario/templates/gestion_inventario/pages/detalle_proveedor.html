@@ -57,7 +57,7 @@
                     
                     {# Solo mostramos botón si es la estación creadora Y tiene permisos #}
                     {% if es_estacion_creadora %}
-                        {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_proveedores %}
+                        {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_proveedores %}
                         <a href="#" class="btn btn-sm btn-outline-primary text-xs" title="Editar contacto principal (Próximamente)">
                             <i class="fas fa-edit me-1"></i> Editar
                         </a>
@@ -116,7 +116,7 @@
                         
                         <div class="d-flex justify-content-end mb-3">
                             {# PERMISO: Gestionar Proveedores #}
-                            {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_proveedores %}
+                            {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_proveedores %}
                             <a href="{% url 'gestion_inventario:ruta_editar_contacto_personalizado' pk=contacto_estacion_actual.pk %}" class="btn btn-sm btn-primary text-xs shadow-sm">
                                 <i class="fas fa-edit me-1"></i> Editar mi Contacto
                             </a>
@@ -150,7 +150,7 @@
                             <p class="text-xs text-muted mb-3">Puedes agregar un contacto específico (ej: vendedor local) que solo verá tu estación.</p>
                             
                             {# PERMISO: Gestionar Proveedores #}
-                            {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_proveedores %}
+                            {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_proveedores %}
                             <a href="{% url 'gestion_inventario:ruta_crear_contacto_personalizado' proveedor_pk=proveedor.pk %}" class="btn btn-success text-sm shadow-sm">
                                 <i class="fas fa-plus me-1"></i> Crear Contacto para mi Estación
                             </a>

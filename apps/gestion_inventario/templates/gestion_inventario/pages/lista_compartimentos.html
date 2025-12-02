@@ -111,7 +111,7 @@
                             <td class="text-end pe-4">
                                 <div class="btn-group">
                                     {# PERMISO: Ver Stock (Ver detalle) #}
-                                    {% if perms.gestion_inventario.accion_gestion_inventario_ver_stock %}
+                                    {% if perms.gestion_usuarios.accion_gestion_inventario_ver_stock %}
                                     <a class="btn btn-sm btn-outline-primary text-xs" 
                                        href="{% url 'gestion_inventario:ruta_detalle_compartimento' compartimento_id=c.id %}"
                                        title="Ver Contenido">
@@ -120,7 +120,7 @@
                                     {% endif %}
                                     
                                     {# PERMISO: Gestionar Ubicaciones (Editar/Eliminar) #}
-                                    {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_ubicaciones %}
+                                    {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones %}
                                     <a class="btn btn-sm btn-outline-secondary text-xs" 
                                        href="{% url 'gestion_inventario:ruta_editar_compartimento' compartimento_id=c.id %}"
                                        title="Editar">

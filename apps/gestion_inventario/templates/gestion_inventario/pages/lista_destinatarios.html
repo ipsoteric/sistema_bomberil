@@ -51,7 +51,7 @@
             </span>
             
             {# PERMISO: Gestionar Préstamos (Crear Destinatario) #}
-            {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_prestamos %}
+            {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_prestamos %}
             <a href="{% url 'gestion_inventario:ruta_crear_destinatario' %}" class="btn btn-success btn-sm text-base">
                 <i class="fas fa-plus me-1"></i> Nuevo Destinatario
             </a>
@@ -80,7 +80,7 @@
                             <td class="text-sm text-data-code">{{ destinatario.telefono_contacto|default:"N/A" }}</td>
                             <td class="text-end pe-4">
                                 {# PERMISO: Gestionar Préstamos (Editar Destinatario) #}
-                                {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_prestamos %}
+                                {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_prestamos %}
                                 <a href="{% url 'gestion_inventario:ruta_editar_destinatario' destinatario.id %}" 
                                    class="btn btn-sm btn-outline-primary text-xs"
                                    title="Editar Destinatario">

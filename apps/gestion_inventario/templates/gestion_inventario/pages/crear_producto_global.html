@@ -109,7 +109,7 @@
                             <a href="{% url 'gestion_inventario:ruta_catalogo_global' %}" class="btn btn-outline-secondary text-base">Cancelar</a>
                             
                             {# PERMISO: Crear Producto Global #}
-                            {% if perms.gestion_inventario.accion_gestion_inventario_crear_producto_global %}
+                            {% if perms.gestion_usuarios.accion_gestion_inventario_crear_producto_global %}
                             <button type="submit" class="btn btn-primary text-base px-4">Guardar Producto Global</button>
                             {% endif %}
                         </div>

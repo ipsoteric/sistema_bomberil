@@ -13,7 +13,7 @@
         </div>
         
         {# PERMISO: Gestionar Préstamos (Crear) #}
-        {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_prestamos %}
+        {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_prestamos %}
         <a href="{% url 'gestion_inventario:ruta_crear_prestamo' %}" class="btn btn-primary shadow-sm text-base px-4 text-nowrap">
             <i class="fas fa-plus me-2"></i> Nuevo Préstamo
         </a>
@@ -25,7 +25,7 @@
 <div class="container-fluid mt-4">
 
     {# PERMISO: Ver Préstamos (Vista General) #}
-    {% if perms.gestion_inventario.accion_gestion_inventario_ver_prestamos %}
+    {% if perms.gestion_usuarios.accion_gestion_inventario_ver_prestamos %}
 
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white py-2 border-bottom-0">
@@ -164,7 +164,7 @@
                                         <i class="fas fa-eye me-1"></i> Ver Detalles
                                     {% else %}
                                         {# Si puede gestionar, icono de editar. Si no, icono de ver #}
-                                        {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_prestamos %}
+                                        {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_prestamos %}
                                             <i class="fas fa-edit me-1"></i> Gestionar
                                         {% else %}
                                             <i class="fas fa-eye me-1"></i> Ver

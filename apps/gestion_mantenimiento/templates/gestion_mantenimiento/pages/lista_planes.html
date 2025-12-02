@@ -46,7 +46,7 @@
                 <!-- Botones de Acción -->
                 <div class="col-12 col-md-6 text-md-end">
                     {# PERMISO: Crear Plan #}
-                    {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes %}
+                    {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_planes %}
                     <a href="{% url 'gestion_mantenimiento:ruta_crear_plan' %}" class="btn btn-success text-base">
                         <i class="fas fa-plus me-1"></i> Nuevo Plan
                     </a>
@@ -140,7 +140,7 @@
                                     </a>
                                     
                                     {# PERMISO: Editar y Eliminar #}
-                                    {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes %}
+                                    {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_planes %}
                                     <!-- Botón Editar -->
                                     <a href="{% url 'gestion_mantenimiento:ruta_editar_plan' plan.pk %}" 
                                        class="btn btn-sm btn-outline-secondary text-xs"

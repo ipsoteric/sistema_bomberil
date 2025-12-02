@@ -108,7 +108,7 @@
                             <a href="{% url 'gestion_inventario:ruta_lista_proveedores' %}" class="btn btn-outline-secondary text-base">Cancelar</a>
                             
                             {# PERMISO: Gestionar Proveedores (Crear) #}
-                            {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_proveedores %}
+                            {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_proveedores %}
                             <button type="submit" class="btn btn-primary text-base px-4">Guardar Proveedor</button>
                             {% endif %}
                         </div>

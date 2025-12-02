@@ -26,7 +26,7 @@
             {# === CASO: ES UN ACTIVO === #}
 
             {# PERMISO: Imprimir Etiquetas #}
-            {% if perms.gestion_inventario.accion_gestion_inventario_imprimir_etiquetas_qr %}
+            {% if perms.gestion_usuarios.accion_gestion_inventario_imprimir_etiquetas_qr %}
             <li>
                 <a class="menu-item text-sm font-medium" 
                    href="{% url 'gestion_inventario:ruta_imprimir_etiquetas' %}?activos={{ item.id }}" target="_blank">
@@ -37,7 +37,7 @@
             {% endif %}
 
             {# PERMISO: Gestionar Stock Interno (Mover) #}
-            {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_stock_interno %}
+            {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno %}
             <li>
                 <a class="menu-item text-sm font-medium" 
                    href="{% url 'gestion_inventario:ruta_mover_existencia' tipo_item='activo' item_id=item.id %}">
@@ -51,7 +51,7 @@
             {# === CASO: ES UN LOTE === #}
 
             {# PERMISO: Imprimir Etiquetas #}
-            {% if perms.gestion_inventario.accion_gestion_inventario_imprimir_etiquetas_qr %}
+            {% if perms.gestion_usuarios.accion_gestion_inventario_imprimir_etiquetas_qr %}
             <li>
                 <a class="menu-item text-sm font-medium" 
                    href="{% url 'gestion_inventario:ruta_imprimir_etiquetas' %}?lotes={{ item.id }}" target="_blank">
@@ -62,7 +62,7 @@
             {% endif %}
 
             {# PERMISO: Gestionar Stock Interno (Consumir, Mover, Ajustar) #}
-            {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_stock_interno %}
+            {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno %}
             <li>
                 <a class="menu-item text-sm font-medium" 
                    href="{% url 'gestion_inventario:ruta_consumir_stock_lote' item.id %}">
@@ -88,7 +88,7 @@
         {% endif %}
 
         {# --- ZONA DE PELIGRO (BAJAS Y ANULACIONES) --- #}
-        {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_bajas_stock %}
+        {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_bajas_stock %}
             <li class="menu-divider"></li>
             
             <li>

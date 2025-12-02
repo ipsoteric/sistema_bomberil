@@ -140,14 +140,14 @@
 
                             <div class="d-grid gap-1 mt-auto">
                                 {# PERMISO: Ver Stock #}
-                                {% if perms.gestion_inventario.accion_gestion_inventario_ver_stock %}
+                                {% if perms.gestion_usuarios.accion_gestion_inventario_ver_stock %}
                                 <a href="{% url 'gestion_inventario:ruta_detalle_producto_local' prod_local.pk %}" class="btn btn-sm btn-outline-primary text-base">
                                     <i class="fas fa-eye me-1"></i> Ver Stock
                                 </a>
                                 {% endif %}
                                 
                                 {# PERMISO: Gestionar Catálogo Local (Editar) #}
-                                {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_catalogo_local %}
+                                {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_catalogo_local %}
                                 <a href="{% url 'gestion_inventario:ruta_editar_producto_local' prod_local.pk %}" class="btn btn-sm btn-outline-secondary text-base">
                                     <i class="fas fa-edit me-1"></i> Editar
                                 </a>
@@ -231,12 +231,12 @@
                                     <td class="text-data-code">${{ prod_local.costo_compra|default:"N/A" }}</td>
                                     <td class="text-end pe-4">
                                         {# PERMISO: Ver Stock #}
-                                        {% if perms.gestion_inventario.accion_gestion_inventario_ver_stock %}
+                                        {% if perms.gestion_usuarios.accion_gestion_inventario_ver_stock %}
                                         <a href="#" class="btn btn-sm btn-outline-primary text-xs" title="Ver Stock"><i class="fas fa-eye"></i></a>
                                         {% endif %}
                                         
                                         {# PERMISO: Gestionar Catálogo Local (Editar) #}
-                                        {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_catalogo_local %}
+                                        {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_catalogo_local %}
                                         <a href="{% url 'gestion_inventario:ruta_editar_producto_local' prod_local.pk %}" class="btn btn-sm btn-outline-secondary text-xs" title="Editar"><i class="fas fa-edit"></i></a>
                                         {% endif %}
                                     </td>

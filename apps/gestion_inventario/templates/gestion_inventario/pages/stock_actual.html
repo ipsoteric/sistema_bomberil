@@ -120,7 +120,7 @@
         </span>
         
         {# PERMISO: Recepcionar Stock (Añadir) #}
-        {% if perms.gestion_inventario.accion_gestion_inventario_recepcionar_stock %}
+        {% if perms.gestion_usuarios.accion_gestion_inventario_recepcionar_stock %}
         <a href="{% url 'gestion_inventario:ruta_recepcion_stock' %}" class="btn btn-success btn-sm text-base"> 
             <i class="fas fa-plus me-1"></i> Añadir Stock / Recepción
         </a>

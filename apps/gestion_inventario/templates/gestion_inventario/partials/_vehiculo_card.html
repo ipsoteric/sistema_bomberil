@@ -44,7 +44,7 @@
         </ul>
         
         {# PERMISO: Ver Ubicaciones #}
-        {% if perms.gestion_inventario.accion_gestion_inventario_ver_ubicaciones %}
+        {% if perms.gestion_usuarios.accion_gestion_inventario_ver_ubicaciones %}
         <a href="{% url 'gestion_inventario:ruta_gestionar_ubicacion' ubicacion.id %}" class="almacen-card__boton fondo_azul color_blanco text-base"> 
             Gestionar Vehículo
         </a>

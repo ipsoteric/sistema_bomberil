@@ -22,7 +22,7 @@
         </div>
 
     {# PERMISO: Ver Ubicaciones (Basta con lectura para entrar a gestionar/ver) #}
-    {% if perms.gestion_inventario.accion_gestion_inventario_ver_ubicaciones %}
+    {% if perms.gestion_usuarios.accion_gestion_inventario_ver_ubicaciones %}
     <a href="{% url 'gestion_inventario:ruta_gestionar_ubicacion' ubicacion.id %}" class="almacen-card-btn text-base color_blanco">
         Gestionar Área
     </a>

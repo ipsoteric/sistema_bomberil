@@ -148,7 +148,7 @@
                         <a href="{% url 'gestion_inventario:ruta_stock_actual' %}" class="btn btn-light text-muted text-base px-4">Cancelar</a>
                         
                         {# PERMISO: Gestionar Préstamos (Crear) #}
-                        {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_prestamos %}
+                        {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_prestamos %}
                         <button type="submit" class="btn btn-primary text-base px-4 shadow-sm">
                             <i class="fas fa-save me-2"></i> Confirmar Préstamo
                         </button>

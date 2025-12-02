@@ -89,7 +89,7 @@
                             
                             {% if prestamo.estado != 'COM' %}
                                 {# PERMISO: Gestionar Préstamos (Devolver) #}
-                                {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_prestamos %}
+                                {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_prestamos %}
                                 <button type="submit" class="btn btn-primary px-4 shadow-sm text-base font-bold">
                                     <i class="fas fa-save me-2"></i> Procesar Cambios
                                 </button>
@@ -171,7 +171,7 @@
                                     {% if detalle.pendiente_real > 0 %}
                                         
                                         {# Solo mostramos controles si tiene permiso #}
-                                        {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_prestamos %}
+                                        {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_prestamos %}
                                             
                                             {% if detalle.activo %}
                                                 {# Lógica Activo: Checkbox Devolver o Perdido #}

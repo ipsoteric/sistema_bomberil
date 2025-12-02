@@ -46,7 +46,7 @@
             </span>
             
             {# PERMISO: Crear Área (Gestionar Ubicaciones) #}
-            {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_ubicaciones %}
+            {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones %}
             <a href="{% url 'gestion_inventario:ruta_crear_area' %}" class="btn btn-success btn-sm text-base">
                 <i class="fas fa-plus me-1"></i> Añadir Área
             </a>
@@ -90,7 +90,7 @@
                                     </a>
                                     
                                     {# PERMISO: Editar Área (Gestionar Ubicaciones) #}
-                                    {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_ubicaciones %}
+                                    {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_ubicaciones %}
                                     <a class="btn btn-sm btn-outline-secondary text-sm" 
                                        href="{% url 'gestion_inventario:ruta_editar_area' ubicacion.id %}"
                                        title="Editar nombre o imagen">

@@ -17,7 +17,7 @@
         </div>
         
         {# PERMISO: Imprimir Etiquetas #}
-        {% if perms.gestion_inventario.accion_gestion_inventario_imprimir_etiquetas_qr %}
+        {% if perms.gestion_usuarios.accion_gestion_inventario_imprimir_etiquetas_qr %}
         <div class="d-flex gap-2">
             {% if es_activo %}
                 <a href="{% url 'gestion_inventario:ruta_imprimir_etiquetas' %}?activos={{ item.id }}" target="_blank" class="btn btn-outline-dark text-base shadow-sm">
@@ -178,7 +178,7 @@
                 {# TAB 1: BITÁCORA (TRAZABILIDAD) #}
                 <div class="tab-pane fade show active" id="bitacora" role="tabpanel">
                     
-                    {% if perms.gestion_inventario.accion_gestion_inventario_ver_historial_movimientos %}
+                    {% if perms.gestion_usuarios.accion_gestion_inventario_ver_historial_movimientos %}
                         <h6 class="mb-3 text-muted text-xs text-uppercase font-bold">Últimos 50 Movimientos Registrados</h6>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
@@ -234,7 +234,7 @@
                 {# TAB 2: MANTENIMIENTO #}
                 <div class="tab-pane fade" id="mantenimiento" role="tabpanel">
                     
-                    {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_ver_ordenes %}
+                    {% if perms.gestion_usuarios.accion_gestion_mantenimiento_ver_ordenes %}
                         <div class="row g-4">
                             <div class="col-lg-4">
                                 <h6 class="font-bold color_primario mb-3 text-sm text-uppercase">Planes de Mantenimiento Asignados</h6>

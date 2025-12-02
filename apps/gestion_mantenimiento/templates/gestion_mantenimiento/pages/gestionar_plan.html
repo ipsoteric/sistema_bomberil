@@ -65,7 +65,7 @@
                     </ul>
                     
                     {# PERMISO: Editar Plan #}
-                    {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes %}
+                    {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_planes %}
                     <div class="d-grid gap-2 mt-4">
                         <a href="{% url 'gestion_mantenimiento:ruta_editar_plan' plan.pk %}" class="btn btn-outline-secondary btn-sm text-base">
                             <i class="fas fa-edit me-1"></i> Editar Configuración
@@ -80,7 +80,7 @@
         <div class="col-12 col-lg-8">
             
             {# PERMISO: Añadir Activos (Gestionar) #}
-            {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes %}
+            {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_planes %}
             <div class="card shadow-sm border-0 mb-4 bg-primary text-white bg-opacity-100" 
                  style="background: linear-gradient(45deg, #1a237e 0%, #283593 100%);">
                 <div class="card-body p-4">
@@ -172,7 +172,7 @@
                                 {% endif %}
                                 <td class="text-end pe-4">
                                     {# PERMISO: Quitar Activo (Gestionar) #}
-                                    {% if perms.gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes %}
+                                    {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_planes %}
                                     <button class="btn btn-sm btn-outline-danger btn-quitar text-base" 
                                             data-config-id="{{ config.id }}"
                                             data-activo-nombre="{{ config.activo.producto.producto_global.nombre_oficial }}"

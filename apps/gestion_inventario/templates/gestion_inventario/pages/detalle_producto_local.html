@@ -83,7 +83,7 @@
                     </h5>
                     
                     {# PERMISO: Gestionar Catálogo Local (Editar) #}
-                    {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_catalogo_local %}
+                    {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_catalogo_local %}
                     <a href="{% url 'gestion_inventario:ruta_editar_producto_local' producto.pk %}" class="btn btn-primary btn-sm text-sm shadow-sm">
                         <i class="fas fa-pen me-1"></i> Editar Ficha
                     </a>

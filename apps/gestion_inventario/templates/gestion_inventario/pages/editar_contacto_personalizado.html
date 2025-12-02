@@ -75,7 +75,7 @@
                             <a href="{% url 'gestion_inventario:ruta_detalle_proveedor' proveedor.pk %}" class="btn btn-secondary text-base">Cancelar</a>
                             
                             {# PERMISO: Gestionar Proveedores (Editar contacto) #}
-                            {% if perms.gestion_inventario.accion_gestion_inventario_gestionar_proveedores %}
+                            {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_proveedores %}
                             <button type="submit" class="btn btn-primary text-base">Guardar Cambios</button>
                             {% endif %}
                         </div>
