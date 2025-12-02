@@ -36,8 +36,11 @@
                         {% endif %}
 
                         <div class="row">
+
+
                             {# Columna Izquierda #}
                             <div class="col-md-6">
+
                                 <div class="mb-3">
                                     <label for="{{ formulario.rut.id_for_label }}" class="form-label font-bold text-sm">RUT <span class="text-danger fw-bold" title="Campo Obligatorio">*</span></label>
                                     {{ formulario.rut }}
@@ -47,6 +50,7 @@
                                         </div>
                                     {% endif %}
                                 </div>
+                                {# Nombre #}
                                 <div class="mb-3">
                                     <label for="{{ formulario.nombre.id_for_label }}" class="form-label font-bold text-sm">Nombre <span class="text-danger fw-bold" title="Campo Obligatorio">*</span></label>
                                     {{ formulario.nombre }}
@@ -56,6 +60,7 @@
                                         </div>
                                     {% endif %}
                                 </div>
+                                {# Fecha nacimiento #}
                                 <div class="mb-3">
                                     <label for="{{ formulario.fecha_nacimiento.id_for_label }}" class="form-label font-bold text-sm">Fecha de Nacimiento</label>
                                     {{ formulario.fecha_nacimiento }}
@@ -67,6 +72,7 @@
                                 </div>
                             </div>
                             
+
                             {# Columna Derecha #}
                             <div class="col-md-6">
                                 <div class="mb-3">

@@ -1,3 +1,4 @@
+from itertools import cycle
 from django.core.files.base import ContentFile
 from io import BytesIO
 from PIL import Image
@@ -92,3 +93,28 @@ def generar_thumbnail_en_memoria(
     
     # Usamos el nombre de archivo completo que nos pasaron
     return ContentFile(thumb_buffer.getvalue(), name=new_filename)
+
+
+
+
+def calcular_dv(cuerpo_rut):
+    """
+    Recibe un número (entero o string) y retorna el DV calculado (string).
+    Ej: calcular_dv(12345678) -> '5'
+    """
+    try:
+        cuerpo = str(cuerpo_rut)
+        # Invertimos el número para multiplicar por la serie 2,3,4,5,6,7
+        reversed_digits = map(int, reversed(cuerpo))
+        factors = cycle(range(2, 8))
+        
+        s = sum(d * f for d, f in zip(reversed_digits, factors))
+        mod = (-s) % 11
+        
+        if mod == 10:
+            return 'K'
+        if mod == 11:
+            return '0'
+        return str(mod)
+    except ValueError:
+        return None # O manejar error según necesidad

@@ -377,30 +377,33 @@ class UsuarioCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, Auditor
     # --- 2. Métodos Helper (Formulario, Contexto) ---
     def get_form(self, data=None, files=None):
         """Helper para instanciar el formulario (incluye files y valores iniciales)."""
+        form_kwargs = {
+            'data': data,
+            'files': files,
+            'user': self.request.user,
+            'estacion': self.estacion_activa
+        }
         
         # Si es una petición GET (sin datos POST), intentamos pre-llenar
         if data is None:
             rut_prellenado = self.request.GET.get('rut') # Capturamos '?rut=...'
             if rut_prellenado:
-                # 'initial' es la forma correcta de pre-llenar un Django Form
-                return self.form_class(initial={'rut': rut_prellenado})
+                form_kwargs['initial'] = {'rut': rut_prellenado}
         
-        return self.form_class(data, files)
+        return self.form_class(**form_kwargs)
 
-    def get_context_data(self, **kwargs):
-        """Helper para poblar el contexto."""
-        context = {'formulario': kwargs.get('form')}
-        return context
+    def get_context_data(self, form=None):
+        if form is None:
+            form = self.get_form()
+        return {'formulario': form}
 
 
     def get(self, request, *args, **kwargs):
-        form = self.get_form()
-        context = self.get_context_data(form=form)
-        return render(request, self.template_name, context)
+        return render(request, self.template_name, self.get_context_data())
 
 
     def post(self, request, *args, **kwargs):
-        form = self.get_form(request.POST, request.FILES)
+        form = self.get_form(data=request.POST, files=request.FILES)
 
         if form.is_valid():
             return self.form_valid(form)
@@ -502,7 +505,16 @@ class UsuarioEditarView(BaseEstacionMixin, CustomPermissionRequiredMixin, Membre
 
     # --- 3. Métodos Helper (sin cambios) ---
     def get_form(self, data=None, files=None, instance=None):
-        return self.form_class(data, files, instance=instance)
+        """
+        Instancia el formulario inyectando dependencias para BomberilFormMixin.
+        """
+        return self.form_class(
+            data=data,
+            files=files,
+            instance=instance,
+            user=self.request.user,
+            estacion=self.estacion_activa 
+        )
 
     def get_context_data(self, **kwargs):
         context = {
@@ -518,11 +530,16 @@ class UsuarioEditarView(BaseEstacionMixin, CustomPermissionRequiredMixin, Membre
 
     # --- 4. Manejador GET ---
     def get(self, request, *args, **kwargs):
-        usuario_a_editar = self.object.usuario # 'self.object' (la Membresia) ya fue validada por el mixin.
+        membresia = self.object # Validada por el Mixin
+        usuario = membresia.usuario
         
-        form = self.get_form(instance=usuario_a_editar)
-        context = self.get_context_data(form=form, usuario_obj=usuario_a_editar)
-        return render(request, self.template_name, context)
+        form = self.get_form(instance=usuario)
+        
+        return render(request, self.template_name, {
+            'formulario': form,
+            'usuario': usuario,
+            'membresia': membresia
+        })
 
 
     # --- 5. Manejador POST ---
@@ -564,11 +581,11 @@ class UsuarioEditarView(BaseEstacionMixin, CustomPermissionRequiredMixin, Membre
     
     def form_invalid(self, form):
         messages.error(self.request, "Formulario no válido. Por favor, revisa los datos.")
-        context = self.get_context_data(
-            form=form, 
-            usuario_obj=self.object.usuario 
-        )
-        return render(self.request, self.template_name, context)
+        return render(self.request, self.template_name, {
+            'formulario': form,
+            'usuario': self.object.usuario,
+            'membresia': self.object
+        })
 
 
 

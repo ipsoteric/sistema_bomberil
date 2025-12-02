@@ -2,144 +2,89 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 
 from .models import Usuario, Rol
-from apps.common.mixins import ImageProcessingFormMixin
+from apps.common.mixins import ImageProcessingFormMixin, BomberilFormMixin
+from apps.common.form_fields import RutField, NombrePropioField, TelefonoChileField
+from apps.common.validators import validar_edad
 
 
 
-class FormularioCrearUsuario(forms.Form):
+class FormularioCrearUsuario(BomberilFormMixin, forms.Form):
+    rut = RutField() 
+    nombre = NombrePropioField(required=True)
+    apellido = NombrePropioField(required=True)
     correo = forms.EmailField(
         required=True, 
-        widget=forms.TextInput(
-            attrs={
-                # Reemplazamos las clases por las de Bootstrap + tu clase de fuente
-                'class': 'form-control form-control-sm text-base', # fs_normal -> text-base
-                'autocomplete': 'off',
-                'placeholder': 'ejemplo@correo.com' # (Recomendado)
-            }
-        )
-    )
-    nombre = forms.CharField(
-        required=True, 
-        widget=forms.TextInput(
-            attrs={
-                'class': 'form-control form-control-sm text-base',
-                'autocomplete': 'off',
-            }
-        )
-    )
-    apellido = forms.CharField(
-        required=True, 
-        widget=forms.TextInput(
-            attrs={
-                'class': 'form-control form-control-sm text-base',
-                'autocomplete': 'off',
-            }
-        )
-    )
-    rut = forms.CharField(
-        required=True, 
-        widget=forms.TextInput(
-            attrs={
-                'class': 'form-control form-control-sm text-base',
-                'autocomplete': 'off',
-                'placeholder': '12.345.678-9' # (Recomendado)
-            }
-        )
+        widget=forms.EmailInput(attrs={'placeholder': 'ejemplo@bomberos.cl'})
     )
     fecha_nacimiento = forms.DateField(
-        required=False, 
-        widget=forms.DateInput(
-            attrs={
-                'type': 'date', # Mantenemos esto
-                'class': 'form-control form-control-sm text-base',
-                'autocomplete': 'off',
-            }
-        )
+        required=False,
+        validators=[validar_edad], # <--- AQUÍ ESTÁ LA REGLA
+        widget=forms.DateInput(attrs={'type': 'date'})
     )
-    telefono = forms.CharField(
-        required=False, 
-        widget=forms.TextInput(
-            attrs={
-                'class': 'form-control form-control-sm text-base',
-                'autocomplete': 'off',
-            }
-        )
-    )
-    avatar = forms.ImageField(
-        required=False, 
-        widget=forms.ClearableFileInput(
-            attrs={
-                # Bootstrap estiliza los inputs de archivo con 'form-control'
-                'class': 'form-control form-control-sm text-base',
-                'autocomplete': 'off',
-            }
-        )
-    )
+    telefono = TelefonoChileField(required=False)
 
 
 
-class FormularioEditarUsuario(ImageProcessingFormMixin, forms.ModelForm):
-    
-    # Campos de solo lectura
+
+class FormularioEditarUsuario(BomberilFormMixin, ImageProcessingFormMixin, forms.ModelForm):
+    # Campos Especiales (Reutilizamos tu lógica inteligente)
+    first_name = NombrePropioField(required=True, label="Nombre")
+    last_name = NombrePropioField(required=True, label="Apellido")
+    phone = TelefonoChileField(required=False, label="Teléfono")
+
+    # RUT: Solo lectura, visualización simple
     rut = forms.CharField(
         label='RUT',
-        required=False, # No es 'required' porque no se está enviando, solo mostrando
+        required=False,
         widget=forms.TextInput(attrs={
-            # Usamos las clases de Bootstrap, pero mantenemos 'readonly'
-            'class': 'form-control form-control-sm text-base text-muted', # fs_normal -> text-base
-            'autocomplete': 'off',
             'readonly': 'readonly',
-            'tabindex': '-1'
+            'tabindex': '-1',
+            'class': 'text-muted' # El Mixin agregará form-control automáticamente
         })
     )
 
     class Meta:
         model = Usuario
-        # Campos editables
-        fields = ['email', 'first_name', 'last_name', 'phone', 'birthdate', 'avatar']
+        fields = ['rut', 'email', 'first_name', 'last_name', 'phone', 'birthdate', 'avatar']
         
-        # Definimos los widgets para los campos del ModelForm
         widgets = {
-            'email': forms.EmailInput(attrs={
-                'class': 'form-control form-control-sm text-base'
-            }),
-            'first_name': forms.TextInput(attrs={
-                'class': 'form-control form-control-sm text-base'
-            }),
-            'last_name': forms.TextInput(attrs={
-                'class': 'form-control form-control-sm text-base'
-            }),
-            'phone': forms.TextInput(attrs={
-                'class': 'form-control form-control-sm text-base'
-            }),
-            'birthdate': forms.DateInput(attrs={
-                'class': 'form-control form-control-sm text-base',
-                'type': 'date' # Aseguramos que sea un input de fecha
-            }),
-            'avatar': forms.ClearableFileInput(attrs={
-                'class': 'form-control form-control-sm text-base'
-            }),
+            'birthdate': forms.DateInput(attrs={'type': 'date'}),
+            # email y avatar son manejados automáticamente por el Mixin
         }
 
-
     def __init__(self, *args, **kwargs):
+        # 1. Extraemos la instancia antes de iniciar para pre-llenar datos custom
+        instance = kwargs.get('instance')
+        
+        # 2. Inicializamos (El Mixin aquí inyectará estilos y sacará user/estacion)
         super().__init__(*args, **kwargs)
         
-        # El `instance` es el usuario que estamos editando
-        if self.instance:
-            # Poblamos los campos 'readonly' que no están en el Meta
-            self.fields['rut'].initial = self.instance.rut
-            self.fields['email'].initial = self.instance.email
+        # 3. Lógica específica de este form
+        if instance:
+            # Pre-llenar RUT visual (que no es parte del form editable)
+            self.fields['rut'].initial = instance.rut
+            
+            # Si el email es vital para el login, a veces se bloquea también. 
+            # Si permites editarlo, asegúrate que no choque con otro usuario.
+
+    def clean_email(self):
+        # Validación extra: Que el nuevo email no pertenezca a OTRO usuario
+        email = self.cleaned_data.get('email')
+        if self.instance and email:
+            if Usuario.objects.filter(email=email).exclude(pk=self.instance.pk).exists():
+                raise forms.ValidationError("Este correo electrónico ya está en uso por otro usuario.")
+        return email
 
     def save(self, commit=True):
         usuario = super().save(commit=False)
         
+        # Procesamiento de imagen (Avatar)
         self.process_image_upload(
             instance=usuario, 
             field_name='avatar',
-            max_dim=(1024, 1024), 
-            crop=False,
-            image_prefix='usuario'
+            max_dim=(800, 800), # Avatar no necesita ser 4K
+            crop=True,          # Avatar cuadrado se ve mejor
+            image_prefix='avatar_user'
         )
 
         if commit:

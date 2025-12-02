@@ -1,0 +1,130 @@
+/* ============================================================
+   BOMBERIL FORMS SYSTEM - ESTILOS MAESTROS DEFINITIVOS
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. ESTILOS PARA INPUTS NORMALES (Nombre, Correo, Fecha)
+   ------------------------------------------------------------ */
+
+/* El wrapper que genera el JS para envolver inputs normales */
+.bomberil-input-wrapper {
+    position: relative !important; /* Vital para que el icono se pegue aquí */
+    display: block;
+    width: 100%;
+}
+
+/* El Input dentro del wrapper */
+.bomberil-input-wrapper .form-control {
+    padding-right: 2.5rem !important; /* Espacio para que el texto no toque el icono */
+    background-image: none !important; /* MATAMOS EL ICONO DE BOOTSTRAP */
+}
+
+/* El contenedor del icono (Check / X) */
+.bomberil-feedback-icon {
+    position: absolute;
+    top: 50%;
+    right: 1rem; /* Pegado a la derecha */
+    transform: translateY(-50%); /* Centrado vertical exacto */
+    z-index: 10;
+    pointer-events: none; /* El click pasa a través */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+/* Tamaño de los íconos */
+.bomberil-feedback-icon i {
+    font-size: var(--font-base);
+    margin-right: 1rem;
+}
+
+/* ------------------------------------------------------------
+   2. ESTILOS PARA WIDGETS UNIFICADOS (RUT Y TELÉFONO)
+   ------------------------------------------------------------ */
+
+/* El contenedor que simula ser un input */
+.rut-widget-wrapper {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    width: 100%;
+    
+    /* Métricas Bootstrap */
+    min-height: calc(1.5em + 0.75rem + 2px);
+    padding: 0.375rem 0.25rem 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    background-color: #fff !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.25rem;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+
+/* Focus State */
+.rut-widget-wrapper:focus-within {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    outline: 0;
+    z-index: 5;
+}
+
+/* Validación Widgets (Quitar iconos bootstrap) */
+.rut-widget-wrapper.is-valid, 
+.rut-widget-wrapper.is-invalid {
+    background-image: none !important;
+    padding-right: 1rem !important;
+}
+
+.rut-widget-wrapper.is-valid { border-color: #198754 !important; }
+.rut-widget-wrapper.is-invalid { border-color: #dc3545 !important; }
+
+/* --- ELEMENTOS INTERNOS DEL WIDGET --- */
+
+/* Inputs "Desnudos" (Sin borde) */
+.rut-input-clean {
+    border: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    color: inherit;
+    width: 100%;
+    min-width: 0; /* Vital para Flexbox */
+    flex-grow: 1;
+    text-align: left !important;
+}
+
+/* 3. ELEMENTOS FIJOS (+56, Guión, DV) */
+.telefono-prefix, .rut-separator, .rut-dv {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    color: #6c757d;
+    font-weight: bold;
+}
+
+.telefono-prefix { margin-right: 0.5rem; }
+.rut-separator { padding: 0 5px; }
+
+.rut-dv {
+    width: 2rem !important;
+    text-align: center;
+    cursor: default;
+}
+
+/* 4. ICONOS */
+.rut-icon-container {
+    flex-shrink: 0;
+    width: 1.5rem;
+    margin-left: 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+/* 5. VALIDACIÓN (Bordes Verde/Rojo sin ícono de fondo) */
+.rut-widget-wrapper.is-valid { border-color: #198754 !important; background-image: none !important; }
+.rut-widget-wrapper.is-invalid { border-color: #dc3545 !important; background-image: none !important; }

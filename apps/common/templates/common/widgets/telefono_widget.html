@@ -1,0 +1,28 @@
+<div class="telefono-widget-container" data-widget-name="{{ widget.name }}">
+    {# IMPORTANTE: Usamos .rut-widget-wrapper que ahora tiene flex-wrap: nowrap !important #}
+    <div class="rut-widget-wrapper bg-white {{ widget.attrs.class }}">
+        
+        {# PREFIJO FIJO #}
+        <span class="telefono-prefix select-none">+56</span>
+        
+        {# INPUT #}
+        <input type="{{ widget.type }}" 
+               name="{{ widget.name }}" 
+               class="rut-input-clean text-base font-medium" 
+               {% if widget.value %}value="{{ widget.value }}"{% endif %}
+               placeholder="9 1234 5678"
+               maxlength="10" 
+               autocomplete="off"
+               {% for name, value in widget.attrs.items %}
+                   {% if name != 'class' and name != 'maxlength' %}{{ name }}="{{ value }}"{% endif %}
+               {% endfor %}>
+               
+        {# ICONOS #}
+        <div class="rut-icon-container">
+            <i class="fas fa-check-circle text-success d-none icon-valid"></i>
+            <i class="fas fa-exclamation-circle text-danger d-none icon-invalid"></i>
+        </div>
+    </div>
+    {# Feedback de error #}
+    <div class="invalid-feedback-custom text-danger text-sm mt-1 fw-bold" style="display:none;"></div>
+</div>
