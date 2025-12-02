@@ -102,17 +102,32 @@ DATABASES = {
 
 # Validaciones de contraseña
 AUTH_PASSWORD_VALIDATORS = [
+    # 1. Similitud con el usuario: Evita que la contraseña se parezca al RUT, Email o Nombre.
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'OPTIONS': {
+            'user_attributes': ('rut', 'email', 'first_name', 'last_name'),
+            'max_similarity': 0.7,
+        }
     },
+    # 2. Longitud Mínima: Tu regla de 12 caracteres.
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 12,
+        }
     },
+    # 3. Contraseñas Comunes: Bloquea las 20,000 contraseñas más usadas (ej: "123456", "bomberos1").
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
+    # 4. Evitar solo números: (Opcional, pero buena práctica básica)
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    # 5. NUESTRO VALIDADOR PERSONALIZADO (Mayúsculas, Símbolos, etc.)
+    {
+        'NAME': 'apps.common.password_validation.BomberilPasswordValidator',
     },
 ]
 

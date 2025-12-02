@@ -1,13 +1,14 @@
 import os
 import uuid
+from datetime import date, timedelta
 from PIL import Image
+from django import forms
 from django.core.exceptions import PermissionDenied, ImproperlyConfigured
 from django.contrib.auth.mixins import AccessMixin, LoginRequiredMixin, PermissionRequiredMixin
 from django.apps import apps
 from django.shortcuts import get_object_or_404, redirect
 from django.http import Http404
 from django.contrib import messages
-from django.urls import reverse_lazy
 
 from apps.gestion_inventario.models import Estacion
 from .utils import procesar_imagen_en_memoria, generar_thumbnail_en_memoria
@@ -320,3 +321,92 @@ class CustomPermissionRequiredMixin(PermissionRequiredMixin):
         # Si el usuario escribió la URL directa o el navegador bloqueó el referer,
         # lo enviamos al inicio por defecto.
         return redirect(self.url_redireccion)
+
+
+
+
+class BomberilFormMixin:
+    """
+    Mixin Maestro para Formularios del Sistema Bomberil.
+    
+    Funcionalidades:
+    1. Inyección de Contexto: Extrae 'user' y 'estacion' de los kwargs para uso interno.
+    2. Estilos UI (DRY): Aplica clases CSS estándar automáticamente según el tipo de widget,
+       sin sobrescribir las clases personalizadas que defina el desarrollador.
+    """
+
+    def __init__(self, *args, **kwargs):
+        # 1. Extracción de Contexto (Pop para que no falle el super().__init__)
+        self.user = kwargs.pop('user', None)
+        self.estacion_activa = kwargs.pop('estacion', None)
+
+        # 2. Inicialización del formulario base
+        super().__init__(*args, **kwargs)
+
+        # 3. Lógica de Estilos CSS Centralizada
+        self._aplicar_estilos_y_reglas()
+
+
+    def _aplicar_estilos_y_reglas(self):
+        # 1. Estilos Base (Ya los teníamos)
+        ESTILO_BASE = 'text-base color_primario fondo_secundario_variante border-0'
+        CLASES_POR_WIDGET = {
+            forms.TextInput: f'form-control form-control-sm {ESTILO_BASE}',
+            forms.EmailInput: f'form-control form-control-sm {ESTILO_BASE}',
+            forms.NumberInput: f'form-control form-control-sm {ESTILO_BASE}',
+            forms.Textarea: f'form-control form-control-sm {ESTILO_BASE}',
+            forms.Select: f'form-select form-select-sm {ESTILO_BASE}',
+            forms.DateInput: f'form-control form-control-sm {ESTILO_BASE}',
+            forms.PasswordInput: f'form-control form-control-sm {ESTILO_BASE}',
+        }
+
+        for field_name, field in self.fields.items():
+            widget = field.widget
+            
+            # --- A. INYECCIÓN DE ESTILOS ---
+            # (Lógica que ya teníamos para clases CSS)
+            clase_nueva = CLASES_POR_WIDGET.get(type(widget), CLASES_POR_WIDGET[forms.TextInput])
+            clases_existentes = widget.attrs.get('class', '')
+            if clases_existentes:
+                widget.attrs['class'] = f"{clase_nueva} {clases_existentes}"
+            else:
+                widget.attrs['class'] = clase_nueva
+
+            # --- B. INYECCIÓN DE REGLAS ---
+            # Convertimos reglas de Python a atributos data-* para JS
+            
+            # 1. Requerido
+            if field.required:
+                widget.attrs['data-rule-required'] = 'true'
+            
+            # 2. Máximos y Mínimos (Solo para inputs de texto)
+            if hasattr(field, 'max_length') and field.max_length:
+                widget.attrs['maxlength'] = field.max_length # Nativo HTML
+                widget.attrs['data-rule-max'] = field.max_length # Para JS
+                
+            if hasattr(field, 'min_length') and field.min_length:
+                widget.attrs['minlength'] = field.min_length
+                widget.attrs['data-rule-min'] = field.min_length
+
+            # 3. Tipos Especiales (Marcamos el campo para validaciones específicas)
+            if isinstance(field, forms.EmailField):
+                widget.attrs['data-rule-type'] = 'email'
+            elif isinstance(field, forms.IntegerField):
+                widget.attrs['data-rule-type'] = 'integer'
+
+            # 4. Reglas especiales para FECHAS
+            if isinstance(field, forms.DateField):
+                widget.attrs['data-rule-type'] = 'date'
+
+                # Ejemplo de regla de negocio: Entre 18 y 100 años atrás
+                hoy = date.today()
+                fecha_minima = hoy - timedelta(days=365 * 100) # 100 años
+                fecha_maxima = hoy - timedelta(days=365 * 18)  # 18 años (Mayor de edad)
+
+                # Inyectamos atributos nativos de HTML5
+                widget.attrs['min'] = fecha_minima.isoformat()
+                widget.attrs['max'] = fecha_maxima.isoformat()
+
+                # Atributos para nuestro JS validator
+                widget.attrs['data-date-min'] = fecha_minima.isoformat()
+                widget.attrs['data-date-max'] = fecha_maxima.isoformat()

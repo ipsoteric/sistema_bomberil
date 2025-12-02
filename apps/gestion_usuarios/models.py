@@ -22,7 +22,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     birthdate = models.DateField(null=True, blank=True, verbose_name="Fecha Nacimiento")
-    phone = models.CharField(max_length=9, null=True, blank=True, verbose_name="Teléfono")
+    phone = models.CharField(max_length=15, null=True, blank=True, verbose_name="Teléfono")
     avatar = models.ImageField(upload_to="usuarios/avatar/main/", null=True, blank=True)
     avatar_thumb_small = models.ImageField(upload_to="usuarios/avatar/small/", null=True, blank=True)
     avatar_thumb_medium = models.ImageField(upload_to="usuarios/avatar/medium/", null=True, blank=True)
