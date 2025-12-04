@@ -70,6 +70,7 @@ urlpatterns = [
     # --- CATÁLOGO MEDICAMENTOS ---
     path('medicamentos/', MedicamentoListView.as_view(), name="ruta_lista_medicamentos"),
     path('medicamentos/crear/', MedicamentoCrearView.as_view(), name="ruta_crear_medicamento"),
+    path('medicamentos/buscar-medicamentos/', MedicamentoSearchAPIView.as_view(), name="api_buscar_medicamentos"),
 
     # --- CATÁLOGO ENFERMEDADES ---
     path('enfermedades/', EnfermedadListView.as_view(), name="ruta_lista_enfermedades"),

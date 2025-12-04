@@ -4,12 +4,15 @@
 {% block titulo_ventana %}Gestión de Medicamentos{% endblock %}
 
 {% block contenido %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-md-9 col-lg-7">
             <div class="card shadow-lg border-0" style="border-radius: 15px;">
                 
-                <div class="card-header bg-gradient-info text-white py-3 border-0" style="border-top-left-radius: 15px; border-top-right-radius: 15px;">
+                <div class="card-header bg-gradient-info text-white py-3 border-0">
                     <h4 class="mb-0 fs_x_grande font-bold">
                         <i class="fas fa-prescription-bottle-alt me-2"></i>
                         {% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Medicamento
@@ -17,16 +20,13 @@
                 </div>
 
                 <div class="card-body p-4 bg-white">
-                    
                     <div class="alert alert-info border-0 bg-info-soft text-info-custom mb-4 rounded-3">
                         <div class="d-flex">
-                            <i class="fas fa-info-circle fa-lg me-3 mt-1"></i>
+                            <i class="fas fa-search fa-lg me-3 mt-1"></i>
                             <div>
-                                <h6 class="fs_normal font-bold mb-0">Catálogo Inteligente</h6>
-                                <p class="mb-0 fs_pequena text-muted">
-                                    Ingresa los datos por separado. El sistema validará que no exista la combinación exacta.
-                                    <br>Ejemplo visual: <strong>"Paracetamol 500 mg"</strong>.
-                                </p>
+                                <strong>Búsqueda Inteligente:</strong><br>
+                                Escriba el nombre (ej: "Paracetamol") para buscar en el catálogo. 
+                                Si no existe, presione <b>Enter</b> para crearlo.
                             </div>
                         </div>
                     </div>
@@ -34,21 +34,21 @@
                     <form method="post" class="needs-validation" novalidate>
                         {% csrf_token %}
                         
-                        {# 1. NOMBRE DEL FÁRMACO (Antes nombre_base, ahora nombre) #}
-                        <div class="mb-4">
-                            <label class="form-label text-muted font-bold fs_normal text-uppercase mb-2">Nombre del Fármaco</label>
-                            <div class="input-group input-group-lg shadow-sm rounded-pill border input-group-focus-info">
-                                <span class="input-group-text bg-white border-0 text-info-custom ps-4">
-                                    <i class="fas fa-capsules"></i>
-                                </span>
+                        <div class="row">
+                            <div class="col-md-12 mb-4">
+                                <label for="{{ form.nombre.id_for_label }}" class="form-label fw-bold text-dark">
+                                    <i class="fas fa-file-signature me-1"></i> {{ form.nombre.label }}
+                                </label>
                                 {{ form.nombre }}
-                            </div>
-                            {# Manejo de errores específico para el campo nombre #}
-                            {% if form.nombre.errors %}
-                                <div class="text-danger fs_pequena mt-1 ms-3 font-bold">
-                                    <i class="fas fa-exclamation-circle me-1"></i> {{ form.nombre.errors.0 }}
+                                {% if form.nombre.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.nombre.errors|striptags }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text text-muted">
+                                    Evite incluir la dosis aquí (ej: use solo "Ibuprofeno").
                                 </div>
-                            {% endif %}
+                            </div>
                         </div>
 
                         {# 2. DOSIS Y UNIDAD #}
@@ -61,43 +61,26 @@
                                 {{ form.concentracion }}
                                 {{ form.unidad }}
                             </div>
-                            {% if form.concentracion.errors %}
-                                <div class="text-danger fs_pequena mt-1 ms-3 font-bold">{{ form.concentracion.errors.0 }}</div>
-                            {% endif %}
                         </div>
 
-                        {# 3. RIESGO #}
-                        <div class="form-group mb-4">
-                            <label class="form-label text-warning font-bold fs_normal text-uppercase mb-2">
-                                <i class="fas fa-exclamation-triangle me-1"></i> Clasificación Triage
-                            </label>
-                            
-                            <div class="input-group shadow-sm rounded-pill border input-group-focus-warning">
-                                <span class="input-group-text bg-white border-0 text-warning ps-4">
-                                    <i class="fas fa-shield-heart"></i>
-                                </span>
+                        <div class="row">
+                            <div class="col-md-12 mb-4">
+                                <label for="{{ form.clasificacion_riesgo.id_for_label }}" class="form-label fw-bold text-muted small text-uppercase">
+                                    {{ form.clasificacion_riesgo.label }}
+                                </label>
                                 {{ form.clasificacion_riesgo }}
+                                {% if form.clasificacion_riesgo.errors %}
+                                    <div class="text-danger small">{{ form.clasificacion_riesgo.errors }}</div>
+                                {% endif %}
                             </div>
                         </div>
-                    
-                        {# ERRORES GENERALES (Aquí saldrá el error de duplicado "Ya existe...") #}
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-danger rounded-3 shadow-sm mt-4">
-                                <i class="fas fa-exclamation-triangle me-2"></i> 
-                                <span class="fs_normal font-bold">{{ form.non_field_errors.0 }}</span>
-                            </div>
-                        {% endif %}
 
-                        <div class="form-actions text-end mt-5 pt-3 border-top">
-                            <a href="{% url 'gestion_medica:ruta_lista_medicamentos' %}"
-                               class="btn btn-outline-secondary fs_normal font-bold me-2" 
-                               style="padding: 10px 20px;">
-                                <i class="fas fa-times me-1"></i> Cancelar
+                        <div class="d-flex justify-content-end gap-2 mt-5 border-top pt-4">
+                            <a href="{% url 'gestion_medica:ruta_lista_medicamentos' %}" class="btn btn-light border btn-lg px-4">
+                                Cancelar
                             </a>
-
-                            <button type="submit" class="btn fs_normal font-bold text-white" 
-                                    style="padding: 10px 20px; background-color: #36b9cc; border-color: #36b9cc;">
-                                <i class="fas fa-save me-1"></i> Guardar Medicamento
+                            <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">
+                                <i class="fas fa-save me-2"></i> Guardar Medicamento
                             </button>
                         </div>
                     </form>
@@ -108,34 +91,46 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Mantenemos la limpieza visual de los inputs
-        const inputs = document.querySelectorAll('input, select');
-        inputs.forEach(input => {
-            input.classList.add('form-control-clean');
-            input.classList.add('border-0');
-            input.classList.add('bg-transparent'); 
-            // Aseguramos que el texto dentro del input también respete la tipografía
-            input.classList.add('fs_normal'); 
-        });
+    document.addEventListener("DOMContentLoaded", function() {
+        // Verificamos que exista el campo antes de inicializar
+        if (document.getElementById('id_nombre')) {
+            new TomSelect("#id_nombre", {
+                create: true,           // Permite crear si no existe
+                createOnBlur: true,     // Crea al salir del campo
+                persist: false,         // No guarda opciones nuevas en el navegador
+                valueField: 'text',     // IMPORTANTE: Envía el TEXTO al servidor
+                labelField: 'text',     // Muestra el TEXTO
+                searchField: 'text',
+                maxItems: 1,
+                placeholder: "Buscar o escribir nuevo...",
+                
+                // Conexión a tu API
+                load: function(query, callback) {
+                    if (query.length < 2) return callback();
+                    // Asegúrate de que esta URL coincida con tu urls.py
+                    var url = "{% url 'gestion_medica:api_buscar_medicamentos' %}?q=" + encodeURIComponent(query);
+                    
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(json => {
+                            callback(json.items);
+                        })
+                        .catch(() => {
+                            callback();
+                        });
+                },
+
+                // Textos personalizados
+                render: {
+                    no_results: function(data, escape) {
+                        return '<div class="no-results p-2 text-muted">No encontrado. Presiona Enter para crear <strong>"' + escape(data.input) + '"</strong></div>';
+                    },
+                    option_create: function(data, escape) {
+                        return '<div class="create p-2 text-primary"><i class="fas fa-plus-circle"></i> Crear: <strong>' + escape(data.input) + '</strong></div>';
+                    }
+                }
+            });
+        }
     });
 </script>
-
-<style>
-    /* Efecto Hover para el botón personalizado */
-    button[type="submit"]:hover {
-        filter: brightness(90%);
-        color: white !important;
-    }
-
-    /* Ajuste para que los inputs se vean alineados y limpios */
-    .input-group .form-control, .input-group .form-select, .input-group-text {
-        border-color: #5dd2e1;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: var(--catalog-color, #36b9cc);
-        box-shadow: 0 0 0 0.25rem rgba(54, 185, 204, 0.25);
-    }
-</style>
-
 {% endblock %}

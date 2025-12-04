@@ -124,25 +124,12 @@ class Medicamento(models.Model):
             ("sys_delete_medicamento", "System: Puede eliminar Medicamentos"),
         ]
 
-    def __str__(self):
-        return self.nombre
-
     def save(self, *args, **kwargs):
         """
-        Sobrescribimos save para construir automáticamente el string 'nombre'.
-        Esto elimina la necesidad de hacerlo en el formulario.
+        MODIFICADO: Guarda el nombre tal cual lo escribe el usuario (limpio),
+        sin concatenar dosis ni riesgos en la base de datos.
         """
-        # 1. Construcción base: "Paracetamol 500 mg"
-        if self.concentracion:
-            final_str = f"{self.nombre.strip()} {self.concentracion} {self.unidad}"
-        else:
-            final_str = self.nombre.strip()
-
-        # 2. Agregar etiqueta de riesgo: "... [ANTICOAGULANTE]"
-        if self.clasificacion_riesgo:
-            final_str = f"{final_str} [{self.clasificacion_riesgo}]"
-
-        self.nombre = final_str
+        self.nombre = self.nombre.strip() # Solo limpieza básica de espacios
         super().save(*args, **kwargs)
 
     @property

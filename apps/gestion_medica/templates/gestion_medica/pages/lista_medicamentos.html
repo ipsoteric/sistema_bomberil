@@ -25,16 +25,49 @@
             <table class="table table-striped table-catalogo mb-0">
                 <thead>
                     <tr>
-                        <th class="ps-4 text-sm font-bold">Nombre</th>
+                        <th class="ps-4 text-sm font-bold" style="width: 40%;">Nombre del Fármaco</th>
+                        
+                        <th class="text-center text-sm font-bold" style="width: 30%;">Dosis / Presentación</th>
+                        
+                        <th class="text-center text-sm font-bold" style="width: 30%;">Alerta de Riesgo</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in object_list %}
                     <tr>
-                        <td class="ps-4 text-base font-medium">{{ item.nombre }}</td>
+                        <td class="ps-4 text-base font-medium align-middle">
+                            {{ item.nombre }}
+                        </td>
+
+                        <td class="text-center text-base align-middle">
+                            <span class="badge bg-light text-dark border">
+                                {{ item.concentracion }} {{ item.get_unidad_display }}
+                            </span>
+                        </td>
+
+                        <td class="text-center text-base align-middle">
+                            {% if item.clasificacion_riesgo %}
+                                {% if item.clasificacion_riesgo == 'ANTICOAGULANTE' or item.clasificacion_riesgo == 'ANTIPLAQUETARIO' %}
+                                    <span class="badge bg-danger bg-opacity-75">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ item.clasificacion_riesgo }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">
+                                        {{ item.clasificacion_riesgo }}
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted text-sm">-</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
-                    <tr><td class="text-center py-3 text-muted text-base font-regular">Sin registros</td></tr>
+                    <tr>
+                        <td colspan="3" class="text-center py-4 text-muted text-base font-regular">
+                            <i class="fa-solid fa-box-open fa-2x mb-2 d-block opacity-50"></i>
+                            No hay medicamentos registrados manualmente.
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>

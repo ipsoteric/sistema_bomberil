@@ -10,10 +10,7 @@ from django.urls import reverse
 from django.db import IntegrityError
 from django.db.models import Count, ProtectedError
 from datetime import date
-from django.http import HttpResponse
-from apps.common.mixins import BaseEstacionMixin, CustomPermissionRequiredMixin
-from .models import FichaMedica
-
+from django.http import HttpResponse, JsonResponse
 # --- Imports del Proyecto ---
 from .models import (
     Medicamento, FichaMedica, FichaMedicaMedicamento, FichaMedicaAlergia, 
@@ -906,8 +903,16 @@ class CatalogoMedicoBaseView(BaseEstacionMixin, AuditoriaMixin, CustomPermission
 # --- MEDICAMENTOS (CATÁLOGO) ---
 class MedicamentoListView(CatalogoMedicoBaseView):
     def get(self, request):
-        return render(request, "gestion_medica/pages/lista_medicamentos.html", {'object_list': Medicamento.objects.all().order_by('nombre')})
-
+        # FILTRO CLAVE: concentracion__isnull=False
+        # Esto oculta las plantillas de autocompletado (que tienen dosis NULL)
+        # y solo muestra los medicamentos reales creados en el formulario.
+        medicamentos = Medicamento.objects.filter(
+            concentracion__isnull=False
+        ).order_by('nombre')
+        
+        return render(request, "gestion_medica/pages/lista_medicamentos.html", {
+            'object_list': medicamentos
+        })
 
 class MedicamentoCrearView(CatalogoMedicoBaseView):
     def get(self, request):
@@ -1072,3 +1077,34 @@ class CirugiaDeleteView(CatalogoMedicoBaseView):
         except Exception as e:
             messages.error(request, f"Error inesperado al eliminar: {str(e)}")
         return redirect('gestion_medica:ruta_lista_cirugias')
+    
+
+class MedicamentoSearchAPIView(BaseEstacionMixin, View):
+    """
+    API interna para buscar medicamentos en tiempo real desde TomSelect.
+    """
+    def get(self, request):
+        query = request.GET.get('q', '').strip()
+        if len(query) < 2:
+            return JsonResponse({'items': []})
+
+        # Buscamos por nombre (que ya incluye dosis y unidad en la BD)
+        #qs = Medicamento.objects.filter(nombre__icontains=query).order_by('nombre')[:20]
+        
+        # Buscamos nombres únicos. 
+        # distinct() es vital para que no salga "Paracetamol" 50 veces si tienes 50 dosis distintas.
+        qs = Medicamento.objects.filter(nombre__icontains=query)\
+                                .values_list('nombre', flat=True)\
+                                .distinct()\
+                                .order_by('nombre')[:20]
+
+        ###results = []
+        #for med in qs:
+        #    results.append({
+        #        'value': med.nombre, 
+        #        'text': med.nombre     # Bandera para saber que viene de la BD
+        #    })###
+            
+        results = [{'id': nombre, 'text': nombre} for nombre in qs]
+        
+        return JsonResponse({'items': results})
