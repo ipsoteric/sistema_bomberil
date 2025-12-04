@@ -28,11 +28,14 @@ def eliminar_avatar_usuario(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Usuario)
-def crear_perfiles_automaticamente(sender, instance, created, **kwargs):
+def crear_perfiles_automaticamente(sender, instance, created, raw, **kwargs):
     """
     Crea Voluntario (HojaDeVida) y FichaMedica vacías automáticamente 
     cuando un nuevo Usuario es creado.
     """
+    if raw:
+        return
+    
     if created:
         try:
             # 1. Creamos el Perfil de Voluntario

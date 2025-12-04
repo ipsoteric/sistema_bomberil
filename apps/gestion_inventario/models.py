@@ -843,7 +843,6 @@ class Destinatario(models.Model):
     rut_entidad = models.CharField(max_length=12, blank=True, null=True, verbose_name="RUT Entidad (Opcional)")
     nombre_contacto = models.CharField(max_length=255, blank=True, null=True, verbose_name="Nombre Contacto (Opcional)")
     telefono_contacto = models.CharField(max_length=20, blank=True, null=True, verbose_name="Teléfono Contacto (Opcional)")
-    creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='destinatarios_creados')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

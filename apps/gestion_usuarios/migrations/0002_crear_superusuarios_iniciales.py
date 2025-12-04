@@ -9,6 +9,7 @@ def generar_superusuarios(apps, schema_editor):
     # 1. Obtenemos los modelos históricos (versión congelada en el tiempo)
     Usuario = apps.get_model(settings.AUTH_USER_MODEL)
     Voluntario = apps.get_model('gestion_voluntarios', 'Voluntario')
+    FichaMedica = apps.get_model('gestion_medica', 'FichaMedica')
     
     # 2. Extraemos datos del .env
     superusers_data = [
@@ -20,12 +21,20 @@ def generar_superusuarios(apps, schema_editor):
     for rut, first_name, last_name, email, password in superusers_data:
         # Validación básica: Si faltan datos en el .env, saltamos
         if not rut or not password:
-            print(f"⚠️ Saltando creación de superusuario: Faltan credenciales en .env para {rut or 'Desconocido'}")
+            print(f"Saltando creación de superusuario: Faltan credenciales en .env para {rut or 'Desconocido'}")
             continue
 
         # Idempotencia: Si el usuario ya existe, no hacemos nada (evita crash)
         if Usuario.objects.filter(rut=rut).exists():
-            print(f"ℹEl superusuario {rut} ya existe.")
+            print(f"ℹ El superusuario {rut} ya existe.")
+            # Si el usuario ya existe, intentamos obtener su voluntario para asegurar que tenga ficha
+            usuario_existente = Usuario.objects.get(rut=rut)
+            
+            # Lógica de recuperación por si la migración corrió a medias antes
+            voluntario, _ = Voluntario.objects.get_or_create(usuario=usuario_existente)
+            if not FichaMedica.objects.filter(voluntario=voluntario).exists():
+                FichaMedica.objects.create(voluntario=voluntario)
+                print(f"   -> Ficha médica creada para usuario existente {rut}")
             continue
 
         print(f"Creando superusuario: {rut}")
@@ -42,10 +51,17 @@ def generar_superusuarios(apps, schema_editor):
             is_active=True
         )
 
-        # 4. Creación Manual del Voluntario (Porque los Signals no corren en migraciones)
-        if not Voluntario.objects.filter(usuario=nuevo_usuario).exists():
-            Voluntario.objects.create(
-                usuario=nuevo_usuario,
+        # 4. Creación del Voluntario
+        # Usamos get_or_create para obtener la instancia del objeto 'voluntario'
+        voluntario, created = Voluntario.objects.get_or_create(
+            usuario=nuevo_usuario
+        )
+
+        # 5. Creación de la Ficha Médica
+        if not FichaMedica.objects.filter(voluntario=voluntario).exists():
+            FichaMedica.objects.create(
+                voluntario=voluntario,
+                # Los demás campos se quedan en null/default según tu modelo
             )
 
 def revertir_superusuarios(apps, schema_editor):
@@ -69,6 +85,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('gestion_usuarios', '0001_initial'),
         ('gestion_voluntarios', '0001_initial'),
+        ('gestion_medica', '0002_initial'),
     ]
 
     operations = [

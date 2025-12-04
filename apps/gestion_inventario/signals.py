@@ -5,13 +5,16 @@ from .models import Ubicacion, Compartimento, ProductoGlobal, Activo, RegistroUs
 
 
 @receiver(post_save, sender=Ubicacion)
-def crear_compartimento_general(sender, instance, created, **kwargs):
+def crear_compartimento_general(sender, instance, created, raw, **kwargs):
     """
     Signal que se activa después de guardar una Ubicacion.
     
     Si la Ubicacion es nueva (created=True), crea automáticamente
     un compartimento hijo llamado "General".
     """
+    if raw:
+        return
+    
     if created:
         Compartimento.objects.create(
             nombre="General",
