@@ -1,4 +1,5 @@
 from django.urls import path
+from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     AlternarTemaOscuroAPIView,
     BuscarUsuarioAPIView, 
@@ -18,6 +19,8 @@ from .views import (
     MantenimientoBuscarActivoParaOrdenAPIView,
     MantenimientoAnadirActivoOrdenAPIView,
     MantenimientoQuitarActivoOrdenAPIView,
+    BomberilLoginView,
+    TestConnectionView
 )
 
 app_name = "api"
@@ -25,6 +28,14 @@ app_name = "api"
 urlpatterns = [
     # Alternar tema oscuro
     path('alternar-tema-oscuro/', AlternarTemaOscuroAPIView.as_view(), name='api_alternar_tema'),
+    path('test-connection/', TestConnectionView.as_view(), name='test_connection'),
+
+
+    # --- AUTENTICACIÓN ---
+    # Login: Entrega Access Token, Refresh Token y Datos de Usuario/Estaciones
+    path('auth/login/', BomberilLoginView.as_view(), name='token_obtain_pair'),
+    # Refresh: Permite obtener un nuevo Access Token cuando el anterior expira
+    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
 
     # --- USUARIOS ---

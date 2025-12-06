@@ -3,12 +3,13 @@ from django.utils import timezone
 from django.shortcuts import redirect, get_object_or_404
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Sum, Q
+from PIL import Image
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
-from PIL import Image
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.gestion_usuarios.models import Usuario, Membresia
 from apps.gestion_mantenimiento.models import PlanMantenimiento, PlanActivoConfig, OrdenMantenimiento, RegistroMantenimiento
@@ -17,7 +18,7 @@ from apps.common.utils import procesar_imagen_en_memoria, generar_thumbnail_en_m
 from apps.common.mixins import AuditoriaMixin
 from apps.gestion_inventario.models import Comuna, Activo, LoteInsumo, ProductoGlobal, Producto, Estado
 from apps.gestion_inventario.utils import generar_sku_sugerido
-from .serializers import ComunaSerializer, ProductoLocalInputSerializer
+from .serializers import ComunaSerializer, ProductoLocalInputSerializer, CustomTokenObtainPairSerializer
 from .permissions import (
     IsEstacionActiva, 
     CanCrearUsuario,
@@ -27,6 +28,41 @@ from .permissions import (
     CanGestionarOrdenes,
     IsSelfOrStationAdmin
 )
+
+
+class BomberilLoginView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception as e:
+            print("\n" + "="*30)
+            print("🚨 ERROR DE VALIDACIÓN DETECTADO")
+            print("Datos Recibidos:", request.data)
+            print("Errores del Serializer:", serializer.errors)
+            print("="*30 + "\n")
+            raise e # Vuelve a lanzar el error para que responda 400 normal
+
+        return super().post(request, *args, **kwargs)
+
+
+
+
+class TestConnectionView(APIView):
+    permission_classes = [IsAuthenticated] # ¡Importante! Solo entra si el Token es válido
+
+    def get(self, request):
+        # Si llegamos aquí, el usuario ya fue autenticado por el JWT
+        return Response({
+            "status": "ok",
+            "mensaje": "¡Conexión exitosa desde App Móvil!",
+            "usuario_autenticado": f"{request.user.first_name} {request.user.last_name}",
+            "rut": request.user.rut,
+            "estacion_activa_id": request.session.get('active_estacion_id', 'No establecida en sesión Django')
+        })
 
 
 
