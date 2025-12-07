@@ -1,72 +1,56 @@
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from .utils import obtener_contexto_bomberil
 from apps.gestion_inventario.models import Comuna
-from apps.gestion_usuarios.models import Membresia
+from apps.gestion_usuarios.models import Membresia, Usuario
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        
-        # Claims extra para el token encriptado (útil para decodificar sin llamar a la BD)
         token['rut'] = user.rut
         token['nombre'] = user.get_full_name
         return token
 
     def validate(self, attrs):
-        # 1. Validación estándar (verifica credenciales RUT/Pass)
+        # 1. Valida credenciales (RUT/Pass)
+        data = super().validate(attrs)
+        
+        # 2. Inyecta la lógica de negocio
+        contexto = obtener_contexto_bomberil(self.user)
+        data.update(contexto)
+        
+        return data
+
+
+
+
+class CustomTokenRefreshSerializer(TokenRefreshSerializer):
+    """
+    Refresh Token que valida que el usuario siga teniendo membresía activa
+    y devuelve los permisos actualizados.
+    """
+    def validate(self, attrs):
+        # 1. Valida que el refresh token sea correcto y devuelve el nuevo access
         data = super().validate(attrs)
 
-        # 2. Información del Usuario (Basada en el modelo Usuario)
-        user_data = {
-            'id': self.user.id,
-            'rut': self.user.rut,
-            'email': self.user.email,
-            'nombre_completo': self.user.get_full_name,
-            'avatar': self.user.avatar.url if self.user.avatar else None,
-        }
-        data['usuario'] = user_data
+        # 2. Decodificar el refresh token para encontrar al usuario
+        # (El refresh token contiene el user_id)
+        refresh = RefreshToken(attrs['refresh'])
+        user_id = refresh['user_id'] # O el campo que uses como ID
+        
+        try:
+            user = Usuario.objects.get(id=user_id)
+        except Usuario.DoesNotExist:
+            raise serializers.ValidationError({"detail": "Usuario no encontrado."})
 
-        # 3. Obtener la Membresía Activa
-        # Gracias al constraint 'membresia_activa_unica_por_usuario', sabemos que solo habrá una o ninguna.
-        membresia_activa = Membresia.objects.filter(
-            usuario=self.user, 
-            estado=Membresia.Estado.ACTIVO
-        ).select_related('estacion').prefetch_related('roles__permisos').first()
-        print(membresia_activa)
-
-        if membresia_activa:
-            # A. Datos de la Estación
-            data['estacion'] = {
-                'id': membresia_activa.estacion.id,
-                'nombre': membresia_activa.estacion.nombre,
-            }
-            print(data['estacion'])
-
-            # B. Recopilación de Permisos (Flattening)
-            # Recorre todos los roles de la membresía y extraemos los codenames de los permisos.
-            # set() para evitar duplicados si dos roles tienen el mismo permiso.
-            permisos_set = set()
-            
-            for rol in membresia_activa.roles.all():
-                for permiso in rol.permisos.all():
-                    # Guardamos el 'codename' (ej: 'accion_gestion_inventario_ver_stock')
-                    permisos_set.add(permiso.codename)
-
-            # Convertimos a lista para que sea JSON serializable
-            data['permisos'] = list(permisos_set)
-            
-            # C. ID de membresía para futuras referencias
-            data['membresia_id'] = membresia_activa.id
-
-        else:
-            ## Caso borde: Usuario logueado pero sin estación activa (ej: Superusuario global o usuario nuevo)
-            #data['estacion'] = None
-            #data['permisos'] = []
-            raise serializers.ValidationError(
-                {"detail": "No tienes una estación activa asignada. Contacta a tu oficial."}
-            )
+        # 3. Re-validar Membresía e inyectar datos actualizados
+        # Si el usuario perdió la membresía hace 5 minutos, esto lanzará el error
+        # y no le entregará el nuevo token.
+        contexto = obtener_contexto_bomberil(user)
+        data.update(contexto)
 
         return data
 

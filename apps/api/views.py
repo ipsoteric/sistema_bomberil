@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.gestion_usuarios.models import Usuario, Membresia
 from apps.gestion_mantenimiento.models import PlanMantenimiento, PlanActivoConfig, OrdenMantenimiento, RegistroMantenimiento
@@ -18,7 +18,7 @@ from apps.common.utils import procesar_imagen_en_memoria, generar_thumbnail_en_m
 from apps.common.mixins import AuditoriaMixin
 from apps.gestion_inventario.models import Comuna, Activo, LoteInsumo, ProductoGlobal, Producto, Estado
 from apps.gestion_inventario.utils import generar_sku_sugerido
-from .serializers import ComunaSerializer, ProductoLocalInputSerializer, CustomTokenObtainPairSerializer
+from .serializers import ComunaSerializer, ProductoLocalInputSerializer, CustomTokenObtainPairSerializer, CustomTokenRefreshSerializer
 from .permissions import (
     IsEstacionActiva, 
     CanCrearUsuario,
@@ -47,6 +47,12 @@ class BomberilLoginView(TokenObtainPairView):
             raise e # Vuelve a lanzar el error para que responda 400 normal
 
         return super().post(request, *args, **kwargs)
+
+
+
+
+class BomberilRefreshView(TokenRefreshView):
+    serializer_class = CustomTokenRefreshSerializer
 
 
 

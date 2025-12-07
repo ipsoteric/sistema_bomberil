@@ -1,5 +1,4 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     AlternarTemaOscuroAPIView,
     BuscarUsuarioAPIView, 
@@ -20,6 +19,7 @@ from .views import (
     MantenimientoAnadirActivoOrdenAPIView,
     MantenimientoQuitarActivoOrdenAPIView,
     BomberilLoginView,
+    BomberilRefreshView,
     TestConnectionView
 )
 
@@ -35,7 +35,7 @@ urlpatterns = [
     # Login: Entrega Access Token, Refresh Token y Datos de Usuario/Estaciones
     path('auth/login/', BomberilLoginView.as_view(), name='token_obtain_pair'),
     # Refresh: Permite obtener un nuevo Access Token cuando el anterior expira
-    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/refresh/', BomberilRefreshView.as_view(), name='token_refresh'),
 
 
     # --- USUARIOS ---
