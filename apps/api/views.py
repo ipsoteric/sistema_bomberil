@@ -3,6 +3,8 @@ from django.utils import timezone
 from django.shortcuts import redirect, get_object_or_404
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Sum, Q
+from django.contrib.auth.forms import PasswordResetForm
+from django.conf import settings
 from PIL import Image
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -93,6 +95,47 @@ class BomberilLogoutView(APIView):
         except Exception as e:
             # Si el token no es válido o falta, devolvemos error
             return Response({"detail": "Token inválido o no proporcionado."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+class PasswordResetRequestView(APIView):
+    """
+    Endpoint para solicitar restablecimiento de contraseña desde la App Móvil.
+    Recibe un email, valida que exista y envía el correo usando las mismas
+    plantillas que la versión Web.
+    """
+    # Permitir acceso sin token (el usuario no puede loguearse si olvidó la clave)
+    permission_classes = [] 
+
+    def post(self, request):
+        form = PasswordResetForm(request.data)
+        
+        if form.is_valid():
+            # Configuración para mantener consistencia con CustomPasswordResetView
+            opts = {
+                'use_https': request.is_secure(),
+                
+                # Usamos TUS plantillas personalizadas (acceso/emails/...)
+                'email_template_name': 'acceso/emails/password_reset_email.txt',
+                'html_email_template_name': 'acceso/emails/password_reset_email.html',
+                'subject_template_name': 'acceso/emails/password_reset_subject.txt',
+                
+                'request': request,
+                # El link debe apuntar a la WEB (donde está el formulario de nueva password)
+                'domain_override': 'localhost:8000' if settings.DEBUG else 'tudominio.com',
+            }
+            
+            # save() busca usuarios activos, genera el token y envía el email
+            form.save(**opts)
+            
+            # Respuesta genérica por seguridad (evita enumeración de usuarios)
+            return Response(
+                {"detail": "Si el correo está registrado, recibirás las instrucciones pronto."},
+                status=status.HTTP_200_OK
+            )
+        
+        return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 

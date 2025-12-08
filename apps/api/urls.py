@@ -22,6 +22,7 @@ from .views import (
     BomberilRefreshView,
     BomberilLogoutView,
     MeView,
+    PasswordResetRequestView,
     TestConnectionView
 )
 
@@ -42,6 +43,8 @@ urlpatterns = [
     path('auth/logout/', BomberilLogoutView.as_view(), name='token_blacklist'),
     # Obtener información del usuario
     path('auth/me/', MeView.as_view(), name='users_me'),
+    # Recuperar contraseña
+    path('auth/password_reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
 
 
     # --- USUARIOS ---
