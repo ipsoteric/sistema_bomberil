@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.shortcuts import redirect, get_object_or_404
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Sum, Q, Max
+from django.db.models.functions import Coalesce
 from django.contrib.auth.forms import PasswordResetForm
 from django.conf import settings
 from PIL import Image
@@ -851,6 +852,82 @@ class InventarioDetalleExistenciaAPIView(APIView):
             "uso_stats": None,
             "mantenimiento": None
         }
+
+
+
+
+class InventarioCatalogoStockAPIView(APIView):
+    """
+    Endpoint para listar el catálogo local FILTRADO por existencias positivas.
+    Ideal para la vista principal de "Mi Inventario" en la App.
+    
+    URL: /api/v1/inventario/catalogo/stock/
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanVerCatalogos]
+
+    def get(self, request):
+        estacion = request.estacion_activa
+        busqueda = request.query_params.get('search', '').strip()
+
+        # 1. Base: Productos de MI estación
+        # Optimizamos consultas trayendo datos del global (nombre, imagen, categoria)
+        productos = Producto.objects.filter(estacion=estacion).select_related(
+            'producto_global', 
+            'producto_global__categoria',
+            'producto_global__marca'
+        )
+
+        # 2. Búsqueda opcional (Texto)
+        if busqueda:
+            productos = productos.filter(
+                Q(sku__icontains=busqueda) |
+                Q(producto_global__nombre_oficial__icontains=busqueda) |
+                Q(producto_global__marca__nombre__icontains=busqueda)
+            )
+
+        # 3. Anotaciones de Stock (El corazón del filtro)
+        # Calculamos el stock ANTES de filtrar para ser eficientes
+        productos = productos.annotate(
+            # Cuenta cuantos activos (filas en tabla Activo) hay asociados a este producto
+            # Opcional: Podrías filtrar aquí .exclude(estado__nombre='DE BAJA') si quisieras
+            cantidad_activos=Count('activo'),
+            
+            # Suma la cantidad de todos los lotes asociados
+            # Coalesce convierte el Null (si no hay lotes) en 0
+            cantidad_insumos=Coalesce(Sum('loteinsumo__cantidad'), 0)
+        )
+
+        # 4. Filtro Final: "Solo lo que tenga existencias"
+        # La lógica es: (Es Serializado Y tiene activos > 0) O (No es Serializado Y tiene suma lotes > 0)
+        productos_con_stock = productos.filter(
+            Q(es_serializado=True, cantidad_activos__gt=0) |
+            Q(es_serializado=False, cantidad_insumos__gt=0)
+        ).distinct()
+
+        # 5. Construcción de Respuesta JSON ligera para móvil
+        data = []
+        for p in productos_con_stock:
+            # Determinamos la cantidad real a mostrar según el tipo
+            stock_real = p.cantidad_activos if p.es_serializado else p.cantidad_insumos
+            
+            # Imagen segura
+            img_url = None
+            if p.producto_global.imagen_thumb_medium:
+                img_url = p.producto_global.imagen_thumb_medium.url
+
+            data.append({
+                "id": p.id, # ID del Producto Local
+                "nombre": p.producto_global.nombre_oficial,
+                "marca": p.producto_global.marca.nombre if p.producto_global.marca else "Genérico",
+                "sku": p.sku or "S/SKU",
+                "categoria": p.producto_global.categoria.nombre,
+                "es_activo": p.es_serializado, # Booleano útil para UI (ej: mostrar icono de código de barras vs cubos)
+                "stock_total": stock_real,
+                "imagen": img_url,
+                "critico": p.stock_critico > 0 and stock_real <= p.stock_critico # Flag para pintar en rojo en la app
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
 
 
 

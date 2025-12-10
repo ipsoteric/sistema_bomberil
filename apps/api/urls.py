@@ -10,6 +10,7 @@ from .views import (
     InventarioAnadirProductoLocalAPIView,
     InventarioBuscarExistenciasPrestablesAPI,
     InventarioDetalleExistenciaAPIView,
+    InventarioCatalogoStockAPIView,
     MantenimientoBuscarActivoParaPlanAPIView,
     MantenimientoAnadirActivoEnPlanAPIView,
     MantenimientoQuitarActivoDePlanAPIView,
@@ -70,6 +71,8 @@ urlpatterns = [
     path('gestion_inventario/prestamo/buscar-prestables/', InventarioBuscarExistenciasPrestablesAPI.as_view(), name='api_buscar_prestables'),
     # Obtener detalle de una existencia
     path('gestion_inventario/existencias/buscar/', InventarioDetalleExistenciaAPIView.as_view(), name='api_existencia_detalle'),
+    # Obtener catálogo local de productos (con existencias)
+    path('gestion_inventario/catalogo/stock/', InventarioCatalogoStockAPIView.as_view(), name='api_catalogo_stock'),
 
 
     # --- MANTENIMIENTO ---
