@@ -1032,7 +1032,7 @@ class InventarioExistenciasPorProductoAPIView(APIView):
 
 
 
-class InventarioRecepcionStockAPIView(APIView):
+class InventarioRecepcionStockAPIView(AuditoriaMixin, APIView):
     """
     Endpoint transaccional para procesar la recepción de stock (Activos y Lotes).
     Replica la lógica de RecepcionStockView web.
@@ -1068,6 +1068,15 @@ class InventarioRecepcionStockAPIView(APIView):
 
     def post(self, request):
         estacion = request.estacion_activa
+        
+        # --- PUENTE DE COMPATIBILIDAD CON CORE ---
+        # core_registrar_actividad busca en session['active_estacion_id'].
+        # Como IsEstacionActiva ya validó y obtuvo la estación, la inyectamos en la sesión
+        # de este request para que el Mixin funcione sin cambios en el Core.
+        if not request.session.get('active_estacion_id'):
+            request.session['active_estacion_id'] = estacion.id
+        # -----------------------------------------
+
         data = request.data
 
         # 1. Validaciones de Cabecera
@@ -1077,152 +1086,154 @@ class InventarioRecepcionStockAPIView(APIView):
         detalles = data.get('detalles', [])
 
         if not proveedor_id or not fecha_recepcion_str or not detalles:
-             return Response(
-                 {"detail": "Faltan datos obligatorios (proveedor_id, fecha_recepcion o detalles)."}, 
-                 status=status.HTTP_400_BAD_REQUEST
-             )
+             return Response({"detail": "Faltan datos obligatorios."}, status=status.HTTP_400_BAD_REQUEST)
 
         proveedor = get_object_or_404(Proveedor, id=proveedor_id)
         fecha_recepcion = parse_date(fecha_recepcion_str)
         
         if not fecha_recepcion:
-             return Response({"detail": "Formato de fecha de recepción inválido (Use YYYY-MM-DD)."}, status=status.HTTP_400_BAD_REQUEST)
+             return Response({"detail": "Formato de fecha inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2. Obtener estado 'DISPONIBLE' (Singleton para la transacción)
         try:
             estado_disponible = Estado.objects.get(nombre='DISPONIBLE', tipo_estado__nombre='OPERATIVO')
         except Estado.DoesNotExist:
-            return Response(
-                {"detail": "Error crítico de configuración: No existe el estado 'DISPONIBLE' en el sistema."}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({"detail": "Error crítico: Estado 'DISPONIBLE' no encontrado."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # Variables para Auditoría y Resumen
         nuevos_ids = {'activos': [], 'lotes': []}
-        
+        compartimentos_destino_set = set()
+        cantidad_total_fisica = 0 
+
         try:
-            # 3. Transacción Atómica: O se guarda todo o nada.
             with transaction.atomic():
                 for index, item in enumerate(detalles):
-                    # Validar campos básicos de línea
+                    # Validación de línea
                     prod_id = item.get('producto_id')
                     comp_id = item.get('compartimento_destino_id')
                     cantidad = int(item.get('cantidad', 0))
                     costo = item.get('costo_unitario')
                     
                     if not prod_id or not comp_id:
-                        raise ValueError(f"Fila {index+1}: Falta producto o compartimento destino.")
+                        raise ValueError(f"Fila {index+1}: Datos incompletos.")
 
-                    # Obtener objetos relacionales (Asegurando que sean de la estación)
                     producto = get_object_or_404(Producto, id=prod_id, estacion=estacion)
                     compartimento = get_object_or_404(Compartimento, id=comp_id, ubicacion__estacion=estacion)
 
-                    # A. Actualización de costos (Side-effect de negocio)
+                    # Recolectar datos para auditoría
+                    compartimentos_destino_set.add(compartimento.nombre)
+
+                    # Actualizar Costo (Regla de Negocio)
                     if costo is not None:
                         producto.costo_compra = costo
                         producto.save(update_fields=['costo_compra'])
 
-                    # B. Dispatch Polimórfico
+                    # Creación Polimórfica
                     if producto.es_serializado:
-                        # Validación extra para Activos
                         if cantidad != 1:
-                             raise ValueError(f"Fila {index+1}: Los activos serializados ({producto.sku}) deben ingresarse de a 1 unidad.")
+                             raise ValueError(f"Activo {producto.sku}: cantidad debe ser 1.")
 
                         activo_id = self._crear_activo(
-                            producto=producto, 
-                            compartimento=compartimento, 
-                            proveedor=proveedor, 
-                            fecha=fecha_recepcion, 
-                            notas=notas, 
-                            estado=estado_disponible, 
-                            serie=item.get('numero_serie'), 
-                            fecha_fab=item.get('fecha_fabricacion'),
-                            usuario=request.user, 
-                            estacion=estacion
+                            producto, compartimento, proveedor, fecha_recepcion, 
+                            notas, estado_disponible, item.get('numero_serie'), 
+                            item.get('fecha_fabricacion'), request.user, estacion
                         )
                         nuevos_ids['activos'].append(activo_id)
-
+                        cantidad_total_fisica += 1
                     else:
-                        # Validación extra para Lotes
                         if cantidad <= 0:
-                             raise ValueError(f"Fila {index+1}: La cantidad para el insumo {producto.sku} debe ser mayor a 0.")
+                             raise ValueError(f"Insumo {producto.sku}: cantidad > 0.")
                         
                         lote_id = self._crear_lote(
-                            producto=producto, 
-                            compartimento=compartimento, 
-                            proveedor=proveedor, 
-                            fecha=fecha_recepcion, 
-                            notas=notas, 
-                            estado=estado_disponible,
-                            cantidad=cantidad, 
-                            n_lote=item.get('numero_lote'), 
-                            vencimiento=item.get('fecha_vencimiento'), 
-                            usuario=request.user, 
-                            estacion=estacion
+                            producto, compartimento, proveedor, fecha_recepcion, 
+                            notas, estado_disponible, cantidad, item.get('numero_lote'), 
+                            item.get('fecha_vencimiento'), request.user, estacion
                         )
                         nuevos_ids['lotes'].append(lote_id)
+                        cantidad_total_fisica += cantidad
+
+                # --- AUDITORÍA DE SISTEMA (Usando tu Mixin) ---
+                self._registrar_auditoria_sistema(
+                    cantidad_total=cantidad_total_fisica,
+                    nuevos_ids=nuevos_ids,
+                    destinos=list(compartimentos_destino_set),
+                    proveedor=proveedor,
+                    notas=notas
+                )
 
         except Exception as e:
-            # Si algo falla, el transaction.atomic deshace todo y devolvemos el error
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 4. Retorno exitoso
         return Response({
             "message": "Recepción guardada correctamente.",
             "resumen": {
                 "activos_creados": len(nuevos_ids['activos']),
                 "lotes_creados": len(nuevos_ids['lotes'])
-            },
-            "ids": nuevos_ids # Útil si la app quiere mostrar un resumen inmediato
+            }
         }, status=status.HTTP_201_CREATED)
 
-    # --- Helpers Privados (Réplica de tu lógica web) ---
+    # --- Métodos Auxiliares ---
+
+    def _registrar_auditoria_sistema(self, cantidad_total, nuevos_ids, destinos, proveedor, notas):
+        """Construye el mensaje y delega a self.auditar() del Mixin."""
+        cant_activos = len(nuevos_ids['activos'])
+        cant_insumos = cantidad_total - cant_activos
+        
+        partes_msg = []
+        if cant_activos > 0:
+            partes_msg.append(f"{cant_activos} Activo{'s' if cant_activos != 1 else ''}")
+        if cant_insumos > 0:
+            partes_msg.append(f"{cant_insumos} unidad{'es' if cant_insumos != 1 else ''} de Insumo{'s' if cant_insumos != 1 else ''}")
+        
+        detalle_texto = " y ".join(partes_msg) if partes_msg else "carga de inventario"
+        
+        texto_destinos = ""
+        if destinos:
+            if len(destinos) > 2:
+                texto_destinos = f" en {', '.join(destinos[:2])} y otros"
+            else:
+                texto_destinos = f" en {', '.join(destinos)}"
+
+        verbo_final = f"recepcionó {detalle_texto}{texto_destinos} desde"
+
+        # Llamada al Mixin
+        self.auditar(
+            verbo=verbo_final,
+            objetivo=proveedor, 
+            detalles={
+                'total_unidades': cantidad_total,
+                'desglose': {'activos': cant_activos, 'insumos': cant_insumos},
+                'destinos': destinos,
+                'nuevos_activos_ids': nuevos_ids['activos'],
+                'nuevos_lotes_ids': nuevos_ids['lotes'],
+                'nota_recepcion': notas,
+                'origen': 'APP MÓVIL'
+            }
+        )
 
     def _crear_activo(self, producto, compartimento, proveedor, fecha, notas, estado, serie, fecha_fab, usuario, estacion):
         activo = Activo.objects.create(
-            producto=producto,
-            estacion=estacion,
-            compartimento=compartimento,
-            proveedor=proveedor,
-            estado=estado,
-            numero_serie_fabricante=serie or "",
-            fecha_fabricacion=parse_date(fecha_fab) if fecha_fab else None,
-            fecha_recepcion=fecha
+            producto=producto, estacion=estacion, compartimento=compartimento,
+            proveedor=proveedor, estado=estado, numero_serie_fabricante=serie or "",
+            fecha_fabricacion=parse_date(fecha_fab) if fecha_fab else None, fecha_recepcion=fecha
         )
-        
-        # Registro en MovimientoInventario
         MovimientoInventario.objects.create(
-            tipo_movimiento=TipoMovimiento.ENTRADA,
-            usuario=usuario,
-            estacion=estacion,
-            proveedor_origen=proveedor,
-            compartimento_destino=compartimento,
-            activo=activo,
-            cantidad_movida=1,
-            notas=notas
+            tipo_movimiento=TipoMovimiento.ENTRADA, usuario=usuario, estacion=estacion,
+            proveedor_origen=proveedor, compartimento_destino=compartimento,
+            activo=activo, cantidad_movida=1, notas=notas
         )
         return str(activo.id)
 
     def _crear_lote(self, producto, compartimento, proveedor, fecha, notas, estado, cantidad, n_lote, vencimiento, usuario, estacion):
         lote = LoteInsumo.objects.create(
-            producto=producto,
-            compartimento=compartimento,
-            cantidad=cantidad,
+            producto=producto, compartimento=compartimento, cantidad=cantidad,
             numero_lote_fabricante=n_lote,
             fecha_expiracion=parse_date(vencimiento) if vencimiento else None,
-            fecha_recepcion=fecha,
-            estado=estado
+            fecha_recepcion=fecha, estado=estado
         )
-
-        # Registro en MovimientoInventario
         MovimientoInventario.objects.create(
-            tipo_movimiento=TipoMovimiento.ENTRADA,
-            usuario=usuario,
-            estacion=estacion,
-            proveedor_origen=proveedor,
-            compartimento_destino=compartimento,
-            lote_insumo=lote,
-            cantidad_movida=cantidad,
-            notas=notas
+            tipo_movimiento=TipoMovimiento.ENTRADA, usuario=usuario, estacion=estacion,
+            proveedor_origen=proveedor, compartimento_destino=compartimento,
+            lote_insumo=lote, cantidad_movida=cantidad, notas=notas
         )
         return str(lote.id)
 
