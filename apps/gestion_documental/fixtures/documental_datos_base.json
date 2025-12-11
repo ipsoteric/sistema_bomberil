@@ -1,0 +1,114 @@
+[
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 1,
+  "fields": {
+    "nombre": "Libro de Actas",
+    "descripcion": "Registro oficial de las sesiones de Compañía, Directorio o Consejo de Oficiales."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 2,
+  "fields": {
+    "nombre": "Parte de Servicio",
+    "descripcion": "Informe operativo detallado generado tras la asistencia a una emergencia o acto de servicio."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 3,
+  "fields": {
+    "nombre": "Memoria Anual",
+    "descripcion": "Documento resumen de las actividades, gestión financiera y estadísticas del año."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 4,
+  "fields": {
+    "nombre": "Hoja de Vida",
+    "descripcion": "Expediente personal de los voluntarios, incluyendo ingresos, premios y sanciones."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 5,
+  "fields": {
+    "nombre": "Fotografía Histórica",
+    "descripcion": "Material gráfico que documenta la historia, personal, carros y evolución del cuartel."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 6,
+  "fields": {
+    "nombre": "Bitácora de Material Mayor",
+    "descripcion": "Historial de mantenimiento, reparaciones y movimientos de las unidades (carros bomba)."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 7,
+  "fields": {
+    "nombre": "Reglamentos y Estatutos",
+    "descripcion": "Documentos legales de fundación, estatutos vigentes y reglamentos internos."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 8,
+  "fields": {
+    "nombre": "Correspondencia",
+    "descripcion": "Cartas, oficios, circulares y notas recibidas o despachadas."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 9,
+  "fields": {
+    "nombre": "Registro de Asistencia",
+    "descripcion": "Listas de control de asistencia a academias, citaciones y actos obligatorios."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 10,
+  "fields": {
+    "nombre": "Planos e Infraestructura",
+    "descripcion": "Planos arquitectónicos del cuartel, proyectos de construcción y remodelaciones."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 11,
+  "fields": {
+    "nombre": "Inventario Histórico",
+    "descripcion": "Listados antiguos de material menor, uniformes y bienes de la compañía."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 12,
+  "fields": {
+    "nombre": "Recortes de Prensa",
+    "descripcion": "Artículos de periódicos o revistas donde se menciona a la compañía o sus emergencias."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 13,
+  "fields": {
+    "nombre": "Diplomas y Certificados",
+    "descripcion": "Copias digitales de reconocimientos otorgados a la compañía o sus miembros."
+  }
+},
+{
+  "model": "gestion_documental.tipodocumento",
+  "pk": 14,
+  "fields": {
+    "nombre": "Material de Capacitación",
+    "descripcion": "Manuales antiguos, guías de estudio y material didáctico histórico."
+  }
+}
+]

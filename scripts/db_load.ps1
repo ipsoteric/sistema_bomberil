@@ -28,6 +28,7 @@ $fixtures = @(
 #    "apps/gestion_medica/fixtures/datos_medica.json"
     "apps/gestion_medica/fixtures/medica_datos_base.json"
     "apps/gestion_medica/fixtures/medica_datos_fichas.json"
+    "apps/gestion_documental/fixtures/documental_datos_base.json"
 )
 
 foreach ($fixture in $fixtures) {
