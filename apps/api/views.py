@@ -33,9 +33,11 @@ from apps.gestion_inventario.models import (
     Ubicacion,
     Compartimento, 
     Proveedor, 
-    TipoMovimiento
+    TipoMovimiento,
+    Prestamo,
+    PrestamoDetalle
 ) 
-from apps.gestion_inventario.utils import generar_sku_sugerido, get_or_create_anulado_compartment
+from apps.gestion_inventario.utils import generar_sku_sugerido, get_or_create_anulado_compartment, get_or_create_extraviado_compartment
 from .utils import obtener_contexto_bomberil
 from .serializers import ComunaSerializer, ProductoLocalInputSerializer, CustomTokenObtainPairSerializer, CustomTokenRefreshSerializer
 from .permissions import (
@@ -1554,6 +1556,126 @@ class InventarioBajaExistenciaAPIView(AuditoriaMixin, APIView):
             return Response({"detail": "Error crítico: Estado 'DE BAJA' no configurado."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+class InventarioExtraviarActivoAPIView(AuditoriaMixin, APIView):
+    """
+    Endpoint para reportar un ACTIVO como extraviado.
+    Maneja la lógica compleja de cierre de préstamos si el activo estaba prestado.
+    
+    URL: /api/v1/inventario/movimientos/extravio/
+    Method: POST
+    Payload:
+    {
+        "id": "uuid-del-activo",
+        "notas": "Se perdió en el incendio forestal..."
+    }
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarBajasStock]
+
+    def post(self, request):
+        estacion = request.estacion_activa
+        
+        # --- PUENTE AUDITORÍA ---
+        if not request.session.get('active_estacion_id'):
+            request.session['active_estacion_id'] = estacion.id
+
+        activo_id = request.data.get('id')
+        notas = request.data.get('notas', '')
+
+        if not activo_id:
+            return Response({"detail": "Falta el ID del activo."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Obtener Activo
+        activo = get_object_or_404(Activo, id=activo_id, estacion=estacion)
+
+        # 2. Validar Estado (Regla de Negocio)
+        # Se permite reportar extravío incluso si está PRESTADO
+        estados_permitidos = ['DISPONIBLE', 'PENDIENTE REVISIÓN', 'EN REPARACIÓN', 'EN PRÉSTAMO EXTERNO']
+        
+        if not activo.estado or activo.estado.nombre not in estados_permitidos:
+            return Response(
+                {"detail": f"Estado no válido para reporte de extravío: '{activo.estado.nombre}'. Estados permitidos: {', '.join(estados_permitidos)}."}, 
+                status=status.HTTP_409_CONFLICT
+            )
+
+        try:
+            estado_extraviado = Estado.objects.get(nombre='EXTRAVIADO')
+            compartimento_limbo = get_or_create_extraviado_compartment(estacion)
+            nombre_item = activo.producto.producto_global.nombre_oficial
+            
+            # Detectar si estaba prestado
+            estaba_prestado = (activo.estado.nombre == 'EN PRÉSTAMO EXTERNO')
+
+            with transaction.atomic():
+                # A. Movimiento de Stock
+                # Si estaba prestado, no restamos inventario físico (ya salió).
+                cantidad_movimiento = 0 if estaba_prestado else -1
+                compartimento_origen = None if estaba_prestado else activo.compartimento
+
+                # Actualizar Activo
+                activo.estado = estado_extraviado
+                activo.compartimento = compartimento_limbo
+                activo.save()
+
+                # B. Registrar Movimiento (SALIDA)
+                MovimientoInventario.objects.create(
+                    tipo_movimiento=TipoMovimiento.SALIDA,
+                    usuario=request.user,
+                    estacion=estacion,
+                    compartimento_origen=compartimento_origen,
+                    compartimento_destino=compartimento_limbo,
+                    activo=activo,
+                    cantidad_movida=cantidad_movimiento,
+                    notas=f"Extravío reportado (Móvil): {notas}"
+                )
+
+                # C. Gestión de Préstamos (Si aplica)
+                if estaba_prestado:
+                    self._registrar_perdida_en_prestamo(activo)
+
+                # D. Auditoría Humana
+                self.auditar(
+                    verbo="reportó como extraviado a",
+                    objetivo=activo,
+                    objetivo_repr=f"{nombre_item} ({activo.codigo_activo})",
+                    detalles={
+                        'motivo': notas,
+                        'estaba_prestado': estaba_prestado,
+                        'origen_accion': 'APP MÓVIL'
+                    }
+                )
+
+            return Response({"message": "Extravío reportado correctamente."}, status=status.HTTP_200_OK)
+
+        except Estado.DoesNotExist:
+            return Response({"detail": "Error crítico: Estado 'EXTRAVIADO' no configurado."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # --- Helpers de Préstamos (Copiados de tu lógica web) ---
+
+    def _registrar_perdida_en_prestamo(self, activo):
+        """Busca préstamos activos y marca el ítem como extraviado."""
+        detalles = PrestamoDetalle.objects.filter(
+            activo=activo,
+            prestamo__estado__in=[Prestamo.EstadoPrestamo.PENDIENTE, Prestamo.EstadoPrestamo.DEVUELTO_PARCIAL]
+        )
+
+        for detalle in detalles:
+            detalle.cantidad_extraviada = 1 
+            detalle.save()
+            self._verificar_cierre_prestamo(detalle.prestamo)
+
+    def _verificar_cierre_prestamo(self, prestamo):
+        """Cierra el préstamo si todos los ítems están saldados (devueltos o extraviados)."""
+        todos_saldados = all(d.esta_saldado for d in prestamo.items_prestados.all())
+        
+        if todos_saldados:
+            prestamo.estado = Prestamo.EstadoPrestamo.COMPLETADO
+            prestamo.save(update_fields=['estado', 'updated_at'])
 
 
 

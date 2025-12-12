@@ -20,6 +20,7 @@ from .views import (
     InventarioAjustarStockAPIView,
     InventarioConsumirStockAPIView,
     InventarioBajaExistenciaAPIView,
+    InventarioExtraviarActivoAPIView,
     MantenimientoBuscarActivoParaPlanAPIView,
     MantenimientoAnadirActivoEnPlanAPIView,
     MantenimientoQuitarActivoDePlanAPIView,
@@ -99,6 +100,8 @@ urlpatterns = [
     path('gestion_inventario/movimientos/anular/', InventarioAnularExistenciaAPIView.as_view(), name='api_anular_existencia'),
     # Ruta para dar de baja (fin de vida útil / daño)
     path('gestion_inventario/movimientos/baja/', InventarioBajaExistenciaAPIView.as_view(), name='api_baja_existencia'),
+    # Ruta para reportar extravío (pérdida accidental)
+    path('inventario/movimientos/extravio/', InventarioExtraviarActivoAPIView.as_view(), name='api_extravio_activo'),
 
 
 
