@@ -48,6 +48,7 @@ from .permissions import (
     CanGestionarOrdenes,
     CanRecepcionarStock,
     CanGestionarBajasStock,
+    CanGestionarStockInterno,
     IsSelfOrStationAdmin
 )
 
@@ -1444,6 +1445,105 @@ class InventarioAnularExistenciaAPIView(AuditoriaMixin, APIView):
                 )
 
             return Response({"message": "Ítem anulado correctamente."}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+class InventarioAjustarStockAPIView(AuditoriaMixin, APIView):
+    """
+    Endpoint para ajustar manualmente la cantidad de un Lote (Inventario Cíclico).
+    
+    URL: /api/v1/inventario/movimientos/ajustar/
+    Method: POST
+    Payload:
+    {
+        "id": "uuid-del-lote",
+        "nueva_cantidad": 50,
+        "notas": "Conteo cíclico semanal"
+    }
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarStockInterno]
+
+    def post(self, request):
+        estacion = request.estacion_activa
+        
+        # --- PUENTE AUDITORÍA ---
+        if not request.session.get('active_estacion_id'):
+            request.session['active_estacion_id'] = estacion.id
+
+        lote_id = request.data.get('id')
+        nueva_cantidad = request.data.get('nueva_cantidad')
+        notas = request.data.get('notas', '')
+
+        # 1. Validaciones de Entrada
+        if not lote_id or nueva_cantidad is None:
+            return Response({"detail": "Faltan datos (id, nueva_cantidad)."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            nueva_cantidad = int(nueva_cantidad)
+            if nueva_cantidad < 0:
+                raise ValueError
+        except ValueError:
+            return Response({"detail": "La cantidad debe ser un número entero no negativo."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Obtener Lote (Validando Estación)
+        lote = get_object_or_404(LoteInsumo, id=lote_id, compartimento__ubicacion__estacion=estacion)
+
+        # 3. Validar Estado (Regla de Negocio: Solo DISPONIBLE)
+        if not lote.estado or lote.estado.nombre != 'DISPONIBLE':
+            return Response(
+                {"detail": f"Solo se puede ajustar stock de lotes 'DISPONIBLE'. Estado actual: {lote.estado.nombre if lote.estado else 'Nulo'}"}, 
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # 4. Cálculo de Diferencia
+        cantidad_previa = lote.cantidad
+        diferencia = nueva_cantidad - cantidad_previa
+
+        if diferencia == 0:
+            return Response({"message": "No hubo cambios en el stock."}, status=status.HTTP_200_OK)
+
+        try:
+            with transaction.atomic():
+                # A. Actualizar Lote
+                lote.cantidad = nueva_cantidad
+                lote.save(update_fields=['cantidad', 'updated_at'])
+
+                # B. Registrar Movimiento Técnico (AJUSTE)
+                MovimientoInventario.objects.create(
+                    tipo_movimiento=TipoMovimiento.AJUSTE,
+                    usuario=request.user,
+                    estacion=estacion,
+                    compartimento_origen=lote.compartimento, # El origen es donde estaba
+                    lote_insumo=lote,
+                    cantidad_movida=diferencia,
+                    notas=notas
+                )
+
+                # C. Auditoría de Sistema (Humana)
+                tipo_ajuste = "aumentó" if diferencia > 0 else "disminuyó"
+                nombre_prod = lote.producto.producto_global.nombre_oficial
+                
+                self.auditar(
+                    verbo=f"ajustó manualmente el stock ({tipo_ajuste}) de",
+                    objetivo=lote,
+                    objetivo_repr=f"{nombre_prod} ({lote.codigo_lote})",
+                    detalles={
+                        'cantidad_previa': cantidad_previa,
+                        'cantidad_nueva': nueva_cantidad,
+                        'diferencia': diferencia,
+                        'motivo': notas,
+                        'origen_accion': 'APP MÓVIL'
+                    }
+                )
+
+            return Response({
+                "message": f"Stock ajustado correctamente: {cantidad_previa} -> {nueva_cantidad}.",
+                "nueva_cantidad": nueva_cantidad
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
