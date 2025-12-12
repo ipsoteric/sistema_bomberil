@@ -2383,7 +2383,8 @@ class MantenimientoBuscarActivoParaPlanAPIView(APIView):
         
         # 2. Filtrar
         activos = Activo.objects.filter(
-            estacion=estacion
+            estacion=estacion,
+            estado__nombre__in=['DISPONIBLE', 'EN PRÉSTAMO EXTERNO', 'PENDIENTE REVISIÓN']
         ).filter(
             Q(codigo_activo__icontains=query) | 
             Q(producto__producto_global__nombre_oficial__icontains=query)
@@ -2427,6 +2428,17 @@ class MantenimientoAnadirActivoEnPlanAPIView(APIView):
 
             activo = get_object_or_404(Activo, pk=activo_id, estacion=estacion)
 
+            # --- VALIDACIÓN DE ESTADO (Regla de Negocio) ---
+            estados_permitidos = ['DISPONIBLE', 'EN PRÉSTAMO EXTERNO', 'PENDIENTE REVISIÓN']
+            
+            if not activo.estado or activo.estado.nombre not in estados_permitidos:
+                estado_actual = activo.estado.nombre if activo.estado else "SIN ESTADO"
+                return Response({
+                    'status': 'error',
+                    'message': f'No se puede agregar el activo al plan. Su estado es "{estado_actual}". Solo se permiten: {", ".join(estados_permitidos)}.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            # -----------------------------------------------
+
             # Lógica de Negocio
             config, created = PlanActivoConfig.objects.get_or_create(
                 plan=plan,
@@ -2440,7 +2452,6 @@ class MantenimientoAnadirActivoEnPlanAPIView(APIView):
                 return Response({'message': 'El activo ya está en el plan'}, status=status.HTTP_400_BAD_REQUEST)
 
             # --- AUDITORÍA INCREMENTAL ---
-            # No inundamos el log. Agrupamos.
             auditar_modificacion_incremental(
                 request=request,
                 plan=plan,
@@ -2685,7 +2696,8 @@ class MantenimientoBuscarActivoParaOrdenAPIView(APIView):
         orden = get_object_or_404(OrdenMantenimiento, id=orden_id, estacion=estacion)
         
         activos = Activo.objects.filter(
-            estacion=estacion
+            estacion=estacion,
+            estado__nombre__in=['DISPONIBLE', 'EN PRÉSTAMO EXTERNO', 'PENDIENTE REVISIÓN']
         ).filter(
             Q(codigo_activo__icontains=query) | 
             Q(producto__producto_global__nombre_oficial__icontains=query)
@@ -2727,12 +2739,24 @@ class MantenimientoAnadirActivoOrdenAPIView(APIView):
             activo_id = request.data.get('activo_id')
             activo = get_object_or_404(Activo, pk=activo_id, estacion=estacion)
 
+            # --- NUEVA VALIDACIÓN DE ESTADO ---
+            estados_permitidos = ['DISPONIBLE', 'EN PRÉSTAMO EXTERNO', 'PENDIENTE REVISIÓN']
+            
+            # Verificamos que el activo tenga un estado válido
+            if not activo.estado or activo.estado.nombre not in estados_permitidos:
+                estado_actual = activo.estado.nombre if activo.estado else "SIN ESTADO"
+                return Response({
+                    'status': 'error', # Agregamos status para que el frontend pueda manejarlo
+                    'message': f'No se puede agregar el activo. Su estado es "{estado_actual}". Solo se permiten: {", ".join(estados_permitidos)}.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            # ----------------------------------
+
             orden.activos_afectados.add(activo)
 
             # --- AUDITORÍA INCREMENTAL ---
             auditar_modificacion_incremental(
                 request=request,
-                plan=orden, # Reutilizamos la función pasando la orden como 'plan' (objeto genérico)
+                plan=orden, 
                 accion_detalle=f"Añadió a la orden: {activo.codigo_activo}"
             )
             return Response({'status': 'ok', 'message': f"Activo {activo.codigo_activo} añadido."})
