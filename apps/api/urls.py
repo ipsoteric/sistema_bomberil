@@ -9,6 +9,8 @@ from .views import (
     InventarioProductoGlobalSKUAPIView,
     InventarioAnadirProductoLocalAPIView,
     InventarioBuscarExistenciasPrestablesAPI,
+    InventarioCrearPrestamoAPIView,
+    InventarioDestinatarioListAPIView,
     InventarioDetalleExistenciaAPIView,
     InventarioCatalogoStockAPIView,
     InventarioExistenciasPorProductoAPIView,
@@ -77,8 +79,13 @@ urlpatterns = [
     path('gestion_inventario/detalle-existencia/<int:pk>/', InventarioProductoGlobalSKUAPIView.as_view(), name="api_get_producto_global_sku"),
     # Agregar producto al catálogo local
     path('gestion_inventario/anadir-producto-local/', InventarioAnadirProductoLocalAPIView.as_view(), name="api_anadir_producto_local"),
+
+    # --- PRÉSTAMOS ---
     # Buscar existencias disponibles para préstamo
     path('gestion_inventario/prestamo/buscar-prestables/', InventarioBuscarExistenciasPrestablesAPI.as_view(), name='api_buscar_prestables'),
+    path('gestion_inventario/prestamos/crear/', InventarioCrearPrestamoAPIView.as_view(), name='api_crear_prestamo'),
+    path('gestion_inventario/destinatarios/', InventarioDestinatarioListAPIView.as_view(), name='api_destinatarios_list'),
+
     # Obtener detalle de una existencia
     path('gestion_inventario/existencias/buscar/', InventarioDetalleExistenciaAPIView.as_view(), name='api_existencia_detalle'),
     # Obtener catálogo local de productos (con existencias)
@@ -101,7 +108,7 @@ urlpatterns = [
     # Ruta para dar de baja (fin de vida útil / daño)
     path('gestion_inventario/movimientos/baja/', InventarioBajaExistenciaAPIView.as_view(), name='api_baja_existencia'),
     # Ruta para reportar extravío (pérdida accidental)
-    path('inventario/movimientos/extravio/', InventarioExtraviarActivoAPIView.as_view(), name='api_extravio_activo'),
+    path('gestion_inventario/movimientos/extravio/', InventarioExtraviarActivoAPIView.as_view(), name='api_extravio_activo'),
 
 
 

@@ -35,7 +35,8 @@ from apps.gestion_inventario.models import (
     Proveedor, 
     TipoMovimiento,
     Prestamo,
-    PrestamoDetalle
+    PrestamoDetalle,
+    Destinatario
 ) 
 from apps.gestion_inventario.utils import generar_sku_sugerido, get_or_create_anulado_compartment, get_or_create_extraviado_compartment
 from .utils import obtener_contexto_bomberil
@@ -51,6 +52,7 @@ from .permissions import (
     CanRecepcionarStock,
     CanGestionarBajasStock,
     CanGestionarStockInterno,
+    CanGestionarPrestamos,
     IsSelfOrStationAdmin
 )
 
@@ -695,6 +697,177 @@ class InventarioBuscarExistenciasPrestablesAPI(APIView):
                 {"error": "Error interno del servidor."}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+
+
+class InventarioCrearPrestamoAPIView(AuditoriaMixin, APIView):
+    """
+    Endpoint transaccional para crear un Préstamo con múltiples ítems.
+    Replica la lógica de CrearPrestamoView (Web).
+    
+    Payload:
+    {
+        "destinatario_id": 1, 
+        "nuevo_destinatario_nombre": "Bomberos Iquique" (Opcional si no hay ID),
+        "notas": "Apoyo incendio",
+        "items": [
+            {"tipo": "activo", "id": "uuid...", "cantidad_prestada": 1},
+            {"tipo": "lote", "id": "uuid...", "cantidad_prestada": 5}
+        ]
+    }
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarPrestamos]
+
+    def post(self, request):
+        estacion = request.estacion_activa
+        
+        # --- PUENTE AUDITORÍA ---
+        if not request.session.get('active_estacion_id'):
+            request.session['active_estacion_id'] = estacion.id
+
+        data = request.data
+        items = data.get('items', [])
+        
+        if not items:
+            return Response({"detail": "La lista de ítems está vacía."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Validar Estados Singleton
+        try:
+            estado_prestado = Estado.objects.get(nombre='EN PRÉSTAMO EXTERNO')
+            estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
+        except Estado.DoesNotExist:
+            return Response({"detail": "Error crítico configuración estados."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            with transaction.atomic():
+                # 2. Gestionar Destinatario
+                destinatario = self._get_or_create_destinatario(data, estacion, request.user)
+                
+                # 3. Crear Cabecera Préstamo
+                prestamo = Prestamo.objects.create(
+                    estacion=estacion,
+                    usuario_responsable=request.user,
+                    destinatario=destinatario,
+                    notas_prestamo=data.get('notas', '')
+                )
+
+                # 4. Procesar Ítems
+                total_items_fisicos = 0
+                conteo_activos = 0
+                conteo_insumos = 0
+
+                for item_data in items:
+                    tipo = item_data.get('tipo')
+                    item_id = item_data.get('id')
+                    cantidad = int(item_data.get('cantidad_prestada', 1))
+
+                    if tipo == 'activo':
+                        # select_for_update para bloqueo de fila
+                        activo = Activo.objects.select_for_update().get(id=item_id, estado=estado_disponible, estacion=estacion)
+                        
+                        PrestamoDetalle.objects.create(prestamo=prestamo, activo=activo, cantidad_prestada=1)
+                        
+                        activo.estado = estado_prestado
+                        activo.save(update_fields=['estado', 'updated_at'])
+                        
+                        self._crear_movimiento_prestamo(activo.compartimento, activo, None, -1, destinatario, prestamo.notas_prestamo, request.user, estacion)
+                        
+                        total_items_fisicos += 1
+                        conteo_activos += 1
+
+                    elif tipo == 'lote':
+                        lote = LoteInsumo.objects.select_for_update().get(
+                            id=item_id, 
+                            estado=estado_disponible, 
+                            cantidad__gte=cantidad,
+                            compartimento__ubicacion__estacion=estacion
+                        )
+                        
+                        PrestamoDetalle.objects.create(prestamo=prestamo, lote=lote, cantidad_prestada=cantidad)
+                        
+                        lote.cantidad -= cantidad
+                        lote.save(update_fields=['cantidad', 'updated_at'])
+                        
+                        self._crear_movimiento_prestamo(lote.compartimento, None, lote, -1 * cantidad, destinatario, prestamo.notas_prestamo, request.user, estacion)
+                        
+                        total_items_fisicos += cantidad
+                        conteo_insumos += cantidad
+
+                # 5. Auditoría de Sistema
+                self._auditar_prestamo(prestamo, destinatario, total_items_fisicos, conteo_activos, conteo_insumos)
+
+            return Response({"message": f"Préstamo #{prestamo.id} creado exitosamente."}, status=status.HTTP_201_CREATED)
+
+        except (Activo.DoesNotExist, LoteInsumo.DoesNotExist):
+            return Response({"detail": "Error de concurrencia: Un ítem seleccionado ya no está disponible o no tiene stock suficiente."}, status=status.HTTP_409_CONFLICT)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # --- Helpers ---
+
+    def _get_or_create_destinatario(self, data, estacion, usuario):
+        dest_id = data.get('destinatario_id')
+        if dest_id:
+            return get_object_or_404(Destinatario, id=dest_id, estacion=estacion)
+        
+        # Crear nuevo
+        nombre_nuevo = data.get('nuevo_destinatario_nombre')
+        if not nombre_nuevo:
+            raise ValueError("Debe seleccionar un destinatario o escribir un nombre para uno nuevo.")
+            
+        destinatario, created = Destinatario.objects.get_or_create(
+            estacion=estacion,
+            nombre_entidad=nombre_nuevo,
+            defaults={
+                'telefono_contacto': data.get('nuevo_destinatario_contacto')
+            }
+        )
+        if created:
+            self.auditar(verbo="registró como nuevo destinatario a", objetivo=destinatario, detalles={'origen': 'APP MÓVIL'})
+        
+        return destinatario
+
+    def _crear_movimiento_prestamo(self, compartimento, activo, lote, cantidad, destinatario, notas, usuario, estacion):
+        MovimientoInventario.objects.create(
+            tipo_movimiento=TipoMovimiento.PRESTAMO,
+            usuario=usuario,
+            estacion=estacion,
+            compartimento_origen=compartimento,
+            activo=activo,
+            lote_insumo=lote,
+            cantidad_movida=cantidad,
+            notas=f"Préstamo a {destinatario.nombre_entidad}. {notas}"
+        )
+
+    def _auditar_prestamo(self, prestamo, destinatario, total, n_activos, n_insumos):
+        partes_msg = []
+        if n_activos > 0: partes_msg.append(f"{n_activos} Activo(s)")
+        if n_insumos > 0: partes_msg.append(f"{n_insumos} unidad(es) de Insumo(s)")
+        
+        detalle_texto = " y ".join(partes_msg)
+        
+        self.auditar(
+            verbo=f"registró el préstamo de {detalle_texto} a",
+            objetivo=destinatario,
+            objetivo_repr=destinatario.nombre_entidad,
+            detalles={
+                'id_prestamo': prestamo.id,
+                'total_items': total,
+                'desglose': {'activos': n_activos, 'insumos': n_insumos},
+                'origen_accion': 'APP MÓVIL'
+            }
+        )
+
+
+
+
+class InventarioDestinatarioListAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsEstacionActiva]
+    def get(self, request):
+        qs = Destinatario.objects.filter(estacion=request.estacion_activa).order_by('nombre_entidad')
+        data = [{"id": d.id, "nombre": d.nombre_entidad} for d in qs]
+        return Response(data, status=status.HTTP_200_OK)
 
 
 

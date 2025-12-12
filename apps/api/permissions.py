@@ -127,6 +127,10 @@ class CanGestionarBajasStock(permissions.BasePermission):
 class CanGestionarStockInterno(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.has_perm('gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno')
+    
+class CanGestionarPrestamos(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.has_perm('gestion_usuarios.accion_gestion_inventario_gestionar_prestamos')
 
 
 
