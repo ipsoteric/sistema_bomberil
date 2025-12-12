@@ -89,7 +89,7 @@ urlpatterns = [
     path('gestion_inventario/core/compartimentos/', InventarioCompartimentoListAPIView.as_view(), name='api_compartimentos_list'),
     path('gestion_inventario/core/proveedores/', InventarioProveedorListAPIView.as_view(), name='api_proveedores_list'),
     # Ruta para ajuste cíclico (conteo manual)
-    path('inventario/movimientos/ajustar/', InventarioAjustarStockAPIView.as_view(), name='api_ajustar_stock'),
+    path('gestion_inventario/movimientos/ajustar/', InventarioAjustarStockAPIView.as_view(), name='api_ajustar_stock'),
     # Ruta para anular (dar de baja lógica por error)
     path('gestion_inventario/movimientos/anular/', InventarioAnularExistenciaAPIView.as_view(), name='api_anular_existencia'),
 
