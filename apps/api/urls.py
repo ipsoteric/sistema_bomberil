@@ -18,6 +18,7 @@ from .views import (
     InventarioProveedorListAPIView,
     InventarioAnularExistenciaAPIView,
     InventarioAjustarStockAPIView,
+    InventarioConsumirStockAPIView,
     MantenimientoBuscarActivoParaPlanAPIView,
     MantenimientoAnadirActivoEnPlanAPIView,
     MantenimientoQuitarActivoDePlanAPIView,
@@ -90,6 +91,8 @@ urlpatterns = [
     path('gestion_inventario/core/proveedores/', InventarioProveedorListAPIView.as_view(), name='api_proveedores_list'),
     # Ruta para ajuste cíclico (conteo manual)
     path('gestion_inventario/movimientos/ajustar/', InventarioAjustarStockAPIView.as_view(), name='api_ajustar_stock'),
+    # Ruta para consumo de stock (salida interna)
+    path('gestion_inventario/movimientos/consumir/', InventarioConsumirStockAPIView.as_view(), name='api_consumir_stock'),
     # Ruta para anular (dar de baja lógica por error)
     path('gestion_inventario/movimientos/anular/', InventarioAnularExistenciaAPIView.as_view(), name='api_anular_existencia'),
 

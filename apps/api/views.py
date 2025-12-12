@@ -1551,6 +1551,104 @@ class InventarioAjustarStockAPIView(AuditoriaMixin, APIView):
 
 
 
+class InventarioConsumirStockAPIView(AuditoriaMixin, APIView):
+    """
+    Endpoint para registrar consumo de stock (Salida de lotes).
+    
+    URL: /api/v1/inventario/movimientos/consumir/
+    Method: POST
+    Payload:
+    {
+        "id": "uuid-del-lote",
+        "cantidad": 5,
+        "notas": "Uso en ejercicio de la academia"
+    }
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarStockInterno]
+
+    def post(self, request):
+        estacion = request.estacion_activa
+        
+        # --- PUENTE AUDITORÍA ---
+        if not request.session.get('active_estacion_id'):
+            request.session['active_estacion_id'] = estacion.id
+
+        lote_id = request.data.get('id')
+        cantidad_consumir = request.data.get('cantidad')
+        notas = request.data.get('notas', '')
+
+        # 1. Validaciones de Entrada
+        if not lote_id or cantidad_consumir is None:
+            return Response({"detail": "Faltan datos (id, cantidad)."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            cantidad_consumir = int(cantidad_consumir)
+            if cantidad_consumir <= 0:
+                raise ValueError
+        except ValueError:
+            return Response({"detail": "La cantidad a consumir debe ser mayor a 0."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Obtener Lote (Validando Estación)
+        lote = get_object_or_404(LoteInsumo, id=lote_id, compartimento__ubicacion__estacion=estacion)
+
+        # 3. Validar Estado (Regla de Negocio: DISPONIBLE o EN PRÉSTAMO EXTERNO)
+        estados_permitidos = ['DISPONIBLE', 'EN PRÉSTAMO EXTERNO']
+        if not lote.estado or lote.estado.nombre not in estados_permitidos:
+            return Response(
+                {"detail": f"El lote no está en un estado válido para consumo ({lote.estado.nombre if lote.estado else 'Nulo'}). Estados permitidos: {', '.join(estados_permitidos)}."}, 
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # 4. Validar Stock Suficiente
+        if lote.cantidad < cantidad_consumir:
+            return Response(
+                {"detail": f"Stock insuficiente. Disponible: {lote.cantidad}, Solicitado: {cantidad_consumir}."}, 
+                status=status.HTTP_409_CONFLICT
+            )
+
+        try:
+            with transaction.atomic():
+                # A. Actualizar Lote
+                lote.cantidad -= cantidad_consumir
+                lote.save(update_fields=['cantidad', 'updated_at'])
+
+                # B. Registrar Movimiento Técnico (SALIDA)
+                MovimientoInventario.objects.create(
+                    tipo_movimiento=TipoMovimiento.SALIDA,
+                    usuario=request.user,
+                    estacion=estacion,
+                    compartimento_origen=lote.compartimento,
+                    lote_insumo=lote,
+                    cantidad_movida=cantidad_consumir * -1, # Negativo para salidas
+                    notas=notas
+                )
+
+                # C. Auditoría de Sistema (Humana)
+                nombre_prod = lote.producto.producto_global.nombre_oficial
+                
+                self.auditar(
+                    verbo=f"registró el consumo interno de {cantidad_consumir} unidad(es) de",
+                    objetivo=lote,
+                    objetivo_repr=f"{nombre_prod} ({lote.codigo_lote})",
+                    detalles={
+                        'cantidad_consumida': cantidad_consumir,
+                        'cantidad_restante': lote.cantidad,
+                        'motivo_uso': notas,
+                        'origen_accion': 'APP MÓVIL'
+                    }
+                )
+
+            return Response({
+                "message": f"Consumo registrado correctamente. Nuevo stock: {lote.cantidad}.",
+                "stock_restante": lote.cantidad
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
 # --- VISTAS DE GESTIÓN DE MANTENIMIENTO ---
 class MantenimientoBuscarActivoParaPlanAPIView(APIView):
     """
