@@ -49,6 +49,7 @@ from .permissions import (
     CanCrearProductoGlobal,
     CanGestionarPlanes,
     CanGestionarOrdenes,
+    CanVerOrdenes,
     CanRecepcionarStock,
     CanGestionarBajasStock,
     CanGestionarStockInterno,
@@ -2794,3 +2795,158 @@ class MantenimientoQuitarActivoOrdenAPIView(APIView):
         
         except Exception as e:
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+class MantenimientoOrdenListAPIView(APIView):
+    """
+    Bandeja de entrada de Órdenes de Trabajo para la App.
+    Soporta pestañas de estado (Activos/Historial) y búsqueda.
+    
+    URL: /api/v1/mantenimiento/ordenes/?estado=activos&q=camion
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanVerOrdenes]
+
+    def get(self, request):
+        estacion = request.estacion_activa
+        filtro_estado = request.query_params.get('estado', 'activos') # 'activos' | 'historial'
+        query = request.query_params.get('q', '').strip()
+
+        # 1. QuerySet Base
+        qs = OrdenMantenimiento.objects.filter(estacion=estacion).select_related(
+            'plan_origen', 
+            'responsable'
+        )
+
+        # 2. Filtro por Estado (Tabs)
+        if filtro_estado == 'historial':
+            qs = qs.filter(estado__in=[
+                OrdenMantenimiento.EstadoOrden.REALIZADA,
+                OrdenMantenimiento.EstadoOrden.CANCELADA
+            ]).order_by('-fecha_cierre', '-fecha_programada')
+        else:
+            # Default: Pendientes y En Curso
+            qs = qs.filter(estado__in=[
+                OrdenMantenimiento.EstadoOrden.PENDIENTE,
+                OrdenMantenimiento.EstadoOrden.EN_CURSO
+            ]).order_by('fecha_programada')
+
+        # 3. Búsqueda
+        if query:
+            if query.isdigit():
+                qs = qs.filter(id=query)
+            else:
+                qs = qs.filter(
+                    Q(plan_origen__nombre__icontains=query) | 
+                    Q(tipo_orden__icontains=query) |
+                    Q(descripcion_falla__icontains=query) # Asumiendo que existe este campo
+                )
+
+        # 4. Serialización
+        data = []
+        hoy = timezone.now().date()
+
+        for orden in qs[:50]: # Paginación simple o límite
+            # Lógica visual de vencimiento
+            es_vencido = False
+            if orden.estado != OrdenMantenimiento.EstadoOrden.REALIZADA and orden.fecha_programada:
+                es_vencido = orden.fecha_programada < hoy
+
+            titulo = f"Orden #{orden.id}"
+            if orden.plan_origen:
+                titulo = orden.plan_origen.nombre
+            elif orden.tipo_orden == 'CORRECTIVA':
+                titulo = f"Correctiva #{orden.id}"
+
+            data.append({
+                "id": orden.id,
+                "titulo": titulo,
+                "tipo": orden.get_tipo_orden_display(),
+                "tipo_codigo": orden.tipo_orden, # 'CORRECTIVA' | 'PREVENTIVA'
+                "estado": orden.get_estado_display(),
+                "estado_codigo": orden.estado, # 'PEN', 'EJE', 'REA', 'CAN'
+                "fecha_programada": orden.fecha_programada.strftime('%d/%m/%Y') if orden.fecha_programada else "Sin fecha",
+                "responsable": orden.responsable.get_full_name() if orden.responsable else "Sin asignar",
+                "es_vencido": es_vencido,
+                # Resumen de activos (solo conteo para la lista)
+                "activos_count": orden.activos_afectados.count()
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class MantenimientoOrdenCorrectivaCreateAPIView(AuditoriaMixin, APIView):
+    """
+    Endpoint para crear una Orden de Mantenimiento Correctiva.
+    
+    URL: /api/v1/mantenimiento/ordenes/crear/
+    Method: POST
+    Payload:
+    {
+        "descripcion": "Fuga de aceite en motor",
+        "fecha_programada": "2023-11-01" (Opcional, default hoy),
+        "responsable_id": 5 (Opcional)
+    }
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarOrdenes]
+
+    def post(self, request):
+        estacion = request.estacion_activa
+        
+        # --- PUENTE AUDITORÍA ---
+        if not request.session.get('active_estacion_id'):
+            request.session['active_estacion_id'] = estacion.id
+
+        data = request.data
+        descripcion = data.get('descripcion')
+        
+        if not descripcion:
+            return Response({"detail": "La descripción de la falla es obligatoria."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                orden = OrdenMantenimiento()
+                orden.estacion = estacion
+                orden.tipo_orden = OrdenMantenimiento.TipoOrden.CORRECTIVA
+                orden.estado = OrdenMantenimiento.EstadoOrden.PENDIENTE
+                
+                # Campos del formulario
+                orden.descripcion_falla = descripcion
+                
+                if data.get('fecha_programada'):
+                    orden.fecha_programada = parse_date(data.get('fecha_programada'))
+                else:
+                    orden.fecha_programada = timezone.now().date()
+
+                if data.get('responsable_id'):
+                    # Validar que el responsable sea de la estación (opcional pero recomendado)
+                    # Asumimos que get_user_model o similar está disponible
+                    from django.contrib.auth import get_user_model
+                    User = get_user_model()
+                    responsable = get_object_or_404(User, id=data.get('responsable_id'))
+                    orden.responsable = responsable
+                else:
+                    # Por defecto se asigna al creador si no especifica otro
+                    orden.responsable = request.user
+
+                orden.save()
+
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo="creó una nueva Orden de Mantenimiento Correctiva",
+                    objetivo=orden,
+                    objetivo_repr=f"Orden #{orden.id} (Correctiva)",
+                    detalles={
+                        'descripcion_inicial': descripcion,
+                        'origen_accion': 'APP MÓVIL'
+                    }
+                )
+
+            return Response({
+                "message": f"Orden #{orden.id} creada correctamente.",
+                "id": orden.id # Para navegar al detalle y agregar activos
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

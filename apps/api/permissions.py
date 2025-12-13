@@ -143,6 +143,10 @@ class CanVerPrestamos(permissions.BasePermission):
 class CanGestionarPlanes(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.has_perm('gestion_usuarios.accion_gestion_mantenimiento_gestionar_planes')
+    
+class CanVerOrdenes(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.has_perm('gestion_usuarios.accion_gestion_mantenimiento_ver_ordenes')
 
 class CanGestionarOrdenes(permissions.BasePermission):
     def has_permission(self, request, view):

@@ -34,6 +34,8 @@ from .views import (
     MantenimientoBuscarActivoParaOrdenAPIView,
     MantenimientoAnadirActivoOrdenAPIView,
     MantenimientoQuitarActivoOrdenAPIView,
+    MantenimientoOrdenListAPIView,
+    MantenimientoOrdenCorrectivaCreateAPIView,
     BomberilLoginView,
     BomberilRefreshView,
     BomberilLogoutView,
@@ -141,4 +143,8 @@ urlpatterns = [
     path('gestion_mantenimiento/ordenes/buscar-activo/', MantenimientoBuscarActivoParaOrdenAPIView.as_view(), name='api_buscar_activo_para_orden'),
     path('gestion_mantenimiento/ordenes/<int:pk>/anadir-activo/', MantenimientoAnadirActivoOrdenAPIView.as_view(), name='api_anadir_activo_orden'),
     path('gestion_mantenimiento/ordenes/<int:pk>/quitar-activo/', MantenimientoQuitarActivoOrdenAPIView.as_view(), name='api_quitar_activo_orden'),
+    # Lista de órdenes
+    path('gestion_mantenimiento/ordenes/', MantenimientoOrdenListAPIView.as_view(), name='api_ordenes_list'),
+    # Crear orden
+    path('gestion_mantenimiento/ordenes/crear/', MantenimientoOrdenCorrectivaCreateAPIView.as_view(), name='api_crear_orden_correctiva'),
 ]
