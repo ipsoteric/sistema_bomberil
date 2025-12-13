@@ -36,6 +36,7 @@ from .views import (
     MantenimientoQuitarActivoOrdenAPIView,
     MantenimientoOrdenListAPIView,
     MantenimientoOrdenCorrectivaCreateAPIView,
+    MantenimientoOrdenDetalleAPIView,
     BomberilLoginView,
     BomberilRefreshView,
     BomberilLogoutView,
@@ -147,4 +148,6 @@ urlpatterns = [
     path('gestion_mantenimiento/ordenes/', MantenimientoOrdenListAPIView.as_view(), name='api_ordenes_list'),
     # Crear orden
     path('gestion_mantenimiento/ordenes/crear/', MantenimientoOrdenCorrectivaCreateAPIView.as_view(), name='api_crear_orden_correctiva'),
+    # Detalle de órden
+    path('gestion_mantenimiento/ordenes/<int:pk>/detalle/', MantenimientoOrdenDetalleAPIView.as_view(), name='api_orden_detalle'),
 ]

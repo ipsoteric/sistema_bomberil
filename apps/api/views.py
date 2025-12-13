@@ -2950,3 +2950,79 @@ class MantenimientoOrdenCorrectivaCreateAPIView(AuditoriaMixin, APIView):
 
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+class MantenimientoOrdenDetalleAPIView(APIView):
+    """
+    Endpoint de detalle de una Orden de Trabajo.
+    Muestra el progreso y el estado de cada activo involucrado (Pendiente vs Realizado).
+    
+    URL: /api/v1/mantenimiento/ordenes/<int:pk>/detalle/
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarOrdenes]
+
+    def get(self, request, pk):
+        estacion = request.estacion_activa
+        
+        # 1. Obtener la Orden (Asegurando que sea de la estación)
+        orden = get_object_or_404(OrdenMantenimiento, id=pk, estacion=estacion)
+
+        # 2. Obtener Activos Afectados (Lo que hay que revisar)
+        activos = orden.activos_afectados.select_related(
+            'producto__producto_global', 
+            'compartimento__ubicacion'
+        ).order_by('producto__producto_global__nombre_oficial')
+
+        # 3. Obtener Registros Existentes (Lo que ya se hizo)
+        # Creamos un diccionario {activo_id: registro_obj} para búsqueda rápida O(1)
+        registros_existentes = {
+            reg.activo_id: reg for reg in orden.registros.all()
+        }
+
+        # 4. Construir lista de activos con estado
+        lista_activos = []
+        for activo in activos:
+            registro = registros_existentes.get(activo.id)
+            esta_completado = registro is not None
+
+            lista_activos.append({
+                "id": str(activo.id),
+                "codigo": activo.codigo_activo,
+                "nombre": activo.producto.producto_global.nombre_oficial,
+                "ubicacion": f"{activo.compartimento.ubicacion.nombre} > {activo.compartimento.nombre}" if activo.compartimento else "Sin ubicación",
+                "estado_trabajo": "COMPLETADO" if esta_completado else "PENDIENTE",
+                "estado_color": "green" if esta_completado else "gray", # Ayuda visual para la app
+                "registro_id": registro.id if registro else None # Útil si quieres editar el trabajo realizado
+            })
+
+        # 5. Calcular Progreso
+        total = len(activos)
+        completados = len(registros_existentes)
+        porcentaje = int((completados / total) * 100) if total > 0 else 0
+
+        # 6. Construir Respuesta
+        titulo = orden.plan_origen.nombre if orden.plan_origen else f"Correctiva #{orden.id}"
+        
+        data = {
+            "cabecera": {
+                "id": orden.id,
+                "titulo": titulo,
+                "descripcion": orden.descripcion_falla or "Mantenimiento Preventivo",
+                "tipo": orden.get_tipo_orden_display(),
+                "estado": orden.get_estado_display(),
+                "estado_codigo": orden.estado, # 'PEN', 'EJE', etc.
+                "fecha_programada": orden.fecha_programada.strftime('%d/%m/%Y'),
+                "responsable": orden.responsable.get_full_name() if orden.responsable else "Sin asignar"
+            },
+            "progreso": {
+                "total": total,
+                "completados": completados,
+                "porcentaje": porcentaje,
+                "texto": f"{completados}/{total} Activos"
+            },
+            "items": lista_activos
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
