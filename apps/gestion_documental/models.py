@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import FileExtensionValidator
 
 # Create your models here.
 from django.db import models
@@ -61,7 +62,8 @@ class DocumentoHistorico(models.Model):
     archivo = models.FileField(
         upload_to=ruta_archivo_historico,
         max_length=255,
-        help_text="Archivo digitalizado (PDF, JPG, PNG)."
+        help_text="Archivo digitalizado (PDF, JPG, PNG).",
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
     )
     
     # --- Campos de Trazabilidad ---
