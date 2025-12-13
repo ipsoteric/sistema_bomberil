@@ -38,6 +38,7 @@ from .views import (
     MantenimientoOrdenCorrectivaCreateAPIView,
     MantenimientoOrdenDetalleAPIView,
     DocumentoHistoricoListAPIView,
+    UsuarioListAPIView,
     BomberilLoginView,
     BomberilRefreshView,
     BomberilLogoutView,
@@ -163,4 +164,8 @@ urlpatterns = [
 
     # --- DOCUMENTAL ---
     path('gestion_documental/documentos/', DocumentoHistoricoListAPIView.as_view(), name='api_documentos_list'),
+
+
+    # --- USUARIOS ---
+    path('gestion_usuarios/lista/', UsuarioListAPIView.as_view(), name='api_usuarios_list'),
 ]

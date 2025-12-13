@@ -57,6 +57,7 @@ from .permissions import (
     CanGestionarPrestamos,
     CanVerPrestamos,
     CanVerDocumentos,
+    CanVerUsuarios,
     IsSelfOrStationAdmin
 )
 
@@ -3059,6 +3060,74 @@ class MantenimientoOrdenDetalleAPIView(APIView):
             },
             "items": lista_activos
         }
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+
+
+class UsuarioListAPIView(APIView):
+    """
+    Endpoint unificado para listar usuarios (Voluntarios) de la estación activa.
+    Útil para: Directorio de voluntarios, selectores de Ficha Médica, Asignaciones, etc.
+    
+    Filtros:
+    - ?q= : Busca por Nombre, Apellido, Email o RUT.
+    - ?rol= : Filtra por ID de rol (opcional, útil si quieres buscar solo Oficiales).
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanVerUsuarios]
+
+    def get(self, request):
+        estacion = request.estacion_activa
+        query = request.query_params.get('q', '').strip()
+        rol_id = request.query_params.get('rol')
+
+        # 1. Base Query: Miembros Activos/Inactivos de la estación (Excluye Finalizados)
+        qs = Membresia.objects.filter(
+            estacion=estacion,
+            estado__in=[Membresia.Estado.ACTIVO, Membresia.Estado.INACTIVO]
+        ).select_related('usuario').prefetch_related('roles')
+
+        # 2. Búsqueda por Texto (Nombre, Apellido, Email, RUT)
+        if query:
+            qs = qs.filter(
+                Q(usuario__first_name__icontains=query) |
+                Q(usuario__last_name__icontains=query) |
+                Q(usuario__email__icontains=query) |
+                # Asumo que el campo en tu modelo Usuario se llama 'rut' o 'run'
+                Q(usuario__rut__icontains=query) 
+            )
+
+        # 3. Filtro por Rol (Opcional)
+        if rol_id and rol_id.isdigit():
+            qs = qs.filter(roles__id=int(rol_id))
+
+        # Ordenar alfabéticamente
+        qs = qs.order_by('usuario__first_name', 'usuario__last_name').distinct()
+
+        # 4. Serialización
+        data = []
+        for m in qs[:50]: # Límite de 50 para no saturar la lista móvil
+            roles_nombres = [r.nombre for r in m.roles.all()]
+            
+            # Intentamos obtener avatar si existe
+            avatar_url = None
+            if hasattr(m.usuario, 'avatar') and m.usuario.avatar:
+                avatar_url = m.usuario.avatar.url
+
+            data.append({
+                "usuario_id": m.usuario.id,
+                "membresia_id": m.id,
+                "nombre_completo": m.usuario.get_full_name(),
+                "rut": getattr(m.usuario, 'rut', 'N/A'), # Fallback si no existe el campo
+                "email": m.usuario.email,
+                "estado": m.get_estado_display(),
+                "es_activo": m.estado == Membresia.Estado.ACTIVO,
+                "roles": roles_nombres,
+                "avatar_url": avatar_url,
+                # Campo auxiliar para subtítulos en listas de la app
+                "descripcion_corta": f"{', '.join(roles_nombres[:2])}" if roles_nombres else "Sin rol asignado"
+            })
 
         return Response(data, status=status.HTTP_200_OK)
 
