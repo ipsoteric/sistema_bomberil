@@ -1293,8 +1293,8 @@ class InventarioDetalleExistenciaAPIView(APIView):
         imagen_url = None
         if activo.imagen:
             imagen_url = activo.imagen.url
-        elif prod_global.imagen:
-            imagen_url = prod_global.imagen.url
+        elif prod_global.imagen_thumb_medium:
+            imagen_url = prod_global.imagen_thumb_medium.url
 
         data = {
             "tipo_existencia": "ACTIVO",
@@ -1425,8 +1425,8 @@ class InventarioCatalogoStockAPIView(APIView):
             
             # Imagen segura
             img_url = None
-            if p.producto_global.imagen_thumb_medium:
-                img_url = p.producto_global.imagen_thumb_medium.url
+            if p.producto_global.imagen_thumb_small:
+                img_url = p.producto_global.imagen_thumb_small.url
 
             data.append({
                 "id": p.id, # ID del Producto Local
@@ -3118,7 +3118,7 @@ class UsuarioListAPIView(APIView):
             # Intentamos obtener avatar si existe
             avatar_url = None
             if hasattr(m.usuario, 'avatar') and m.usuario.avatar:
-                avatar_url = m.usuario.avatar.url
+                avatar_url = m.usuario.avatar_thumb_small.url
 
             data.append({
                 "usuario_id": m.usuario.id,
@@ -3178,7 +3178,7 @@ class UsuarioDetalleAPIView(APIView):
             "nombre_completo": usuario.get_full_name,
             "rut": getattr(usuario, 'rut', 'N/A'),
             "email": usuario.email,
-            "avatar_url": usuario.avatar.url if hasattr(usuario, 'avatar') and usuario.avatar else None,
+            "avatar_url": usuario.avatar_thumb_medium.url if hasattr(usuario, 'avatar') and usuario.avatar_thumb_medium else None,
             
             # Datos de Membresía
             "estado": membresia.get_estado_display(),
