@@ -151,3 +151,11 @@ class CanVerOrdenes(permissions.BasePermission):
 class CanGestionarOrdenes(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.has_perm('gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes')
+    
+
+
+
+# --- PERMISOS DE GESTIÓN DOCUMENTAL ---
+class CanVerDocumentos(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.has_perm('gestion_usuarios.accion_gestion_documental_ver_documentos')

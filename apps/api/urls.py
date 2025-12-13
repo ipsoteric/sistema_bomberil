@@ -37,6 +37,7 @@ from .views import (
     MantenimientoOrdenListAPIView,
     MantenimientoOrdenCorrectivaCreateAPIView,
     MantenimientoOrdenDetalleAPIView,
+    DocumentoHistoricoListAPIView,
     BomberilLoginView,
     BomberilRefreshView,
     BomberilLogoutView,
@@ -53,6 +54,8 @@ urlpatterns = [
     path('test-connection/', TestConnectionView.as_view(), name='test_connection'),
 
 
+
+
     # --- AUTENTICACIÓN ---
     # Login: Entrega Access Token, Refresh Token y Datos de Usuario/Estaciones
     path('auth/login/', BomberilLoginView.as_view(), name='token_obtain_pair'),
@@ -66,11 +69,15 @@ urlpatterns = [
     path('auth/password_reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
 
 
+
+
     # --- USUARIOS ---
     # Buscar usuario para agregarlo a la estación
     path('gestion_usuarios/buscar-usuario-para-agregar', BuscarUsuarioAPIView.as_view(), name='api_buscar_usuario'),
     # Modificar avatar
     path('gestion_usuarios/usuarios/<uuid:id>/editar-avatar/', ActualizarAvatarUsuarioAPIView.as_view(), name="api_editar_avatar_usuario"),
+
+
 
 
     # --- INVENTARIO ---
@@ -150,4 +157,10 @@ urlpatterns = [
     path('gestion_mantenimiento/ordenes/crear/', MantenimientoOrdenCorrectivaCreateAPIView.as_view(), name='api_crear_orden_correctiva'),
     # Detalle de órden
     path('gestion_mantenimiento/ordenes/<int:pk>/detalle/', MantenimientoOrdenDetalleAPIView.as_view(), name='api_orden_detalle'),
+
+
+
+
+    # --- DOCUMENTAL ---
+    path('gestion_documental/documentos/', DocumentoHistoricoListAPIView.as_view(), name='api_documentos_list'),
 ]

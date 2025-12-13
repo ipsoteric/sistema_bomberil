@@ -38,6 +38,7 @@ from apps.gestion_inventario.models import (
     PrestamoDetalle,
     Destinatario
 ) 
+from apps.gestion_documental.models import DocumentoHistorico
 from apps.gestion_inventario.utils import generar_sku_sugerido, get_or_create_anulado_compartment, get_or_create_extraviado_compartment
 from .utils import obtener_contexto_bomberil
 from .serializers import ComunaSerializer, ProductoLocalInputSerializer, CustomTokenObtainPairSerializer, CustomTokenRefreshSerializer
@@ -55,6 +56,7 @@ from .permissions import (
     CanGestionarStockInterno,
     CanGestionarPrestamos,
     CanVerPrestamos,
+    CanVerDocumentos,
     IsSelfOrStationAdmin
 )
 
@@ -3059,3 +3061,77 @@ class MantenimientoOrdenDetalleAPIView(APIView):
         }
 
         return Response(data, status=status.HTTP_200_OK)
+
+
+
+
+class DocumentoHistoricoListAPIView(APIView):
+    """
+    Lista los documentos históricos de la estación para la biblioteca digital móvil.
+    Incluye filtros por texto y tipo de documento.
+    
+    URL: /api/v1/documental/documentos/?q=acta&tipo=1
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanVerDocumentos]
+
+    def get(self, request):
+        try:
+            estacion = request.estacion_activa
+            query = request.query_params.get('q', '').strip()
+            tipo_id = request.query_params.get('tipo') # ID del TipoDocumento
+
+            # 1. Base Query (Filtrar por estación)
+            qs = DocumentoHistorico.objects.filter(estacion=estacion).select_related('tipo_documento')
+
+            # 2. Filtro por Tipo
+            if tipo_id and tipo_id.isdigit():
+                qs = qs.filter(tipo_documento_id=int(tipo_id))
+
+            # 3. Filtro por Búsqueda (Título, Descripción, Palabras Clave, Ubicación)
+            if query:
+                qs = qs.filter(
+                    Q(titulo__icontains=query) | 
+                    Q(descripcion__icontains=query) |
+                    Q(palabras_clave__icontains=query) |
+                    Q(ubicacion_fisica__icontains=query)
+                )
+
+            # 4. Ordenamiento
+            qs = qs.order_by('-fecha_documento')
+
+            # 5. Serialización
+            data = []
+            for doc in qs[:50]: # Limitamos a 50 para no saturar la app (paginación simple)
+                
+                # Obtener URL del archivo (S3 genera la firma automática aquí si usas django-storages)
+                archivo_url = doc.archivo.url if doc.archivo else None
+                
+                # Obtener URL de la preview (o una imagen por defecto si no existe)
+                preview_url = doc.preview_imagen.url if doc.preview_imagen else None
+
+                # Calcular peso del archivo (opcional, útil para UX en móvil)
+                peso_mb = 0
+                try:
+                    if doc.archivo:
+                        peso_mb = round(doc.archivo.size / (1024 * 1024), 2)
+                except:
+                    peso_mb = None
+
+                data.append({
+                    "id": doc.id,
+                    "titulo": doc.titulo,
+                    "fecha": doc.fecha_documento.strftime('%d/%m/%Y'),
+                    "anio": doc.fecha_documento.year,
+                    "tipo": doc.tipo_documento.nombre,
+                    "descripcion": doc.descripcion or "",
+                    "ubicacion_fisica": doc.ubicacion_fisica or "Digital",
+                    "archivo_url": archivo_url,   # <--- Link de descarga S3
+                    "preview_url": preview_url,   # <--- Miniatura para la lista
+                    "peso_mb": f"{peso_mb} MB" if peso_mb else "N/A",
+                    "es_confidencial": doc.es_confidencial
+                })
+
+            return Response(data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"detail": f"Error al cargar documentos: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
