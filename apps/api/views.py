@@ -2810,70 +2810,65 @@ class MantenimientoOrdenListAPIView(APIView):
 
     def get(self, request):
         estacion = request.estacion_activa
-        filtro_estado = request.query_params.get('estado', 'activos') # 'activos' | 'historial'
+        filtro_estado = request.query_params.get('estado', 'activos')
         query = request.query_params.get('q', '').strip()
 
-        # 1. QuerySet Base
         qs = OrdenMantenimiento.objects.filter(estacion=estacion).select_related(
             'plan_origen', 
             'responsable'
         )
 
-        # 2. Filtro por Estado (Tabs)
+        # Filtro de Estado usando las constantes del modelo
         if filtro_estado == 'historial':
             qs = qs.filter(estado__in=[
                 OrdenMantenimiento.EstadoOrden.REALIZADA,
                 OrdenMantenimiento.EstadoOrden.CANCELADA
             ]).order_by('-fecha_cierre', '-fecha_programada')
         else:
-            # Default: Pendientes y En Curso
             qs = qs.filter(estado__in=[
                 OrdenMantenimiento.EstadoOrden.PENDIENTE,
                 OrdenMantenimiento.EstadoOrden.EN_CURSO
             ]).order_by('fecha_programada')
 
-        # 3. Búsqueda
+        # Búsqueda
         if query:
             if query.isdigit():
                 qs = qs.filter(id=query)
             else:
                 qs = qs.filter(
                     Q(plan_origen__nombre__icontains=query) | 
-                    Q(tipo_orden__icontains=query) |
-                    Q(descripcion_falla__icontains=query) # Asumiendo que existe este campo
+                    Q(tipo_orden__icontains=query)
                 )
 
-        # 4. Serialización
         data = []
         hoy = timezone.now().date()
 
-        for orden in qs[:50]: # Paginación simple o límite
-            # Lógica visual de vencimiento
+        for orden in qs[:50]:
+            # Corrección de tipos fecha (Datetime vs Date)
             es_vencido = False
             if orden.estado != OrdenMantenimiento.EstadoOrden.REALIZADA and orden.fecha_programada:
                 f_prog = orden.fecha_programada
-                # Si es un datetime (tiene hora), lo convertimos a date (solo fecha)
                 if hasattr(f_prog, 'date'):
                     f_prog = f_prog.date()
                 es_vencido = f_prog < hoy
 
+            # Título dinámico basado estrictamente en campos existentes
             titulo = f"Orden #{orden.id}"
             if orden.plan_origen:
-                titulo = orden.plan_origen.nombre
-            elif orden.tipo_orden == 'CORRECTIVA':
-                titulo = f"Correctiva #{orden.id}"
+                titulo = orden.plan_origen.nombre # Asumiendo que PlanMantenimiento tiene 'nombre'
+            elif orden.tipo_orden == OrdenMantenimiento.TipoOrden.CORRECTIVA:
+                titulo = "Mantenimiento Correctivo"
 
             data.append({
                 "id": orden.id,
                 "titulo": titulo,
                 "tipo": orden.get_tipo_orden_display(),
-                "tipo_codigo": orden.tipo_orden, # 'CORRECTIVA' | 'PREVENTIVA'
+                "tipo_codigo": orden.tipo_orden,
                 "estado": orden.get_estado_display(),
-                "estado_codigo": orden.estado, # 'PEN', 'EJE', 'REA', 'CAN'
+                "estado_codigo": orden.estado,
                 "fecha_programada": orden.fecha_programada.strftime('%d/%m/%Y') if orden.fecha_programada else "Sin fecha",
                 "responsable": orden.responsable.get_full_name if orden.responsable else "Sin asignar",
                 "es_vencido": es_vencido,
-                # Resumen de activos (solo conteo para la lista)
                 "activos_count": orden.activos_afectados.count()
             })
 
@@ -2898,16 +2893,12 @@ class MantenimientoOrdenCorrectivaCreateAPIView(AuditoriaMixin, APIView):
     def post(self, request):
         estacion = request.estacion_activa
         
-        # --- PUENTE AUDITORÍA ---
+        # Puente Auditoría
         if not request.session.get('active_estacion_id'):
             request.session['active_estacion_id'] = estacion.id
 
         data = request.data
-        descripcion = data.get('descripcion')
         
-        if not descripcion:
-            return Response({"detail": "La descripción de la falla es obligatoria."}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
             with transaction.atomic():
                 orden = OrdenMantenimiento()
@@ -2915,41 +2906,38 @@ class MantenimientoOrdenCorrectivaCreateAPIView(AuditoriaMixin, APIView):
                 orden.tipo_orden = OrdenMantenimiento.TipoOrden.CORRECTIVA
                 orden.estado = OrdenMantenimiento.EstadoOrden.PENDIENTE
                 
-                # Campos del formulario
-                orden.descripcion_falla = descripcion
+                # NO asignamos descripción porque el campo no existe en el modelo.
                 
                 if data.get('fecha_programada'):
                     orden.fecha_programada = parse_date(data.get('fecha_programada'))
                 else:
-                    orden.fecha_programada = timezone.now().date()
+                    orden.fecha_programada = timezone.now()
 
                 if data.get('responsable_id'):
-                    # Validar que el responsable sea de la estación (opcional pero recomendado)
-                    # Asumimos que get_user_model o similar está disponible
+                    # User model import dinámico para evitar circular imports
                     from django.contrib.auth import get_user_model
                     User = get_user_model()
                     responsable = get_object_or_404(User, id=data.get('responsable_id'))
                     orden.responsable = responsable
                 else:
-                    # Por defecto se asigna al creador si no especifica otro
                     orden.responsable = request.user
 
                 orden.save()
 
-                # --- AUDITORÍA ---
+                # Auditoría
                 self.auditar(
                     verbo="creó una nueva Orden de Mantenimiento Correctiva",
                     objetivo=orden,
-                    objetivo_repr=f"Orden #{orden.id} (Correctiva)",
+                    objetivo_repr=f"Orden #{orden.id}",
                     detalles={
-                        'descripcion_inicial': descripcion,
-                        'origen_accion': 'APP MÓVIL'
+                        'origen_accion': 'APP MÓVIL',
+                        'tipo': 'CORRECTIVA (Manual)'
                     }
                 )
 
             return Response({
                 "message": f"Orden #{orden.id} creada correctamente.",
-                "id": orden.id # Para navegar al detalle y agregar activos
+                "id": orden.id
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -2969,23 +2957,20 @@ class MantenimientoOrdenDetalleAPIView(APIView):
 
     def get(self, request, pk):
         estacion = request.estacion_activa
-        
-        # 1. Obtener la Orden (Asegurando que sea de la estación)
         orden = get_object_or_404(OrdenMantenimiento, id=pk, estacion=estacion)
 
-        # 2. Obtener Activos Afectados (Lo que hay que revisar)
+        # Activos y Registros
         activos = orden.activos_afectados.select_related(
             'producto__producto_global', 
             'compartimento__ubicacion'
         ).order_by('producto__producto_global__nombre_oficial')
 
-        # 3. Obtener Registros Existentes (Lo que ya se hizo)
-        # Creamos un diccionario {activo_id: registro_obj} para búsqueda rápida O(1)
+        # Optimización: Mapa de registros existentes
+        # Asume que el modelo RegistroMantenimiento tiene FK 'activo' y 'orden'
         registros_existentes = {
-            reg.activo_id: reg for reg in orden.registros.all()
+            reg.activo_id: reg for reg in orden.registros.all() 
         }
 
-        # 4. Construir lista de activos con estado
         lista_activos = []
         for activo in activos:
             registro = registros_existentes.get(activo.id)
@@ -2997,26 +2982,33 @@ class MantenimientoOrdenDetalleAPIView(APIView):
                 "nombre": activo.producto.producto_global.nombre_oficial,
                 "ubicacion": f"{activo.compartimento.ubicacion.nombre} > {activo.compartimento.nombre}" if activo.compartimento else "Sin ubicación",
                 "estado_trabajo": "COMPLETADO" if esta_completado else "PENDIENTE",
-                "estado_color": "green" if esta_completado else "gray", # Ayuda visual para la app
-                "registro_id": registro.id if registro else None # Útil si quieres editar el trabajo realizado
+                "estado_color": "green" if esta_completado else "gray",
+                "registro_id": registro.id if registro else None
             })
 
-        # 5. Calcular Progreso
         total = len(activos)
         completados = len(registros_existentes)
         porcentaje = int((completados / total) * 100) if total > 0 else 0
 
-        # 6. Construir Respuesta
-        titulo = orden.plan_origen.nombre if orden.plan_origen else f"Correctiva #{orden.id}"
-        
+        # Lógica de Descripción basada estrictamente en el modelo
+        titulo = f"Orden #{orden.id}"
+        descripcion_texto = "Sin descripción disponible"
+
+        if orden.plan_origen:
+            titulo = orden.plan_origen.nombre
+            descripcion_texto = f"Generada por plan: {orden.plan_origen.nombre}"
+        elif orden.tipo_orden == OrdenMantenimiento.TipoOrden.CORRECTIVA:
+            titulo = "Mantenimiento Correctivo"
+            descripcion_texto = "Orden generada manualmente"
+
         data = {
             "cabecera": {
                 "id": orden.id,
                 "titulo": titulo,
-                "descripcion": orden.descripcion_falla or "Mantenimiento Preventivo",
+                "descripcion": descripcion_texto, # Variable calculada, no de BD
                 "tipo": orden.get_tipo_orden_display(),
                 "estado": orden.get_estado_display(),
-                "estado_codigo": orden.estado, # 'PEN', 'EJE', etc.
+                "estado_codigo": orden.estado,
                 "fecha_programada": orden.fecha_programada.strftime('%d/%m/%Y'),
                 "responsable": orden.responsable.get_full_name if orden.responsable else "Sin asignar"
             },
