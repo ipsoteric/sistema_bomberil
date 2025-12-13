@@ -41,6 +41,7 @@ from .views import (
     UsuarioListAPIView,
     UsuarioDetalleAPIView,
     VoluntarioHojaVidaAPIView,
+    UsuarioFichaMedicaAPIView,
     BomberilLoginView,
     BomberilRefreshView,
     BomberilLogoutView,
@@ -174,4 +175,6 @@ urlpatterns = [
     path('usuarios/<uuid:pk>/detalle/', UsuarioDetalleAPIView.as_view(), name='api_usuario_detalle'),
     # Hoja vida
     path('voluntarios/<uuid:user_uuid>/hoja-vida/', VoluntarioHojaVidaAPIView.as_view(), name='api_hoja_vida'),
+    # Ficha médica
+    path('usuarios/<uuid:user_uuid>/ficha-medica/', UsuarioFichaMedicaAPIView.as_view(), name='api_ficha_medica'),
 ]

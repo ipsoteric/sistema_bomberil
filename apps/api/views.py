@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.shortcuts import redirect, get_object_or_404
@@ -39,6 +40,7 @@ from apps.gestion_inventario.models import (
     Destinatario
 ) 
 from apps.gestion_voluntarios.models import Voluntario, HistorialCargo, HistorialReconocimiento, HistorialSancion
+from apps.gestion_medica.models import FichaMedica
 from apps.gestion_documental.models import DocumentoHistorico
 from apps.gestion_inventario.utils import generar_sku_sugerido, get_or_create_anulado_compartment, get_or_create_extraviado_compartment
 from .utils import obtener_contexto_bomberil
@@ -60,6 +62,7 @@ from .permissions import (
     CanVerDocumentos,
     CanVerUsuarios,
     CanVerHojaVida,
+    CanVerFichaMedica,
     IsSelfOrStationAdmin
 )
 
@@ -3343,6 +3346,123 @@ class VoluntarioHojaVidaAPIView(APIView):
                     for hr in voluntario.historial_sanciones.all()
                 ]
             }
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+
+
+class UsuarioFichaMedicaAPIView(AuditoriaMixin, APIView):
+    """
+    Endpoint que retorna la Ficha Médica completa de un voluntario.
+    
+    URL: /api/v1/usuarios/<uuid:user_uuid>/ficha-medica/
+    """
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanVerFichaMedica]
+
+    def get(self, request, user_uuid):
+        estacion = request.estacion_activa
+
+        # 1. Query Optimizada y Segura
+        # Buscamos la ficha a través del UUID del usuario, validando que pertenezca a la estación.
+        ficha = get_object_or_404(
+            FichaMedica.objects.select_related(
+                'voluntario', 
+                'voluntario__usuario', 
+                'grupo_sanguineo', 
+                'sistema_salud'
+            ).prefetch_related(
+                # Usamos los related_names definidos en los modelos 'through'
+                'alergias__alergia', 
+                'enfermedades__enfermedad', 
+                'medicamentos__medicamento', 
+                'cirugias__cirugia', 
+                'voluntario__contactos_emergencia'
+            ),
+            voluntario__usuario__id=user_uuid,
+            voluntario__usuario__membresias__estacion=estacion
+        )
+
+        voluntario = ficha.voluntario
+        usuario = voluntario.usuario
+
+        # 2. Auditoría (Replicando lógica de la vista web)
+        # --- PUENTE AUDITORÍA ---
+        if not request.session.get('active_estacion_id'):
+            request.session['active_estacion_id'] = estacion.id
+
+        #self.auditar(
+        #    verbo="consultó la ficha médica digital de",
+        #    objetivo=usuario,
+        #    objetivo_repr=usuario.get_full_name,
+        #    detalles={'origen': 'APP MÓVIL'}
+        #)
+
+        # 3. Cálculo de Edad
+        edad = "S/I"
+        fecha_nac = voluntario.fecha_nacimiento
+        if fecha_nac:
+            today = date.today()
+            edad = today.year - fecha_nac.year - ((today.month, today.day) < (fecha_nac.month, fecha_nac.day))
+
+        # 4. Construcción del JSON
+        data = {
+            "paciente": {
+                "nombre_completo": usuario.get_full_name,
+                "rut": getattr(usuario, 'rut', 'N/A'),
+                "edad": edad,
+                "grupo_sanguineo": ficha.grupo_sanguineo.nombre if ficha.grupo_sanguineo else "No informado",
+                "sistema_salud": ficha.sistema_salud.nombre if ficha.sistema_salud else "No informado"
+            },
+            "biometria": {
+                "peso": f"{ficha.peso_kg} kg" if ficha.peso_kg else None,
+                "altura": f"{ficha.altura_mts} mts" if ficha.altura_mts else None,
+                "presion_arterial": f"{ficha.presion_arterial_sistolica}/{ficha.presion_arterial_diastolica}" 
+                                    if (ficha.presion_arterial_sistolica and ficha.presion_arterial_diastolica) else None
+            },
+            "alertas": {
+                "alergias": [
+                    {
+                        "nombre": item.alergia.nombre,
+                        "observacion": item.observaciones
+                    }
+                    for item in ficha.alergias.all()
+                ],
+                "enfermedades": [
+                    {
+                        "nombre": item.enfermedad.nombre,
+                        "observacion": item.observaciones
+                    }
+                    for item in ficha.enfermedades.all()
+                ]
+            },
+            "tratamiento": {
+                "medicamentos": [
+                    {
+                        "nombre": item.medicamento.nombre_completo, # Usamos la property del modelo Medicamento
+                        "dosis": item.dosis_frecuencia
+                    }
+                    for item in ficha.medicamentos.all()
+                ],
+                "cirugias": [
+                    {
+                        "nombre": item.cirugia.nombre,
+                        "fecha": item.fecha_cirugia.strftime('%d/%m/%Y') if item.fecha_cirugia else "Fecha desconocida",
+                        "observacion": item.observaciones
+                    }
+                    for item in ficha.cirugias.all()
+                ]
+            },
+            "contactos_emergencia": [
+                {
+                    "nombre": c.nombre_completo,
+                    "relacion": c.parentesco,
+                    "telefono": c.telefono
+                }
+                for c in voluntario.contactos_emergencia.all()
+            ],
+            "observaciones_generales": ficha.observaciones_generales
         }
 
         return Response(data, status=status.HTTP_200_OK)

@@ -162,7 +162,11 @@ class CanVerUsuarios(permissions.BasePermission):
     
 class CanVerHojaVida(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.has_perm('gestion_usuarios.accion_gestion_voluntarios_generar_hoja_vida')
+        return request.user.has_perm('gestion_usuarios.accion_gestion_voluntarios_ver_voluntarios')
+    
+class CanVerFichaMedica(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.has_perm('gestion_usuarios.accion_gestion_medica_ver_fichas_medicas')
     
 
 
