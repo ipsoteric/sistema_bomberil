@@ -2851,7 +2851,11 @@ class MantenimientoOrdenListAPIView(APIView):
             # Lógica visual de vencimiento
             es_vencido = False
             if orden.estado != OrdenMantenimiento.EstadoOrden.REALIZADA and orden.fecha_programada:
-                es_vencido = orden.fecha_programada < hoy
+                f_prog = orden.fecha_programada
+                # Si es un datetime (tiene hora), lo convertimos a date (solo fecha)
+                if hasattr(f_prog, 'date'):
+                    f_prog = f_prog.date()
+                es_vencido = f_prog < hoy
 
             titulo = f"Orden #{orden.id}"
             if orden.plan_origen:
@@ -2867,7 +2871,7 @@ class MantenimientoOrdenListAPIView(APIView):
                 "estado": orden.get_estado_display(),
                 "estado_codigo": orden.estado, # 'PEN', 'EJE', 'REA', 'CAN'
                 "fecha_programada": orden.fecha_programada.strftime('%d/%m/%Y') if orden.fecha_programada else "Sin fecha",
-                "responsable": orden.responsable.get_full_name() if orden.responsable else "Sin asignar",
+                "responsable": orden.responsable.get_full_name if orden.responsable else "Sin asignar",
                 "es_vencido": es_vencido,
                 # Resumen de activos (solo conteo para la lista)
                 "activos_count": orden.activos_afectados.count()
@@ -3014,7 +3018,7 @@ class MantenimientoOrdenDetalleAPIView(APIView):
                 "estado": orden.get_estado_display(),
                 "estado_codigo": orden.estado, # 'PEN', 'EJE', etc.
                 "fecha_programada": orden.fecha_programada.strftime('%d/%m/%Y'),
-                "responsable": orden.responsable.get_full_name() if orden.responsable else "Sin asignar"
+                "responsable": orden.responsable.get_full_name if orden.responsable else "Sin asignar"
             },
             "progreso": {
                 "total": total,
