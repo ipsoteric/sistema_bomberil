@@ -5,28 +5,17 @@
 
 {% block contenido %}
 <style>
-    .select-bloqueado {
-        background-image: none !important; /* Quita flecha SVG Bootstrap */
-        -webkit-appearance: none;          /* Quita flecha Chrome/Safari */
-        -moz-appearance: none;             /* Quita flecha Firefox */
-        appearance: none;
-        padding-right: 0.75rem !important; /* Recupera espacio a la derecha */
-        background-color: #e9ecef;         /* Fondo gris (disabled look) */
-        pointer-events: none;              /* IMPIDE EL CLICK */
-        border-color: #ced4da;
-        color: #495057;
-        font-weight: bold;
-        text-align: center;
-        cursor: default;
-    }
+    /* Ajustes para TomSelect y Estética */
+    .ts-dropdown, .ts-dropdown.single { z-index: 9999 !important; }
+    .input-group.input-group-focus-info { overflow: visible !important; }
+    .ts-control { border: none !important; background: transparent !important; box-shadow: none !important; }
 </style>
 
 <div class="container-fluid">
-
+    <!-- HEADER TARJETA (Igual a tu diseño) -->
     <div class="card border-0 shadow-sm mb-4 bg-gradient-info text-white overflow-hidden" style="border-radius: 15px;">
         <div class="card-body p-4 position-relative">
             <i class="fas fa-pills position-absolute text-white-50" style="font-size: 10rem; right: -20px; top: -30px; opacity: 0.15;"></i>
-            
             <div class="row align-items-center position-relative">
                 <div class="col-md-8">
                     <h5 class="text-white-50 text-uppercase font-weight-bold mb-1 ls-1">
@@ -49,7 +38,7 @@
     </div>
 
     <div class="row g-4">
-        
+        <!-- FORMULARIO DE ASIGNACIÓN -->
         <div class="col-lg-4">
             <div class="card shadow border-0 h-100" style="border-radius: 15px;">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
@@ -61,6 +50,7 @@
                     <form method="post" class="needs-validation">
                         {% csrf_token %}
                         
+                        <!-- 1. BUSCADOR MEDICAMENTO -->
                         <div class="mb-4">
                             <label class="form-label text-muted font-weight-bold small text-uppercase">Medicamento</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill border input-group-focus-info">
@@ -74,21 +64,24 @@
                             {% endif %}
                         </div>
 
+                        <!-- 2. CANTIDAD Y UNIDAD (Visual) -->
                         <div class="row g-2 mb-4">
-                            <div class="col-6">
-                                <label class="form-label text-muted font-weight-bold small text-uppercase">Cantidad</label>
+                            <div class="col-8">
+                                <label class="form-label text-muted font-weight-bold small text-uppercase">Cantidad / Dosis</label>
                                 <div class="input-group shadow-sm rounded-pill border input-group-focus-info">
                                     {{ form.cantidad }}
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label text-muted font-weight-bold small text-uppercase">Unidad</label>
-                                <div class="input-group shadow-sm rounded-pill border">
-                                    {{ form.unidad }}
+                                    
+                                    <!-- AQUI ESTA LA CLAVE: SPAN DE SOLO LECTURA -->
+                                    <span class="input-group-text bg-light border-0 fw-bold text-dark" 
+                                          id="visual_unidad" 
+                                          style="min-width: 60px; background-color: #e9ecef;">
+                                        ---
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- 3. FRECUENCIA -->
                         <div class="mb-4">
                             <label class="form-label text-muted font-weight-bold small text-uppercase">Frecuencia</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-info">
@@ -100,6 +93,7 @@
                             </div>
                         </div>
 
+                        <!-- 4. DURACIÓN / NOTAS -->
                         <div class="mb-4">
                             <label class="form-label text-muted font-weight-bold small text-uppercase">Duración / Notas</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill border input-group-focus-info">
@@ -120,6 +114,7 @@
             </div>
         </div>
 
+        <!-- LISTA DE TRATAMIENTOS (Misma estética) -->
         <div class="col-lg-8">
             <div class="card shadow border-0 h-100" style="border-radius: 15px;">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
@@ -149,7 +144,10 @@
                                                      style="width: 45px; height: 45px; font-size: 1.2rem;">
                                                     <i class="fas fa-tablets"></i>
                                                 </div>
-                                                <span class="h5 mb-0 font-weight-bold text-dark">{{ item.medicamento.nombre }}</span>
+                                                <div class="d-flex flex-column">
+                                                    <span class="h6 mb-0 font-weight-bold text-dark">{{ item.medicamento.nombre }}</span>
+                                                    <small class="text-muted">{{ item.medicamento.concentracion }} {{ item.medicamento.unidad }}</small>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="py-4">
@@ -159,6 +157,7 @@
                                             </div>
                                         </td>
                                         <td class="pe-4 text-end">
+                                            <!-- Botones de Acción -->
                                             <a href="{% url 'gestion_medica:ruta_editar_medicamento_paciente' pk=ficha.voluntario.usuario.id medicamento_id=item.id %}" 
                                                class="btn btn-white btn-sm text-info-custom shadow-sm border me-1 rounded-circle" style="width:35px;height:35px;"><i class="fas fa-pen"></i></a>
                                             <form action="{% url 'gestion_medica:ruta_eliminar_medicamento_paciente' pk=ficha.voluntario.usuario.id medicamento_id=item.id %}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar?');">
@@ -184,96 +183,72 @@
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // Depuración: Verificar que el script arranca
-        console.log("Iniciando TomSelect Local...");
+document.addEventListener("DOMContentLoaded", function() {
+    const inputMedicamento = document.getElementById('id_medicamento');
 
-        // 1. OBTENCIÓN DE DATOS (Metadata para colores)
-        // Usamos 'escapejs' para evitar errores de sintaxis con comillas
-        const rawData = '{{ medicamentos_metadata|escapejs }}';
-        let metaData = {};
-        
-        try {
-            if (rawData) {
-                metaData = JSON.parse(rawData);
-            }
-        } catch (e) {
-            console.error("Error al leer metadatos de colores:", e);
-        }
+    if (inputMedicamento) {
+        new TomSelect(inputMedicamento, {
+            valueField: 'id',
+            labelField: 'text',
+            searchField: 'text',
+            placeholder: "🔍 Buscar medicamento...",
+            allowEmptyOption: true,
+            maxOptions: 50,
+            dropdownParent: 'body', 
 
-        const inputMedicamento = document.getElementById('id_medicamento');
+            // Carga de Datos desde API
+            load: function(query, callback) {
+                if (query.length < 2) return callback();
+                const url = "{% url 'gestion_medica:api_buscar_medicamentos' %}?q=" + encodeURIComponent(query);
+                
+                fetch(url)
+                    .then(response => response.json())
+                    .then(json => callback(json.items))
+                    .catch(() => callback());
+            },
 
-        if (inputMedicamento) {
-            // Verificar si Django renderizó opciones
-            if (inputMedicamento.options.length === 0) {
-                console.warn("ALERTA: El select está vacío. Verifique que existan medicamentos con dosis en la BD.");
-            }
-
-            new TomSelect(inputMedicamento, {
-                // --- CONFIGURACIÓN PARA SELECT LOCAL ---
-                // Importante: Al leer de un <select> HTML, las propiedades son 'value' y 'text'.
-                valueField: 'value', 
-                labelField: 'text',  
-                searchField: ['text'], 
-
-                placeholder: "Seleccione un medicamento...",
-                allowEmptyOption: true,
-                maxOptions: null, // Mostrar todo
-
-                // --- DISEÑO VISUAL ---
-                render: {
-                    option: function(data, escape) {
-                        // data.value es el ID del medicamento (ej: "1")
-                        const info = metaData[data.value];
-                        
-                        // Si no hay info (o es un placeholder vacío), mostramos texto simple
-                        if (!info) return `<div>${escape(data.text)}</div>`;
-
-                        // Lógica de Colores
-                        let badgeRiesgo = '';
-                        if (info.riesgo) {
-                            let colorClass = 'bg-info text-dark'; 
-                            const r = info.riesgo.toUpperCase();
-                            if (r.includes('ANTICOAGULANTE') || r.includes('ANTIPLAQUETARIO')) {
-                                colorClass = 'bg-danger text-white';
-                            } else if (r.includes('COAGULANTE')) {
-                                colorClass = 'bg-warning text-dark';
-                            }
-                            badgeRiesgo = `<span class="badge ${colorClass} ms-2 small" style="font-size: 0.75em;">${escape(info.riesgo)}</span>`;
-                        }
-
-                        return `
-                            <div class="d-flex justify-content-between align-items-center py-2 px-3 border-bottom">
-                                <div>
-                                    <span class="fw-bold text-dark">${escape(data.text)}</span>
-                                    <br>
-                                    <small class="text-muted" style="font-size: 0.85em;">
-                                        <i class="fas fa-prescription-bottle-alt me-1"></i>${escape(info.dosis)}
-                                    </small>
-                                </div>
-                                <div>${badgeRiesgo}</div>
-                            </div>
-                        `;
-                    },
-                    
-                    item: function(data, escape) {
-                        const info = metaData[data.value];
-                        // Renderizado del ítem seleccionado en el input
-                        if (!info) return `<div>${escape(data.text)}</div>`;
-
-                        let alerta = '';
-                        if (info.riesgo) {
-                             alerta = `<span class="text-danger fw-bold ms-2" style="font-size: 0.8em;" title="${escape(info.riesgo)}">⚠️ ${escape(info.riesgo)}</span>`;
-                        }
-                        return `<div>
-                                    <strong>${escape(data.text)}</strong> 
-                                    <span class="text-muted ms-1 small">(${escape(info.dosis)})</span> 
-                                    ${alerta}
-                                </div>`;
+            // Cuando se selecciona algo
+            onChange: function(value) {
+                const labelVisual = document.getElementById('visual_unidad');
+                
+                if (value && this.options[value]) {
+                    const data = this.options[value];
+                    // Actualizamos el SPAN visual. No hay input hidden que sincronizar.
+                    if(labelVisual) {
+                        labelVisual.textContent = data.unidad_codigo || "unid";
+                        // Efecto visual para confirmar cambio
+                        labelVisual.classList.add('bg-warning');
+                        setTimeout(() => labelVisual.classList.remove('bg-warning'), 300);
                     }
+                    document.getElementById('id_cantidad').focus();
+                } else {
+                    if(labelVisual) labelVisual.textContent = "---";
                 }
-            });
-        }
-    });
+            },
+
+            render: {
+                option: function(data, escape) {
+                    let badge = data.riesgo ? `<span class="badge bg-warning text-dark ms-auto">${escape(data.riesgo)}</span>` : '';
+                    return `<div class="d-flex align-items-center py-2 px-3 border-bottom">
+                                <div>
+                                    <span class="fw-bold d-block text-dark">${escape(data.text)}</span>
+                                    <small class="text-muted">${escape(data.dosis_info || '')}</small>
+                                </div>
+                                ${badge}
+                            </div>`;
+                },
+                item: function(data, escape) {
+                    return `<div><span class="fw-bold text-dark">${escape(data.text)}</span></div>`;
+                },
+                no_results: function(data, escape) {
+                    return '<div class="p-2 text-muted">No encontrado.</div>';
+                },
+                loading: function(data, escape) {
+                    return '<div class="p-2 text-info">Buscando...</div>';
+                }
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

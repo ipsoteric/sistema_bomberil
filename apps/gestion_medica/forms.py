@@ -123,25 +123,19 @@ class FichaMedicaAlergiaForm(forms.ModelForm):
         }
 
 class FichaMedicaMedicamentoForm(forms.ModelForm):
-    """4. Asignación de Medicamentos (Con Dosis Estructurada y Buscador)"""
+    """
+    REFACTORIZADO: Formulario optimizado.
+    La unidad se obtiene del medicamento padre, no del input del usuario.
+    """
     
-    # --- Campos Virtuales (No existen en BD, solo en interfaz) ---
+    # --- 1. CANTIDAD (Solo el número) ---
     cantidad = forms.IntegerField(
         min_value=1, 
         label="Cantidad",
         widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0'})
     )
     
-    # Este es el campo que el JavaScript modificará automáticamente
-    # En apps/gestion_medica/forms.py
-
-    unidad = forms.ChoiceField(
-        label="Unidad de Medida",
-        choices=OPCIONES_UNIDADES, 
-        widget=forms.Select(attrs={'class': 'form-select text-center fw-bold select-sin-flecha'})
-    )
-    
-    # --- 2. FRECUENCIA (NUEVO CAMBIO) ---
+    # --- 2. FRECUENCIA ---
     freq_numero = forms.IntegerField(
         min_value=1,
         label="Cada...",
@@ -151,15 +145,12 @@ class FichaMedicaMedicamentoForm(forms.ModelForm):
     freq_tiempo = forms.ChoiceField(
         label="Unidad de Tiempo",
         choices=[
-            ('horas', 'Horas'),
-            ('dias', 'Días'),
-            ('minutos', 'Minutos'),
-            ('semanas', 'Semanas'),
-            ('meses', 'Meses'),
-            ('sos', 'S.O.S (Según necesidad)'),
+            ('horas', 'Horas'), ('dias', 'Días'), ('minutos', 'Minutos'),
+            ('semanas', 'Semanas'), ('meses', 'Meses'), ('sos', 'S.O.S'),
         ],
         widget=forms.Select(attrs={'class': 'form-select text-center fw-bold'}) 
     )
+
     # --- 3. DURACIÓN / NOTAS ---
     duracion = forms.CharField(
         required=False,
@@ -169,10 +160,10 @@ class FichaMedicaMedicamentoForm(forms.ModelForm):
 
     class Meta:
         model = FichaMedicaMedicamento
-        fields = ['medicamento'] # 'dosis_frecuencia' se construye internamente
+        fields = ['medicamento'] 
         widgets = {
             'medicamento': forms.Select(attrs={
-                'class': 'form-select select-busqueda', # CLAVE para el buscador
+                'class': 'form-control',
                 'placeholder': 'Buscar medicamento...'
             }),
         }
@@ -180,49 +171,37 @@ class FichaMedicaMedicamentoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # --- 1. CONFIGURACIÓN DEL SELECT (CRÍTICO PARA TOMSELECT) ---
-        
-        # A) Filtramos para mostrar SOLO medicamentos con dosis (oculta plantillas vacías)
+        # A) Configuración del Select (Buscador)
         self.fields['medicamento'].queryset = Medicamento.objects.filter(
             concentracion__isnull=False
         ).order_by('nombre')
-
-        # B) Eliminamos la opción "---------" por defecto de Django.
-        # Esto es OBLIGATORIO para que el placeholder "Seleccione un medicamento..." de JS se vea.
-        self.fields['medicamento'].empty_label = None  
+        self.fields['medicamento'].empty_label = "" # Vital para el placeholder
         
-        # --- 2. LÓGICA DE EDICIÓN (RECUPERAR DATOS) ---
+        # B) Lógica de Edición (Recuperar datos al abrir el form)
         if self.instance and self.instance.pk:
-            # Si editamos, bloqueamos el medicamento para no cambiarlo
             self.fields['medicamento'].disabled = True
-            self.fields['medicamento'].widget.attrs['class'] += ' bg-light'
             
-            # Intentamos separar el string "500 mg cada 8 horas" en sus campos
+            # Intentamos parsear el string "500 mg cada 8 horas"
+            # Solo nos interesa recuperar la CANTIDAD y la FRECUENCIA.
+            # La unidad la ignoramos porque la sacaremos del medicamento padre.
             texto = self.instance.dosis_frecuencia or ""
-            
             try:
-                # Separar Dosis de Frecuencia usando la palabra clave " cada "
                 if " cada " in texto:
                     parte_dosis, parte_freq = texto.split(" cada ", 1)
                     
-                    # Parsear Dosis "500 mg"
+                    # Parsear Cantidad (asumiendo formato "500 mg")
                     d_datos = parte_dosis.split(' ')
-                    if len(d_datos) >= 2:
+                    if len(d_datos) >= 1 and d_datos[0].isdigit():
                         self.fields['cantidad'].initial = d_datos[0]
-                        self.fields['unidad'].initial = d_datos[1]
 
-                    # Parsear Frecuencia "8 horas (notas)"
+                    # Parsear Frecuencia
                     f_datos = parte_freq.split(' ', 2)
                     if len(f_datos) >= 2:
                         self.fields['freq_numero'].initial = f_datos[0]
                         self.fields['freq_tiempo'].initial = f_datos[1]
-                        
-                        # Si sobran cosas (notas/duración)
                         if len(f_datos) > 2:
-                            # Limpiar paréntesis extra
                             self.fields['duracion'].initial = f_datos[2].replace('(', '').replace(')', '')
                 else:
-                    # Si no cumple el formato, poner todo en notas
                     self.fields['duracion'].initial = texto
             except:
                 self.fields['duracion'].initial = texto
@@ -230,30 +209,25 @@ class FichaMedicaMedicamentoForm(forms.ModelForm):
     def save(self, commit=True):
         instance = super().save(commit=False)
         
-        c = self.cleaned_data.get('cantidad')
-        u = self.cleaned_data.get('unidad')
-        f = self.cleaned_data.get('frecuencia')
-
-        # Formato final en BD: "500 mg cada 8 horas"
-        # Ajustamos para evitar "None" si algún campo está vacío
-        c_str = str(c) if c else ""
-        u_str = str(u) if u else ""
-        f_str = f"cada {f}" if f else ""
+        # --- LÓGICA NUEVA ---
+        # 1. Obtenemos el medicamento limpio
+        med = self.cleaned_data.get('medicamento')
         
+        # 2. Obtenemos la unidad DIRECTAMENTE de la base de datos (Medicamento)
+        #    Esto evita cualquier manipulación o error del frontend.
+        unidad_real = med.unidad if med else ""
+
+        # 3. Obtenemos los datos del formulario
+        c = self.cleaned_data.get('cantidad')
         fn = self.cleaned_data.get('freq_numero')
         ft = self.cleaned_data.get('freq_tiempo')
         dur = self.cleaned_data.get('duracion')
-        
-        # Caso especial SOS
-        frecuencia_str = ""
-        if ft == 'sos':
-            frecuencia_str = "S.O.S"
-        else:
-            frecuencia_str = f"cada {fn} {ft}"
 
-        # Construir string final
-        # Ej: "500 mg cada 8 horas (por 5 dias)"
-        final_str = f"{c} {u} {frecuencia_str}"
+        # 4. Construimos el string final
+        # Formato: "500 mg cada 8 horas"
+        frecuencia_str = "S.O.S" if ft == 'sos' else f"cada {fn} {ft}"
+        
+        final_str = f"{c} {unidad_real} {frecuencia_str}"
         
         if dur:
             final_str += f" ({dur})"

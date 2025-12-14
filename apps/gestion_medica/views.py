@@ -691,22 +691,19 @@ class EliminarAlergiaPacienteView(SubElementoMedicoBaseView):
 
 
 # --- MEDICAMENTOS ---
-class MedicoMedicamentosView(SubElementoMedicoBaseView):
+class MedicoMedicamentosView(BaseEstacionMixin, AuditoriaMixin, CustomPermissionRequiredMixin, View):
+    permission_required = 'gestion_usuarios.accion_gestion_medica_gestionar_fichas_medicas'
+
+    def get_ficha(self, pk):
+        return get_object_or_404(
+            FichaMedica, 
+            pk=pk, 
+            voluntario__usuario__membresias__estacion=self.estacion_activa
+        )
     
     def get_medicamentos_metadata(self):
-        """Genera mapa de datos visuales (dosis, colores) para el select."""
-        # Filtramos igual que en el formulario
-        medicamentos = Medicamento.objects.filter(concentracion__isnull=False)
-        
-        metadata = {}
-        for med in medicamentos:
-            dosis_txt = f"{med.concentracion} {med.unidad}"
-            metadata[med.id] = {
-                'dosis': dosis_txt,
-                'riesgo': med.clasificacion_riesgo
-            }
-        # Retorna un String JSON válido
-        return json.dumps(metadata)
+        # Metadata para carga inicial si se necesitara (aunque ahora usamos AJAX)
+        return "{}" 
 
     def get(self, request, pk):
         ficha = self.get_ficha(pk)
@@ -714,30 +711,29 @@ class MedicoMedicamentosView(SubElementoMedicoBaseView):
             'ficha': ficha, 
             'medicamentos_paciente': ficha.medicamentos.select_related('medicamento'), 
             'form': FichaMedicaMedicamentoForm(),
-            'medicamentos_metadata': self.get_medicamentos_metadata() # <--- IMPORTANTE
         })
 
     def post(self, request, pk):
         ficha = self.get_ficha(pk)
         form = FichaMedicaMedicamentoForm(request.POST)
+        
         if form.is_valid():
             item = form.save(commit=False)
             item.ficha_medica = ficha
             try:
                 item.save()
                 self.auditar("asignó medicamento", ficha.voluntario.usuario, ficha.voluntario.usuario.get_full_name, {'medicamento': item.medicamento.nombre})
-                messages.success(request, "Medicamento asignado.")
+                messages.success(request, "Medicamento asignado correctamente.")
                 return redirect('gestion_medica:ruta_medicamentos_paciente', pk=pk)
             except IntegrityError:
-                form.add_error('medicamento', 'Ya está asignado.')
+                form.add_error('medicamento', 'Este medicamento ya está asignado al paciente.')
             except Exception as e:
-                messages.error(request, f"Error: {e}")
+                messages.error(request, f"Error del sistema: {e}")
 
         return render(request, "gestion_medica/pages/medicamentos_paciente.html", {
             'ficha': ficha, 
             'medicamentos_paciente': ficha.medicamentos.all(), 
-            'form': form, 
-            'medicamentos_metadata': self.get_medicamentos_metadata()
+            'form': form
         })
 
 
@@ -1076,31 +1072,55 @@ class CirugiaDeleteView(CatalogoMedicoBaseView):
     
 
 class MedicamentoSearchAPIView(BaseEstacionMixin, View):
-    """
-    API interna para buscar medicamentos en tiempo real desde TomSelect.
-    """
     def get(self, request):
         query = request.GET.get('q', '').strip()
+        modo = request.GET.get('modo', 'asignacion')
+
         if len(query) < 2:
             return JsonResponse({'items': []})
 
-        # Buscamos por nombre (que ya incluye dosis y unidad en la BD)
-        #qs = Medicamento.objects.filter(nombre__icontains=query).order_by('nombre')[:20]
-        
-        # Buscamos nombres únicos. 
-        # distinct() es vital para que no salga "Paracetamol" 50 veces si tienes 50 dosis distintas.
-        qs = Medicamento.objects.filter(nombre__icontains=query)\
-                                .values_list('nombre', flat=True)\
-                                .distinct()\
-                                .order_by('nombre')[:20]
-
-        ###results = []
-        #for med in qs:
-        #    results.append({
-        #        'value': med.nombre, 
-        #        'text': med.nombre     # Bandera para saber que viene de la BD
-        #    })###
+        # --- MODO 1: BÚSQUEDA PARA CREACIÓN (Autocompletar Nombre + Sugerir Unidad) ---
+        if modo == 'creacion':
+            # Buscamos coincidencias por nombre
+            # Usamos values() para traer nombre Y unidad
+            qs = Medicamento.objects.filter(nombre__icontains=query)\
+                                    .values('nombre', 'unidad')\
+                                    .order_by('nombre')[:15]
             
-        results = [{'id': nombre, 'text': nombre} for nombre in qs]
-        
-        return JsonResponse({'items': results})
+            # Procesamos para eliminar duplicados de nombre, 
+            # pero guardando la unidad del primer hallazgo como sugerencia.
+            seen_names = set()
+            results = []
+            
+            for item in qs:
+                nombre_limpio = item['nombre'].strip()
+                if nombre_limpio.lower() not in seen_names:
+                    seen_names.add(nombre_limpio.lower())
+                    results.append({
+                        'text': nombre_limpio,      # Lo que se muestra en el Select
+                        'value': nombre_limpio,     # Lo que se guarda en el Input
+                        'unidad_sugerida': item['unidad'] # DATO EXTRA: Unidad del padre/existente
+                    })
+            
+            return JsonResponse({'items': results})
+
+        # MODO ASIGNACIÓN (Medicamentos reales)
+        else:
+            qs = Medicamento.objects.filter(
+                nombre__icontains=query,
+                concentracion__isnull=False 
+            ).order_by('nombre')[:20]
+
+            results = []
+            for med in qs:
+                results.append({
+                    'id': med.id,                
+                    'text': med.nombre_completo, 
+                    'riesgo': med.clasificacion_riesgo,
+                    'dosis_info': f"{med.concentracion} {med.unidad}",
+                    
+                    # DATOS CLAVE PARA EL FRONTEND
+                    'unidad_codigo': med.unidad, 
+                    'unidad_desc': med.get_unidad_display()
+                })
+            return JsonResponse({'items': results})
