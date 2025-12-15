@@ -1,96 +1,169 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
+from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 
-from .models import Usuario, Rol, Membresia
+# Importamos tus mixins comunes
+from apps.common.admin_mixins import SysPermissionMixin, ImagenPreviewMixin
+
+from .models import Usuario, Rol, Membresia, RegistroActividad
 from .forms import CustomUserCreationForm, CustomUserChangeForm
 
-
+# --- USUARIO ---
 
 @admin.register(Usuario)
-class CustomUserAdmin(UserAdmin):
+class UsuarioAdmin(SysPermissionMixin, ImagenPreviewMixin, BaseUserAdmin):
+    """
+    Administrador de usuarios personalizado.
+    Combina la lógica de BaseUserAdmin (seguridad de passwords) con:
+    1. SysPermissionMixin: Manejo automático de permisos 'sys_'.
+    2. ImagenPreviewMixin: Visualización de avatares.
+    3. CustomForms: Validaciones específicas para RUT y campos obligatorios.
+    """
+    # Vinculamos los formularios personalizados
     form = CustomUserChangeForm
     add_form = CustomUserCreationForm
 
-    fieldsets = UserAdmin.fieldsets
+    # Configuración de la lista
+    list_display = ('rut', 'email', 'get_full_name', 'is_active', 'is_staff', 'mostrar_avatar')
+    list_filter = ('is_active', 'is_staff', 'is_superuser', 'is_verified')
+    search_fields = ('rut', 'email', 'first_name', 'last_name')
+    ordering = ('rut',)
+    
+    # Campos de solo lectura
+    readonly_fields = ('last_login', 'created_at', 'updated_at', 'avatar_thumb_small')
 
-    # ---- CONFIGURACIÓN PARA LA VISTA DE LISTA ----
-    list_display = ("email", "first_name", "last_name", "is_staff" )
-    search_fields = ('first_name', 'last_name', 'email', 'rut')
-    ordering = ("last_name", )
-    readonly_fields = ('last_login', 'created_at', 'updated_at')
-
-    # ---- CONFIGURACIÓN PARA LA VISTA DE CREACIÓN (ADD FORM) ----
+    # ---- VISTA DE CREACIÓN (ADD FORM) ----
+    # Es crucial incluir 'rut' aquí si es tu USERNAME_FIELD
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2', 'is_staff', 'is_superuser'),
+            'fields': ('rut', 'email', 'first_name', 'last_name', 'birthdate'),
+        }),
+        ('Permisos Iniciales', {
+             'classes': ('collapse',),
+             'fields': ('is_staff', 'is_superuser', 'is_active'),
         }),
     )
 
-    # ---- CONFIGURACIÓN PARA LA VISTA DE EDICIÓN (CHANGE FORM) ----
+    # ---- VISTA DE EDICIÓN (CHANGE FORM) ----
     fieldsets = (
-        (None, {'fields': ('email',)}),
-        ('Información Personal', {'fields': ('first_name', 'last_name', 'rut', 'phone', 'birthdate', 'avatar')}),
-        ('Permisos', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        ('Fechas Importantes', {'fields': ('last_login', 'created_at', 'updated_at')}),
+        (None, {
+            'fields': ('rut', 'password')
+        }),
+        (_('Información Personal'), {
+            'fields': (
+                ('first_name', 'last_name'),
+                ('email', 'phone'),
+                'birthdate',
+                'avatar',
+                'is_verified'
+            )
+        }),
+        (_('Permisos'), {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+            'classes': ('collapse',),
+        }),
+        (_('Fechas Importantes'), {
+            'fields': ('last_login', 'created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
     )
 
-    def has_view_permission(self, request, obj=None):
-        return request.user.has_perm('gestion_usuarios.sys_view_usuario')
-
-    def has_add_permission(self, request):
-        return request.user.has_perm('gestion_usuarios.sys_add_usuario')
-
-    def has_change_permission(self, request, obj=None):
-        return request.user.has_perm('gestion_usuarios.sys_change_usuario')
-
-    def has_delete_permission(self, request, obj=None):
-        return request.user.has_perm('gestion_usuarios.sys_delete_usuario')
+    def mostrar_avatar(self, obj):
+        if obj.avatar_thumb_small:
+            return format_html('<img src="{}" width="35" height="35" style="border-radius:50%; object-fit:cover;" />', obj.avatar_thumb_small.url)
+        elif obj.avatar:
+            return format_html('<img src="{}" width="35" height="35" style="border-radius:50%; object-fit:cover;" />', obj.avatar.url)
+        return "-"
+    mostrar_avatar.short_description = "Avatar"
 
 
+# --- ROL ---
 
 @admin.register(Rol)
-class RolAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'estacion')
+class RolAdmin(SysPermissionMixin, admin.ModelAdmin):
+    list_display = ('nombre', 'get_ambito', 'descripcion', 'cantidad_permisos')
     list_filter = ('estacion',)
-    search_fields = ('nombre',)
-    filter_horizontal = ('permisos',) # Facilita la asignación de permisos
+    search_fields = ('nombre', 'descripcion')
+    filter_horizontal = ('permisos',) # Widget de doble caja para permisos
+    autocomplete_fields = ['estacion']
 
-    def has_view_permission(self, request, obj=None):
-        return request.user.has_perm('gestion_usuarios.sys_view_rol')
+    def get_ambito(self, obj):
+        if obj.estacion:
+            return f"Estación: {obj.estacion.nombre}"
+        return format_html('<span style="color:green; font-weight:bold;">Universal</span>')
+    get_ambito.short_description = "Ámbito"
+    get_ambito.admin_order_field = 'estacion'
 
-    def has_add_permission(self, request):
-        return request.user.has_perm('gestion_usuarios.sys_add_rol')
-
-    def has_change_permission(self, request, obj=None):
-        return request.user.has_perm('gestion_usuarios.sys_change_rol')
-
-    def has_delete_permission(self, request, obj=None):
-        return request.user.has_perm('gestion_usuarios.sys_delete_rol')
+    def cantidad_permisos(self, obj):
+        return obj.permisos.count()
+    cantidad_permisos.short_description = "Nº Permisos"
 
 
+# --- MEMBRESÍA ---
 
 @admin.register(Membresia)
-class MembresiaAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'estacion', 'estado', 'fecha_inicio', 'fecha_fin')
-    list_filter = ('estacion', 'estado', 'roles')
-    search_fields = ('usuario__get_full_name', 'estacion__nombre')
-    autocomplete_fields = ('usuario', 'estacion', 'roles') # Mejora la selección
-    filter_horizontal = ('roles',)
+class MembresiaAdmin(SysPermissionMixin, admin.ModelAdmin):
+    list_display = ('usuario', 'estacion', 'estado_coloreado', 'fecha_inicio', 'fecha_fin')
+    list_filter = ('estado', 'estacion', 'fecha_inicio')
+    search_fields = ('usuario__rut', 'usuario__first_name', 'usuario__last_name', 'estacion__nombre')
+    autocomplete_fields = ['usuario', 'estacion']
+    filter_horizontal = ('roles',) # Widget doble caja para roles
+    
+    fieldsets = (
+        ('Vinculación', {
+            'fields': ('usuario', 'estacion')
+        }),
+        ('Estado y Roles', {
+            'fields': ('estado', 'roles')
+        }),
+        ('Vigencia', {
+            'fields': ('fecha_inicio', 'fecha_fin')
+        }),
+    )
 
-    def has_view_permission(self, request, obj=None):
-        return request.user.has_perm('gestion_usuarios.sys_view_membresia')
+    def estado_coloreado(self, obj):
+        colors = {
+            'ACTIVO': 'green',
+            'INACTIVO': 'gray',
+            'FINALIZADO': 'red',
+        }
+        color = colors.get(obj.estado, 'black')
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_estado_display()
+        )
+    estado_coloreado.short_description = "Estado"
+    estado_coloreado.admin_order_field = 'estado'
 
+
+# --- REGISTRO DE ACTIVIDAD (AUDITORÍA) ---
+
+@admin.register(RegistroActividad)
+class RegistroActividadAdmin(SysPermissionMixin, admin.ModelAdmin):
+    """
+    Admin de solo lectura para auditar las acciones del sistema.
+    """
+    list_display = ('fecha', 'actor', 'verbo', 'objetivo_repr', 'estacion')
+    list_filter = ('fecha', 'estacion', 'verbo')
+    search_fields = ('actor__rut', 'actor__first_name', 'objetivo_repr', 'detalles')
+    date_hierarchy = 'fecha'
+    
+    # Todo readonly para preservar la integridad del log
+    readonly_fields = [field.name for field in RegistroActividad._meta.fields]
+
+    # Forzamos permisos restrictivos extras al mixin para que nadie edite logs
     def has_add_permission(self, request):
-        return request.user.has_perm('gestion_usuarios.sys_add_membresia')
-
+        return False
     def has_change_permission(self, request, obj=None):
-        return request.user.has_perm('gestion_usuarios.sys_change_membresia')
-
+        return False
     def has_delete_permission(self, request, obj=None):
-        return request.user.has_perm('gestion_usuarios.sys_delete_membresia')
+        return False
 
 
-
+# Opcional: Desregistrar el modelo Group si no lo usas directamente
+# ya que usas tus propios Roles
 admin.site.unregister(Group)
