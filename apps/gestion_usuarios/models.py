@@ -188,6 +188,7 @@ class Membresia(models.Model):
             ("accion_gestion_usuarios_ver_auditoria", "Puede ver el registro de actividad (auditoría) y el historial de membresías"),
             ("accion_gestion_usuarios_forzar_logout", "Puede forzar el cierre de sesión de los usuarios"),
             ("accion_gestion_usuarios_generar_reportes", "Puede generar reportes"),
+            ("accion_gestion_usuarios_recibir_reporte_diario", "Puede recibir reportes diarios vía correo electrónico"),
 
 
             # === GESTIÓN DE INVENTARIO: CONFIGURACIÓN ===
