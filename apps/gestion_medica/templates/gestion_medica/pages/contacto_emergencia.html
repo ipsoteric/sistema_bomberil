@@ -13,15 +13,15 @@
             
             <div class="row align-items-center position-relative">
                 <div class="col-md-8">
-                    <h5 class="text-white-50 text-uppercase font-weight-bold mb-1 ls-1">
+                    <h5 class="text-white-50 text-sm font-bold text-uppercase mb-1 ls-1">
                         Ficha Médica de
                     </h5>
-                    <h1 class="display-6 font-weight-bold text-white mb-0">
+                    <h1 class="text-3xl font-black text-white mb-0">
                         {{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut|title }}
                     </h1>
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                    <a href="{% url 'gestion_medica:ruta_informacion_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-outline-light fw-bold shadow-sm rounded-pill px-4 py-2">
+                    <a href="{% url 'gestion_medica:ruta_informacion_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-outline-light font-bold text-sm shadow-sm rounded-pill px-4 py-2">
                         <i class="fas fa-arrow-left me-2"></i> Volver a Ficha
                     </a>
                 </div>
@@ -29,10 +29,11 @@
         </div>
     </div>
 
-    <div class="row g-4"> <div class="col-lg-4">
+    <div class="row g-4"> 
+        <div class="col-lg-4">
             <div class="card shadow border-0 h-100" style="border-radius: 15px;">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h5 class="font-weight-bold text-secondary mb-0">
+                    <h5 class="font-bold text-lg text-secondary mb-0">
                         <i class="fas fa-plus-circle text-success me-2"></i>Nuevo Contacto
                     </h5>
                 </div>
@@ -41,30 +42,30 @@
                         {% csrf_token %}
                         
                         <div class="mb-3">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Nombre Completo</label>
-                            {{ form.nombre_completo }}
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Nombre Completo</label>
+                            <div class="text-base">{{ form.nombre_completo }}</div>
                             {% if form.nombre_completo.errors %}
-                                <div class="text-danger small mt-1 fw-bold">{{ form.nombre_completo.errors.0 }}</div>
+                                <div class="text-danger text-xs mt-1 font-bold">{{ form.nombre_completo.errors.0 }}</div>
                             {% endif %}
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Parentesco / Relación</label>
-                            {{ form.parentesco }}
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Parentesco / Relación</label>
+                            <div class="text-base">{{ form.parentesco }}</div>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Teléfono Móvil</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Teléfono Móvil</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border">
-                                <span class="input-group-text bg-success text-white border-0 fw-bold px-3">+56</span>
-                                {{ form.telefono }}
+                                <span class="input-group-text bg-success text-white border-0 font-black px-3 text-base">+56</span>
+                                <div class="flex-grow-1 text-base">{{ form.telefono }}</div>
                             </div>
                             {% if form.telefono.errors %}
-                                <div class="text-danger small mt-2 fw-bold text-center">{{ form.telefono.errors.0 }}</div>
+                                <div class="text-danger text-xs mt-2 font-bold text-center">{{ form.telefono.errors.0 }}</div>
                             {% endif %}
                         </div>
 
-                        <button type="submit" class="btn btn-success w-100 btn-lg rounded-pill shadow-sm hover-elevate fw-bold">
+                        <button type="submit" class="btn btn-success w-100 btn-lg rounded-pill shadow-sm hover-elevate font-black text-base">
                             GUARDAR CONTACTO
                         </button>
                     </form>
@@ -75,8 +76,8 @@
         <div class="col-lg-8">
             <div class="card shadow border-0" style="border-radius: 15px;">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                    <h5 class="font-weight-bold text-gray-800 mb-0">Lista de Contactos</h5>
-                    <span class="badge bg-light text-success border border-success rounded-pill px-3">
+                    <h5 class="font-bold text-xl text-gray-800 mb-0">Lista de Contactos</h5>
+                    <span class="badge bg-light text-success border border-success rounded-pill px-3 font-bold text-xs">
                         {{ contactos.count }} Registrados
                     </span>
                 </div>
@@ -87,10 +88,10 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="ps-4 py-3 text-uppercase text-muted small font-weight-bold" style="width: 40%;">Nombre</th>
-                                        <th class="py-3 text-uppercase text-muted small font-weight-bold">Relación</th>
-                                        <th class="py-3 text-uppercase text-muted small font-weight-bold">Teléfono</th>
-                                        <th class="pe-4 py-3 text-end text-uppercase text-muted small font-weight-bold">Acciones</th>
+                                        <th class="ps-4 py-3 text-uppercase text-muted text-xs font-black" style="width: 40%;">Nombre</th>
+                                        <th class="py-3 text-uppercase text-muted text-xs font-black">Relación</th>
+                                        <th class="py-3 text-uppercase text-muted text-xs font-black">Teléfono</th>
+                                        <th class="pe-4 py-3 text-end text-uppercase text-muted text-xs font-black">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -99,22 +100,22 @@
                                         <td class="ps-4 py-4">
                                             <div class="d-flex align-items-center">
                                                 <div class="rounded-circle bg-gradient-success text-white d-flex align-items-center justify-content-center shadow-sm me-3" 
-                                                     style="width: 45px; height: 45px; font-size: 1.2rem; font-weight: bold;">
+                                                     style="width: 45px; height: 45px; font-size: 1.4rem; font-weight: bold;">
                                                     {{ contacto.nombre_completo|first|upper }}
                                                 </div>
-                                                <span class="h5 mb-0 font-weight-bold text-dark">{{ contacto.nombre_completo|title }}</span>
+                                                <span class="text-base mb-0 font-bold text-dark">{{ contacto.nombre_completo|title }}</span>
                                             </div>
                                         </td>
 
                                         <td>
-                                            <span class="badge rounded-pill bg-success-soft text-success px-3 py-2 border border-success-light" style="font-size: 0.9rem;">
+                                            <span class="badge rounded-pill bg-success-soft text-success px-3 py-2 border border-success-light text-xs font-bold">
                                                 {{ contacto.parentesco|default:"Contacto"|title }}
                                             </span>
                                         </td>
 
                                         <td>
-                                            <a href="tel:+56{{ contacto.telefono }}" class="text-decoration-none text-dark fw-bold h5 mb-0 d-block">
-                                                <span class="text-success me-1">+56</span> {{ contacto.telefono }}
+                                            <a href="tel:+56{{ contacto.telefono }}" class="text-decoration-none text-dark font-bold text-base mb-0 d-block">
+                                                <span class="text-success font-black me-1">+56</span> {{ contacto.telefono }}
                                             </a>
                                         </td>
 
@@ -143,8 +144,8 @@
                             <div class="mb-3 p-4 rounded-circle bg-light d-inline-block">
                                 <i class="fas fa-user-plus fa-3x text-success opacity-50"></i>
                             </div>
-                            <h4 class="text-gray-600 font-weight-bold mt-2">Sin contactos registrados</h4>
-                            <p class="text-muted mb-0">Utilice el formulario de la izquierda para añadir a la red de seguridad.</p>
+                            <h4 class="text-gray-600 font-bold text-lg mt-2">Sin contactos registrados</h4>
+                            <p class="text-muted mb-0 text-base">Utilice el formulario de la izquierda para añadir a la red de seguridad.</p>
                         </div>
                     {% endif %}
                 </div>
@@ -155,19 +156,26 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Inicializar tooltips de Bootstrap si los usas
+        // Inicializar tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl)
         })
 
+        // Limpieza visual de inputs y forzar tamaño base
         const telefonoInputs = document.querySelectorAll('.telefono-input');
         telefonoInputs.forEach(function(input) {
-            // Forzar visualmente sin bordes para que parezca unido al +56
             input.style.borderLeft = "0";
+            input.classList.add('text-base');
             input.addEventListener('input', function(e) {
                 this.value = this.value.replace(/[^0-9]/g, '');
             });
+        });
+        
+        // Asegurar que todos los inputs usen texto base
+        document.querySelectorAll('input, select').forEach(el => {
+            el.classList.add('text-base');
+            el.classList.add('form-control-clean');
         });
     });
 </script>

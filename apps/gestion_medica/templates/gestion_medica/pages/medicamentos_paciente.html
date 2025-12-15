@@ -8,28 +8,29 @@
     /* Ajustes para TomSelect y Estética */
     .ts-dropdown, .ts-dropdown.single { z-index: 9999 !important; }
     .input-group.input-group-focus-info { overflow: visible !important; }
-    .ts-control { border: none !important; background: transparent !important; box-shadow: none !important; }
+    .ts-control { border: none !important; background: transparent !important; box-shadow: none !important; font-size: 1.6rem !important; }
+    /* Ajuste para que el texto dentro del select sea grande */
+    .ts-dropdown .option { font-size: 1.4rem; padding: 10px 15px; }
 </style>
 
 <div class="container-fluid">
-    <!-- HEADER TARJETA (Igual a tu diseño) -->
     <div class="card border-0 shadow-sm mb-4 bg-gradient-info text-white overflow-hidden" style="border-radius: 15px;">
         <div class="card-body p-4 position-relative">
             <i class="fas fa-pills position-absolute text-white-50" style="font-size: 10rem; right: -20px; top: -30px; opacity: 0.15;"></i>
             <div class="row align-items-center position-relative">
                 <div class="col-md-8">
-                    <h5 class="text-white-50 text-uppercase font-weight-bold mb-1 ls-1">
+                    <h5 class="text-white-50 text-sm font-bold text-uppercase mb-1 ls-1">
                         <i class="fas fa-prescription-bottle-alt me-2"></i>Farmacología
                     </h5>
-                    <h1 class="display-6 font-weight-bold text-white mb-0">
+                    <h1 class="text-3xl font-black text-white mb-0">
                         {{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut|title }}
                     </h1>
-                    <p class="mb-0 text-white-50 mt-2">
+                    <p class="mb-0 text-white-50 mt-2 text-base">
                         <i class="fas fa-id-card me-2"></i>RUT: {{ ficha.voluntario.usuario.rut }}
                     </p>
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                    <a href="{% url 'gestion_medica:ruta_informacion_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-outline-light fw-bold shadow-sm rounded-pill px-4 py-2">
+                    <a href="{% url 'gestion_medica:ruta_informacion_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-outline-light font-bold text-sm shadow-sm rounded-pill px-4 py-2">
                         <i class="fas fa-arrow-left me-2"></i> Volver a Ficha
                     </a>
                 </div>
@@ -38,11 +39,10 @@
     </div>
 
     <div class="row g-4">
-        <!-- FORMULARIO DE ASIGNACIÓN -->
         <div class="col-lg-4">
             <div class="card shadow border-0 h-100" style="border-radius: 15px;">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h5 class="font-weight-bold text-secondary mb-0">
+                    <h5 class="font-bold text-lg text-secondary mb-0">
                         <i class="fas fa-plus-circle text-info-custom me-2"></i>Asignar Medicamento
                     </h5>
                 </div>
@@ -50,9 +50,8 @@
                     <form method="post" class="needs-validation">
                         {% csrf_token %}
                         
-                        <!-- 1. BUSCADOR MEDICAMENTO -->
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Medicamento</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Medicamento</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill border input-group-focus-info">
                                 <span class="input-group-text bg-white border-0 text-info-custom ps-4">
                                     <i class="fas fa-capsules"></i>
@@ -60,19 +59,17 @@
                                 {{ form.medicamento }}
                             </div>
                             {% if form.medicamento.errors %}
-                                <div class="text-danger small mt-2 ms-3 fw-bold">{{ form.medicamento.errors.0 }}</div>
+                                <div class="text-danger text-xs mt-2 ms-3 font-bold">{{ form.medicamento.errors.0 }}</div>
                             {% endif %}
                         </div>
 
-                        <!-- 2. CANTIDAD Y UNIDAD (Visual) -->
                         <div class="row g-2 mb-4">
                             <div class="col-8">
-                                <label class="form-label text-muted font-weight-bold small text-uppercase">Cantidad / Dosis</label>
+                                <label class="form-label text-muted font-bold text-xs text-uppercase">Cantidad / Dosis</label>
                                 <div class="input-group shadow-sm rounded-pill border input-group-focus-info">
                                     {{ form.cantidad }}
                                     
-                                    <!-- AQUI ESTA LA CLAVE: SPAN DE SOLO LECTURA -->
-                                    <span class="input-group-text bg-light border-0 fw-bold text-dark" 
+                                    <span class="input-group-text bg-light border-0 font-bold text-dark text-base" 
                                           id="visual_unidad" 
                                           style="min-width: 60px; background-color: #e9ecef;">
                                         ---
@@ -81,11 +78,10 @@
                             </div>
                         </div>
 
-                        <!-- 3. FRECUENCIA -->
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Frecuencia</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Frecuencia</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-info">
-                                <span class="input-group-text bg-white border-0 text-info-custom ps-3">
+                                <span class="input-group-text bg-white border-0 text-info-custom ps-3 font-medium text-base">
                                     <i class="fas fa-clock"></i>&nbsp;Cada
                                 </span>
                                 {{ form.freq_numero }}
@@ -93,9 +89,8 @@
                             </div>
                         </div>
 
-                        <!-- 4. DURACIÓN / NOTAS -->
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Duración / Notas</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Duración / Notas</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill border input-group-focus-info">
                                 <span class="input-group-text bg-white border-0 text-info-custom ps-4">
                                     <i class="fas fa-pencil-alt"></i>
@@ -105,7 +100,7 @@
                         </div>
 
                         <div class="d-grid mt-5">
-                            <button type="submit" class="btn btn-info-custom w-100 btn-lg rounded-pill shadow-sm hover-elevate-info fw-bold py-3 text-white">
+                            <button type="submit" class="btn btn-info-custom w-100 btn-lg rounded-pill shadow-sm hover-elevate-info font-black text-base py-3 text-white">
                                 <i class="fas fa-save me-2"></i> GUARDAR TRATAMIENTO
                             </button>
                         </div>
@@ -114,12 +109,11 @@
             </div>
         </div>
 
-        <!-- LISTA DE TRATAMIENTOS (Misma estética) -->
         <div class="col-lg-8">
             <div class="card shadow border-0 h-100" style="border-radius: 15px;">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                    <h5 class="font-weight-bold text-gray-800 mb-0">Tratamientos Activos</h5>
-                    <span class="badge bg-info-soft text-info-custom border border-info rounded-pill px-3 py-2">
+                    <h5 class="font-bold text-xl text-gray-800 mb-0">Tratamientos Activos</h5>
+                    <span class="badge bg-info-soft text-info-custom border border-info rounded-pill px-3 py-2 font-bold text-xs">
                         {{ medicamentos_paciente.count }} Asignados
                     </span>
                 </div>
@@ -130,9 +124,9 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="ps-4 py-3 text-uppercase text-muted small font-weight-bold">Medicamento</th>
-                                        <th class="py-3 text-uppercase text-muted small font-weight-bold">Posología</th>
-                                        <th class="pe-4 py-3 text-end text-uppercase text-muted small font-weight-bold">Acciones</th>
+                                        <th class="ps-4 py-3 text-uppercase text-muted text-xs font-black">Medicamento</th>
+                                        <th class="py-3 text-uppercase text-muted text-xs font-black">Posología</th>
+                                        <th class="pe-4 py-3 text-end text-uppercase text-muted text-xs font-black">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -141,28 +135,35 @@
                                         <td class="ps-4 py-4">
                                             <div class="d-flex align-items-center">
                                                 <div class="rounded-circle bg-info-soft text-info-custom d-flex align-items-center justify-content-center me-3" 
-                                                     style="width: 45px; height: 45px; font-size: 1.2rem;">
+                                                     style="width: 45px; height: 45px; font-size: 1.4rem;">
                                                     <i class="fas fa-tablets"></i>
                                                 </div>
                                                 <div class="d-flex flex-column">
-                                                    <span class="h6 mb-0 font-weight-bold text-dark">{{ item.medicamento.nombre }}</span>
-                                                    <small class="text-muted">{{ item.medicamento.concentracion }} {{ item.medicamento.unidad }}</small>
+                                                    <span class="text-base font-bold text-dark mb-0">{{ item.medicamento.nombre }}</span>
+                                                    <small class="text-muted text-xs font-regular">{{ item.medicamento.concentracion }} {{ item.medicamento.unidad }}</small>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="py-4">
                                             <div class="d-flex align-items-center text-secondary">
                                                 <i class="fas fa-clock me-2 text-info-custom opacity-50"></i>
-                                                <span class="fw-bold">{{ item.dosis_frecuencia|default:"Según indicación" }}</span>
+                                                <span class="font-medium text-base">{{ item.dosis_frecuencia|default:"Según indicación" }}</span>
                                             </div>
                                         </td>
                                         <td class="pe-4 text-end">
-                                            <!-- Botones de Acción -->
                                             <a href="{% url 'gestion_medica:ruta_editar_medicamento_paciente' pk=ficha.voluntario.usuario.id medicamento_id=item.id %}" 
-                                               class="btn btn-white btn-sm text-info-custom shadow-sm border me-1 rounded-circle" style="width:35px;height:35px;"><i class="fas fa-pen"></i></a>
+                                               class="btn btn-white btn-sm text-info-custom shadow-sm border me-1 rounded-circle" 
+                                               title="Editar"
+                                               style="width:35px;height:35px; display:inline-flex; align-items:center; justify-content:center;">
+                                                <i class="fas fa-pen"></i>
+                                            </a>
                                             <form action="{% url 'gestion_medica:ruta_eliminar_medicamento_paciente' pk=ficha.voluntario.usuario.id medicamento_id=item.id %}" method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar?');">
                                                 {% csrf_token %}
-                                                <button type="submit" class="btn btn-white btn-sm text-danger shadow-sm border rounded-circle" style="width:35px;height:35px;"><i class="fas fa-trash-alt"></i></button>
+                                                <button type="submit" class="btn btn-white btn-sm text-danger shadow-sm border rounded-circle" 
+                                                        title="Eliminar"
+                                                        style="width:35px;height:35px; display:inline-flex; align-items:center; justify-content:center;">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
                                             </form>
                                         </td>
                                     </tr>
@@ -172,8 +173,8 @@
                         </div>
                     {% else %}
                         <div class="text-center py-5">
-                            <h4 class="text-gray-600 font-weight-bold">Sin Medicamentos</h4>
-                            <p class="text-muted">No hay tratamientos registrados.</p>
+                            <h4 class="text-gray-600 font-bold text-lg">Sin Medicamentos</h4>
+                            <p class="text-muted text-base">No hay tratamientos registrados.</p>
                         </div>
                     {% endif %}
                 </div>
@@ -184,6 +185,14 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+    // Limpieza visual de inputs
+    document.querySelectorAll('input, select').forEach(el => {
+        if (!el.classList.contains('tomselected')) { // Evitar conflicto con TomSelect
+            el.classList.add('form-control-clean');
+            el.classList.add('text-base');
+        }
+    });
+
     const inputMedicamento = document.getElementById('id_medicamento');
 
     if (inputMedicamento) {
@@ -213,10 +222,10 @@ document.addEventListener("DOMContentLoaded", function() {
                 
                 if (value && this.options[value]) {
                     const data = this.options[value];
-                    // Actualizamos el SPAN visual. No hay input hidden que sincronizar.
                     if(labelVisual) {
+                        // Aquí asumimos que la metadata viene en el objeto data (si tu API lo manda)
+                        // Si no, por defecto ponemos ---
                         labelVisual.textContent = data.unidad_codigo || "unid";
-                        // Efecto visual para confirmar cambio
                         labelVisual.classList.add('bg-warning');
                         setTimeout(() => labelVisual.classList.remove('bg-warning'), 300);
                     }
@@ -227,24 +236,25 @@ document.addEventListener("DOMContentLoaded", function() {
             },
 
             render: {
+                // Opción en la lista desplegable (ESTANDARIZADA)
                 option: function(data, escape) {
-                    let badge = data.riesgo ? `<span class="badge bg-warning text-dark ms-auto">${escape(data.riesgo)}</span>` : '';
+                    let badge = data.riesgo ? `<span class="badge bg-warning text-dark ms-auto font-bold text-xs">${escape(data.riesgo)}</span>` : '';
                     return `<div class="d-flex align-items-center py-2 px-3 border-bottom">
                                 <div>
-                                    <span class="fw-bold d-block text-dark">${escape(data.text)}</span>
-                                    <small class="text-muted">${escape(data.dosis_info || '')}</small>
+                                    <span class="font-bold d-block text-dark text-base">${escape(data.text)}</span>
+                                    <small class="text-muted text-xs">${escape(data.dosis_info || '')}</small>
                                 </div>
                                 ${badge}
                             </div>`;
                 },
                 item: function(data, escape) {
-                    return `<div><span class="fw-bold text-dark">${escape(data.text)}</span></div>`;
+                    return `<div><span class="font-bold text-dark text-base">${escape(data.text)}</span></div>`;
                 },
                 no_results: function(data, escape) {
-                    return '<div class="p-2 text-muted">No encontrado.</div>';
+                    return '<div class="p-2 text-muted text-sm">No encontrado.</div>';
                 },
                 loading: function(data, escape) {
-                    return '<div class="p-2 text-info">Buscando...</div>';
+                    return '<div class="p-2 text-info text-sm">Buscando...</div>';
                 }
             }
         });

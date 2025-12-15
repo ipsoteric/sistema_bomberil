@@ -12,18 +12,18 @@
             
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h5 class="text-white-50 text-uppercase font-weight-bold mb-1 ls-1">
+                    <h5 class="text-white-50 text-sm font-bold text-uppercase mb-1 ls-1">
                         <i class="fas fa-file-medical me-2"></i>Antecedentes Quirúrgicos
                     </h5>
-                    <h1 class="display-6 font-weight-bold text-white mb-0">
+                    <h1 class="text-3xl font-black text-white mb-0">
                         {{ ficha.voluntario.usuario.get_full_name|default:ficha.voluntario.usuario.rut|title }}
                     </h1>
-                    <p class="mb-0 text-white-50 mt-2">
+                    <p class="mb-0 text-white-50 mt-2 text-base">
                         <i class="fas fa-id-card me-2"></i>RUT: {{ ficha.voluntario.usuario.rut }}
                     </p>
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                    <a href="{% url 'gestion_medica:ruta_informacion_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-light text-indigo-custom fw-bold shadow-sm rounded-pill px-4 py-2">
+                    <a href="{% url 'gestion_medica:ruta_informacion_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-light text-indigo-custom font-bold text-sm shadow-sm rounded-pill px-4 py-2">
                         <i class="fas fa-arrow-left me-2"></i> Volver a Ficha
                     </a>
                 </div>
@@ -36,7 +36,7 @@
         <div class="col-lg-4">
             <div class="card shadow border-0 h-100" style="border-radius: 15px;">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h5 class="font-weight-bold text-secondary mb-0">
+                    <h5 class="font-bold text-lg text-secondary mb-0">
                         <i class="fas fa-plus-circle text-indigo-custom me-2"></i>Nueva Cirugía
                     </h5>
                 </div>
@@ -45,40 +45,40 @@
                         {% csrf_token %}
                         
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Tipo de Operación</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Tipo de Operación</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-indigo">
                                 <span class="input-group-text bg-white border-0 text-indigo-custom ps-4">
                                     <i class="fas fa-procedures"></i>
                                 </span>
-                                {{ form.cirugia }}
+                                <div class="flex-grow-1 text-base">{{ form.cirugia }}</div>
                             </div>
                             {% if form.cirugia.errors %}
-                                <div class="text-danger small mt-2 ms-3 fw-bold">{{ form.cirugia.errors.0 }}</div>
+                                <div class="text-danger text-xs mt-2 ms-3 font-bold">{{ form.cirugia.errors.0 }}</div>
                             {% endif %}
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Fecha Aproximada</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Fecha Aproximada</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-indigo">
                                 <span class="input-group-text bg-white border-0 text-indigo-custom ps-4">
                                     <i class="fas fa-calendar-alt"></i>
                                 </span>
-                                {{ form.fecha_cirugia }}
+                                <div class="flex-grow-1 text-base">{{ form.fecha_cirugia }}</div>
                             </div>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label text-muted font-weight-bold small text-uppercase">Observaciones</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Observaciones</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-indigo">
                                 <span class="input-group-text bg-white border-0 text-indigo-custom ps-4">
                                     <i class="fas fa-comment-medical"></i>
                                 </span>
-                                {{ form.observaciones }}
+                                <div class="flex-grow-1 text-base">{{ form.observaciones }}</div>
                             </div>
                         </div>
 
                         <div class="d-grid mt-5">
-                            <button type="submit" class="btn btn-indigo-custom w-100 btn-lg rounded-pill shadow-sm hover-elevate-indigo fw-bold py-3 text-white">
+                            <button type="submit" class="btn btn-indigo-custom w-100 btn-lg rounded-pill shadow-sm hover-elevate-indigo font-black text-base py-3 text-white">
                                 <i class="fas fa-save me-2"></i> REGISTRAR CIRUGÍA
                             </button>
                         </div>
@@ -90,8 +90,8 @@
         <div class="col-lg-8">
             <div class="card shadow border-0 h-100" style="border-radius: 15px;">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                    <h5 class="font-weight-bold text-gray-800 mb-0">Historial Quirúrgico</h5>
-                    <span class="badge bg-indigo-soft text-indigo-custom border border-indigo rounded-pill px-3 py-2">
+                    <h5 class="font-bold text-xl text-gray-800 mb-0">Historial Quirúrgico</h5>
+                    <span class="badge bg-indigo-soft text-indigo-custom border border-indigo rounded-pill px-3 py-2 font-bold text-xs">
                         {{ cirugias.count }} Registradas
                     </span>
                 </div>
@@ -102,10 +102,10 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="ps-4 py-3 text-uppercase text-muted small font-weight-bold" style="width: 35%;">Intervención</th>
-                                        <th class="py-3 text-uppercase text-muted small font-weight-bold">Fecha</th>
-                                        <th class="py-3 text-uppercase text-muted small font-weight-bold">Observaciones</th>
-                                        <th class="pe-4 py-3 text-end text-uppercase text-muted small font-weight-bold">Acciones</th>
+                                        <th class="ps-4 py-3 text-uppercase text-muted text-xs font-black" style="width: 35%;">Intervención</th>
+                                        <th class="py-3 text-uppercase text-muted text-xs font-black">Fecha</th>
+                                        <th class="py-3 text-uppercase text-muted text-xs font-black">Observaciones</th>
+                                        <th class="pe-4 py-3 text-end text-uppercase text-muted text-xs font-black">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -114,26 +114,26 @@
                                         <td class="ps-4 py-4">
                                             <div class="d-flex align-items-center">
                                                 <div class="rounded-circle bg-indigo-soft text-indigo-custom d-flex align-items-center justify-content-center me-3" 
-                                                     style="width: 45px; height: 45px; font-size: 1.2rem;">
+                                                     style="width: 45px; height: 45px; font-size: 1.4rem;">
                                                     <i class="fas fa-user-md"></i>
                                                 </div>
-                                                <span class="h5 mb-0 font-weight-bold text-dark">{{ item.cirugia.nombre }}</span>
+                                                <span class="text-base font-bold text-dark mb-0">{{ item.cirugia.nombre }}</span>
                                             </div>
                                         </td>
                                         <td class="py-4">
                                             {% if item.fecha_cirugia %}
-                                                <span class="badge bg-light text-secondary border fw-normal px-3 py-2">
+                                                <span class="badge bg-light text-secondary border font-regular text-sm px-3 py-2">
                                                     <i class="fas fa-calendar me-1"></i> {{ item.fecha_cirugia|date:"d/m/Y" }}
                                                 </span>
                                             {% else %}
-                                                <span class="text-muted fst-italic small">Sin fecha</span>
+                                                <span class="text-muted fst-italic text-sm">Sin fecha</span>
                                             {% endif %}
                                         </td>
                                         <td class="py-4">
                                             {% if item.observaciones %}
-                                                <span class="text-secondary fw-bold small">{{ item.observaciones }}</span>
+                                                <span class="text-secondary font-medium text-base">{{ item.observaciones }}</span>
                                             {% else %}
-                                                <span class="badge bg-light text-muted border">Sin observaciones</span>
+                                                <span class="badge bg-light text-muted border font-regular text-xs">Sin observaciones</span>
                                             {% endif %}
                                         </td>
                                         <td class="pe-4 text-end">
@@ -161,8 +161,8 @@
                             <div class="mb-3 p-4 rounded-circle bg-light d-inline-block">
                                 <i class="fas fa-procedures fa-3x text-indigo-custom opacity-50"></i>
                             </div>
-                            <h4 class="text-gray-600 font-weight-bold mt-2">Sin Cirugías</h4>
-                            <p class="text-muted mb-0">No hay antecedentes quirúrgicos registrados.</p>
+                            <h4 class="text-gray-600 font-bold text-lg mt-2">Sin Cirugías</h4>
+                            <p class="text-muted mb-0 text-base">No hay antecedentes quirúrgicos registrados.</p>
                         </div>
                     {% endif %}
                 </div>
@@ -178,10 +178,11 @@
         inputs.forEach(input => {
             if (!input.classList.contains('select-busqueda')) {
                 input.classList.add('form-control-clean');
+                input.classList.add('text-base');
             }
         });
 
-        // 2. INICIALIZAR TOM SELECT (Buscador)
+        // 2. INICIALIZAR TOM SELECT
         const selectBuscable = document.querySelector('.select-busqueda');
         
         if (selectBuscable) {
@@ -194,7 +195,7 @@
                 placeholder: 'Escriba para buscar...',
                 allowEmptyOption: true,
                 maxOptions: 50,
-                dropdownParent: 'body' // <--- CLAVE: Para que no se corte
+                dropdownParent: 'body' 
             });
         }
     });

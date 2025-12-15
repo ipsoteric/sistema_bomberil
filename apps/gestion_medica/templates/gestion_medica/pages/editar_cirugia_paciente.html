@@ -4,9 +4,35 @@
 {% block titulo_ventana %}Editar Cirugía{% endblock %}
 
 {% block contenido %}
+
+<style>
+    :root {
+        --font-xs: 1.2rem; --font-sm: 1.4rem; --font-base: 1.6rem;
+        --font-md: 2.0rem; --font-lg: 2.5rem; --font-xl: 3.1rem;
+        --font-2xl: 3.9rem; --font-3xl: 4.8rem;
+        --weight-regular: 400; --weight-medium: 500; --weight-bold: 700; --weight-black: 900;
+        --font-data: 'Roboto Mono', monospace;
+    }
+    .text-xs { font-size: var(--font-xs) !important; }
+    .text-sm { font-size: var(--font-sm) !important; }
+    .text-base { font-size: var(--font-base) !important; }
+    .text-md { font-size: var(--font-md) !important; }
+    .text-lg { font-size: var(--font-lg) !important; line-height: 1.2 !important; }
+    .text-xl { font-size: var(--font-xl) !important; line-height: 1.1 !important; }
+    .text-2xl { font-size: var(--font-2xl) !important; line-height: 1.1 !important; }
+    .text-3xl { font-size: var(--font-3xl) !important; line-height: 1.0 !important; }
+    .font-regular { font-weight: var(--weight-regular) !important; }
+    .font-medium { font-weight: var(--weight-medium) !important; }
+    .font-bold { font-weight: var(--weight-bold) !important; }
+    .font-black { font-weight: var(--weight-black) !important; }
+    .text-data-code { font-family: var(--font-data) !important; }
+    /* Ajuste para inputs */
+    .form-control-clean, .form-control, .form-select { font-size: var(--font-base) !important; }
+</style>
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-lg-8 col-xl-6">
+            
             <div class="card border-0 shadow-sm mb-4 bg-gradient-indigo text-white overflow-hidden" style="border-radius: 15px;">
                 <div class="card-body p-4 position-relative">
                     <i class="fas fa-hospital-user position-absolute text-white-50" style="font-size: 8rem; right: -10px; bottom: -20px; opacity: 0.15;"></i>
@@ -29,8 +55,9 @@
                 <div class="card-body p-5">
                     <form method="post">
                         {% csrf_token %}
+                        
                         <div class="mb-4">
-                            <label class="form-label text-muted font-bold text-sm text-uppercase">Tipo de Cirugía</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Tipo de Cirugía</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-indigo">
                                 <span class="input-group-text bg-white border-0 text-indigo-custom ps-4"><i class="fas fa-procedures"></i></span>
                                 <div class="form-control-clean flex-grow-1 d-flex align-items-center">
@@ -38,8 +65,9 @@
                                 </div>
                             </div>
                         </div>
+                        
                         <div class="mb-4">
-                            <label class="form-label text-muted font-bold text-sm text-uppercase">Fecha Aproximada</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Fecha Aproximada</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-indigo">
                                 <span class="input-group-text bg-white border-0 text-indigo-custom ps-4"><i class="fas fa-calendar-day"></i></span>
                                 <div class="flex-grow-1">
@@ -47,8 +75,9 @@
                                 </div>
                             </div>
                         </div>
+                        
                         <div class="mb-5">
-                            <label class="form-label text-muted font-bold text-sm text-uppercase">Observaciones</label>
+                            <label class="form-label text-muted font-bold text-xs text-uppercase">Observaciones</label>
                             <div class="input-group input-group-lg shadow-sm rounded-pill overflow-hidden border input-group-focus-indigo">
                                 <span class="input-group-text bg-white border-0 text-indigo-custom ps-4"><i class="fas fa-comment-medical"></i></span>
                                 <div class="flex-grow-1">
@@ -56,8 +85,9 @@
                                 </div>
                             </div>
                         </div>
+                        
                         <div class="d-grid gap-3">
-                            <button type="submit" class="btn btn-indigo-custom btn-lg rounded-pill shadow-sm hover-elevate-indigo font-bold text-base py-3 text-white">
+                            <button type="submit" class="btn btn-indigo-custom btn-lg rounded-pill shadow-sm hover-elevate-indigo font-black text-base py-3 text-white">
                                 <i class="fas fa-save me-2"></i> GUARDAR CAMBIOS
                             </button>
                             <a href="{% url 'gestion_medica:ruta_cirugias_paciente' pk=ficha.voluntario.usuario.id %}" class="btn btn-light btn-lg rounded-pill border text-muted font-bold text-base py-3">CANCELAR</a>
@@ -68,5 +98,13 @@
         </div>
     </div>
 </div>
-<script>document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('input,select,textarea').forEach(el=>{el.classList.add('form-control-clean'); el.classList.add('text-base');});});</script>
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('input,select,textarea').forEach(el=>{
+        el.classList.add('form-control-clean'); 
+        el.classList.add('text-base');
+    });
+});
+</script>
 {% endblock %}
