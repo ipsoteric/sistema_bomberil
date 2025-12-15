@@ -1,0 +1,135 @@
+{% extends 'gestion_inventario/layouts/base.html' %}
+{% load static %}
+
+{% block titulo %}Registrar Uso - {{ activo.producto.producto_global.nombre_oficial }}{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-5">
+            
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3 border-0">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <span class="icon-square bg-light text-primary rounded-circle p-3">
+                                <i class="fa-solid fa-stopwatch fa-lg"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 fw-bold">Registrar Horas de Uso</h5>
+                            <p class="text-muted small mb-0">
+                                {{ activo.producto.producto_global.nombre_oficial }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="alert alert-soft-primary d-flex justify-content-between align-items-center mb-4" role="alert">
+                        <span><i class="fa-solid fa-history me-2"></i>Histórico Acumulado:</span>
+                        <span class="fw-bold">{{ activo.horas_uso_totales }} hrs</span>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold small text-uppercase text-muted">Fecha y Hora</label>
+                            {{ form.fecha_uso }}
+                            {% if form.fecha_uso.errors %}
+                                <div class="text-danger small mt-1">{{ form.fecha_uso.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4 text-center bg-light p-3 rounded-3 border">
+                            <label class="form-label fw-bold text-muted small text-uppercase mb-3">TIEMPO DE USO (HH : MM)</label>
+                            
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <div style="width: 100px;">
+                                    {{ form.horas_enteras }}
+                                    <div class="small text-muted mt-1">Horas</div>
+                                </div>
+
+                                <div class="fw-bold fs-3 text-muted mb-4">:</div>
+
+                                <div style="width: 100px;">
+                                    {{ form.minutos }}
+                                    <div class="small text-muted mt-1">Minutos</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 small text-primary fw-medium" id="conversion-feedback">
+                                Total a registrar: <span id="total-decimal">0.00</span> horas
+                            </div>
+
+                            {% if form.non_field_errors %}
+                                <div class="text-danger small mt-2 fw-bold">{{ form.non_field_errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold small text-uppercase text-muted">Detalles / Notas</label>
+                            {{ form.notas }}
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fa-solid fa-save me-2"></i> Guardar Registro
+                            </button>
+                            <a href="{% url 'gestion_inventario:ruta_stock_actual' %}" class="btn btn-light text-muted">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputHoras = document.querySelector('input[name="horas_enteras"]');
+        const inputMinutos = document.querySelector('input[name="minutos"]');
+        const displayTotal = document.getElementById('total-decimal');
+
+        // Función para forzar límites (0-59)
+        function validarMinutos() {
+            let valor = parseInt(inputMinutos.value);
+            
+            // Si es mayor a 59, lo forzamos a 59
+            if (valor > 59) {
+                inputMinutos.value = 59;
+            }
+            // Si es negativo (por si acaso), lo forzamos a 0
+            if (valor < 0) {
+                inputMinutos.value = 0;
+            }
+        }
+
+        function calcularDecimal() {
+            // Validamos antes de calcular
+            validarMinutos();
+
+            let h = parseFloat(inputHoras.value) || 0;
+            let m = parseFloat(inputMinutos.value) || 0;
+            
+            // Lógica: h + (m / 60)
+            let total = h + (m / 60);
+            displayTotal.textContent = total.toFixed(2);
+        }
+
+        // Escuchar cambios
+        inputHoras.addEventListener('input', calcularDecimal);
+        inputMinutos.addEventListener('input', calcularDecimal);
+        
+        // También validamos al perder el foco (blur) para limpiar inputs vacíos
+        inputMinutos.addEventListener('blur', function() {
+            if (this.value === '') this.value = 0;
+            calcularDecimal();
+        });
+    });
+</script>
+{% endblock %}

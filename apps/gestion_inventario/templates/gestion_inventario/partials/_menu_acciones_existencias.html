@@ -36,6 +36,17 @@
             </li>
             {% endif %}
 
+            {# Registrar Uso (Solo Activos) #}
+            {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno %}
+            <li>
+                <a class="menu-item text-sm font-medium" 
+                   href="{% url 'gestion_inventario:ruta_registrar_uso_activo' tipo_item='activo' item_id=item.id %}">
+                    <i class="fa-solid fa-clock-rotate-left menu-icon"></i>
+                    <span>Registrar Uso</span>
+                </a>
+            </li>
+            {% endif %}
+
             {# PERMISO: Gestionar Stock Interno (Mover) #}
             {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_stock_interno %}
             <li>

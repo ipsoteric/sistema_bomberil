@@ -751,6 +751,82 @@ class TransferenciaForm(forms.Form):
 
 
 
+class RegistroUsoForm(forms.Form):
+    """
+    Formulario para registrar uso con desglose amigable de Horas y Minutos.
+    Convierte internamente a decimal para la BD.
+    """
+    fecha_uso = forms.DateTimeField(
+        label="Fecha y Hora del Uso",
+        required=True,
+        widget=forms.DateTimeInput(attrs={
+            'type': 'datetime-local', 
+            'class': 'form-control form-control-sm text-base color_primario fondo_secundario_variante border-0'
+        })
+    )
+    
+    # Campos separados para mejor UX
+    horas_enteras = forms.IntegerField(
+        label="Horas",
+        min_value=0,
+        initial=0,
+        required=True,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control form-control-lg text-center fw-bold text-primary border-0', 
+            'placeholder': '00',
+            'style': 'font-size: 2rem;'
+        })
+    )
+    
+    minutos = forms.IntegerField(
+        label="Minutos",
+        min_value=0,
+        max_value=59,
+        initial=0,
+        required=True,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control form-control-lg text-center fw-bold text-primary border-0', 
+            'placeholder': '00',
+            'style': 'font-size: 2rem;'
+        })
+    )
+
+    notas = forms.CharField(
+        label="Detalles / Observaciones (Opcional)",
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control form-control-sm text-base color_primario fondo_secundario_variante border-0', 
+            'rows': 3, 
+            'placeholder': 'Ej: Práctica de incendio estructural...'
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['fecha_uso'].initial = timezone.localtime(timezone.now()).strftime('%Y-%m-%dT%H:%M')
+
+    def clean(self):
+        """
+        Convierte las horas y minutos a formato decimal para compatibilidad con el modelo.
+        """
+        cleaned_data = super().clean()
+        horas = cleaned_data.get('horas_enteras', 0)
+        minutos = cleaned_data.get('minutos', 0)
+
+        if horas == 0 and minutos == 0:
+            raise forms.ValidationError("Debe registrar al menos 1 minuto de uso.")
+
+        # Conversión a Decimal: Horas + (Minutos / 60)
+        total_decimal = float(horas) + (float(minutos) / 60.0)
+        
+        # Inyectamos 'horas' en cleaned_data para que la Vista lo encuentre como si fuera el campo original
+        cleaned_data['horas'] = round(total_decimal, 2)
+        
+        return cleaned_data
+
+
+
+
 class EtiquetaFilterForm(forms.Form):
     """Formulario utilizado para imprimir etiquetas QR"""
     ubicacion = forms.ModelChoiceField(

@@ -34,6 +34,7 @@ from .views import (
     BajaExistenciaView,
     ExtraviadoExistenciaView,
     ConsumirStockLoteView,
+    RegistrarUsoActivoView,
     TransferenciaExistenciaView,
     GenerarQRView,
     ImprimirEtiquetasView,
@@ -127,6 +128,8 @@ urlpatterns = [
     path('lotes/<uuid:lote_id>/consumir/', ConsumirStockLoteView.as_view(), name='ruta_consumir_stock_lote'),
     # Mover/Trasferir existencias (interno
     path('existencia/<str:tipo_item>/<uuid:item_id>/mover/', TransferenciaExistenciaView.as_view(), name='ruta_mover_existencia'),
+    # Registrar horas de uso
+    path('existencia/activo/<str:tipo_item>/<uuid:item_id>/registrar-uso/', RegistrarUsoActivoView.as_view(), name='ruta_registrar_uso_activo'),
 
     # Prestar existencias / Crear préstamo
     path('prestamos/crear/', CrearPrestamoView.as_view(), name='ruta_crear_prestamo'),
