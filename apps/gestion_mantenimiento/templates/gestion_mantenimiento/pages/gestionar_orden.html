@@ -74,6 +74,8 @@
                     
                     {# PERMISO: Gestionar Orden (Iniciar/Finalizar) #}
                     {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes %}
+
+                        {# CASO 1: Nadie es responsable #}
                         {% if not orden.responsable %}
                             <div class="alert alert-warning text-center p-2 mb-3 text-sm border-warning">
                                 <i class="fas fa-user-clock me-2"></i>
@@ -90,35 +92,54 @@
                             <div class="text-center text-xs text-muted">
                                 Debes hacerte cargo de la orden para poder gestionarla.
                             </div>
-                    
-                        {% elif orden.estado == 'PENDIENTE' %}
-                            <button onclick="cambiarEstadoOrden('iniciar')" class="btn btn-primary btn-lg w-100 shadow-sm text-base">
-                                <i class="fas fa-play me-2"></i> Iniciar Trabajo
-                            </button>
-                            <button onclick="cambiarEstadoOrden('cancelar')" class="btn btn-outline-danger w-100 text-base">
-                                Cancelar Orden
-                            </button>
-                        {% elif orden.estado == 'EN_CURSO' %}
-                            {% if progreso.porcentaje == 100 %}
-                                <button onclick="cambiarEstadoOrden('finalizar')" class="btn btn-success btn-lg w-100 shadow-sm pulse-animation text-base">
-                                    <i class="fas fa-check-circle me-2"></i> Finalizar Orden
-                                </button>
-                            {% else %}
-                                <button disabled class="btn btn-secondary w-100 text-base" title="Complete todas las tareas primero">
-                                    Finalizar Orden (Incompleta)
-                                </button>
-                            {% endif %}
-                            <div class="text-center text-xs text-muted mt-1">La orden está activa. Registre las tareas abajo.</div>
-                            {# Opción de escape para la orden vacía #}
-                            {% if progreso.total == 0 %}
-                                 <button onclick="cambiarEstadoOrden('cancelar')" class="btn btn-outline-danger btn-sm w-100 mt-2 text-sm">
-                                    Cancelar (Orden Vacía)
-                                </button>
-                            {% endif %}
-                        {% elif orden.estado == 'REALIZADA' %}
-                            <div class="alert alert-success mb-0 text-center py-2 text-sm">
-                                <i class="fas fa-check-double me-2"></i> Orden cerrada el {{ orden.fecha_cierre|date:"d/m/Y" }}
+
+                        {# CASO 2: Tiene responsable, pero NO SOY YO #}
+                        {% elif not es_responsable %}
+                            <div class="alert alert-light border text-center mb-0 shadow-sm">
+                                <div class="mb-2">
+                                    <div class="avatar-circle mx-auto mb-2 bg-secondary text-white" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+                                        <i class="fas fa-lock"></i>
+                                    </div>
+                                    <strong>Modo Lectura</strong>
+                                </div>
+                                <p class="text-xs text-muted mb-0">
+                                    Esta orden está asignada a 
+                                    <strong>{{ orden.responsable.get_full_name|default:orden.responsable.email }}</strong>.
+                                    Solo él/ella puede registrar avances.
+                                </p>
                             </div>
+                        {# CASO 3: SOY EL RESPONSABLE (Aquí van tus botones originales) #}
+                        {% else %}
+                    
+                            {% if orden.estado == 'PENDIENTE' %}
+                                <button onclick="cambiarEstadoOrden('iniciar')" class="btn btn-primary btn-lg w-100 shadow-sm text-base">
+                                    <i class="fas fa-play me-2"></i> Iniciar Trabajo
+                                </button>
+                                <button onclick="cambiarEstadoOrden('cancelar')" class="btn btn-outline-danger w-100 text-base">
+                                    Cancelar Orden
+                                </button>
+                            {% elif orden.estado == 'EN_CURSO' %}
+                                {% if progreso.porcentaje == 100 %}
+                                    <button onclick="cambiarEstadoOrden('finalizar')" class="btn btn-success btn-lg w-100 shadow-sm pulse-animation text-base">
+                                        <i class="fas fa-check-circle me-2"></i> Finalizar Orden
+                                    </button>
+                                {% else %}
+                                    <button disabled class="btn btn-secondary w-100 text-base" title="Complete todas las tareas primero">
+                                        Finalizar Orden (Incompleta)
+                                    </button>
+                                {% endif %}
+                                <div class="text-center text-xs text-muted mt-1">La orden está activa. Registre las tareas abajo.</div>
+                                {# Opción de escape para la orden vacía #}
+                                {% if progreso.total == 0 %}
+                                     <button onclick="cambiarEstadoOrden('cancelar')" class="btn btn-outline-danger btn-sm w-100 mt-2 text-sm">
+                                        Cancelar (Orden Vacía)
+                                    </button>
+                                {% endif %}
+                            {% elif orden.estado == 'REALIZADA' %}
+                                <div class="alert alert-success mb-0 text-center py-2 text-sm">
+                                    <i class="fas fa-check-double me-2"></i> Orden cerrada el {{ orden.fecha_cierre|date:"d/m/Y" }}
+                                </div>
+                            {% endif %}
                         {% endif %}
 
                     {% else %}
@@ -133,7 +154,7 @@
     </div>
 
     {# --- 3. SECCIÓN DE AÑADIR ACTIVOS (SOLO VISIBLE SI ESTÁ PENDIENTE) --- #}
-    {% if orden.estado == 'PENDIENTE' %}
+    {% if orden.estado == 'PENDIENTE' and es_responsable %}
         {# PERMISO: Gestionar Orden (Añadir activos) #}
         {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes %}
         <div class="card shadow-sm border-0 mb-4 bg-primary text-white bg-opacity-100" 
@@ -219,7 +240,7 @@
                         </td>
                         <td class="text-end pe-4">
                             {# PERMISO: Gestionar Orden (Registrar Tareas) #}
-                            {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes %}
+                            {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes and es_responsable %}
                                 
                                 {% if orden.estado == 'EN_CURSO' %}
                                     {% if item.registro %}

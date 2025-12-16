@@ -52,6 +52,7 @@ from apps.gestion_documental.models import DocumentoHistorico
 from apps.gestion_inventario.utils import generar_sku_sugerido, get_or_create_anulado_compartment, get_or_create_extraviado_compartment
 from .utils import obtener_contexto_bomberil
 from .serializers import ComunaSerializer, ProductoLocalInputSerializer, CustomTokenObtainPairSerializer, CustomTokenRefreshSerializer
+from .mixins import OrdenValidacionMixin
 from .permissions import (
     IsEstacionActiva, 
     CanCrearUsuario,
@@ -2565,7 +2566,7 @@ class MantenimientoTogglePlanActivoAPIView(AuditoriaMixin, APIView):
 
 
 
-class MantenimientoCambiarEstadoOrdenAPIView(AuditoriaMixin, APIView):
+class MantenimientoCambiarEstadoOrdenAPIView(OrdenValidacionMixin, AuditoriaMixin, APIView):
     """
     API DRF: Cambia el estado global de la orden.
     Valida estrictamente que todos los activos tengan registro antes de finalizar.
@@ -2580,90 +2581,105 @@ class MantenimientoCambiarEstadoOrdenAPIView(AuditoriaMixin, APIView):
             if not request.session.get('active_estacion_id'):
                 request.session['active_estacion_id'] = estacion.id
 
+            # Obtenemos orden filtrando por estación (Seguridad Multi-tenant)
             orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=estacion)
             accion = request.data.get('accion')
             verbo_auditoria = ""
 
-            # 1. ACCIÓN: INICIAR
-            if accion == 'iniciar':
-                if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
-                    return Response({'message': 'La orden no está pendiente.'}, status=status.HTTP_400_BAD_REQUEST)
+            # Pasamos 'accion' para permitir el caso 'asumir'
+            self.validar_responsabilidad_orden(orden, request.user, accion=accion)
 
-                if orden.activos_afectados.count() == 0:
-                    return Response({'message': 'No se puede iniciar una orden sin activos asignados.'}, status=status.HTTP_400_BAD_REQUEST)
+            with transaction.atomic():
+                # 1. ACCIÓN: ASUMIR
+                if accion == 'asumir':
+                    orden.responsable = request.user
+                    # Si está pendiente, pasa a EN_CURSO automáticamente para agilizar
+                    if orden.estado == OrdenMantenimiento.EstadoOrden.PENDIENTE:
+                        orden.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
+                    
+                    orden.save()
+                    verbo_auditoria = "asumió la responsabilidad de la orden"
 
-                orden.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
-                orden.save()
-                verbo_auditoria = "Inició la ejecución de la Orden de Mantenimiento"
+                # 2. ACCIÓN: INICIAR
+                if accion == 'iniciar':
+                    if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
+                        return Response({'message': 'La orden no está pendiente.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Cambiar estado de activos a "EN REPARACIÓN"
-                try:
-                    estado_reparacion = Estado.objects.get(nombre__iexact="EN REPARACIÓN")
-                    orden.activos_afectados.update(estado=estado_reparacion)
-                except Estado.DoesNotExist:
-                    pass
+                    if orden.activos_afectados.count() == 0:
+                        return Response({'message': 'No se puede iniciar una orden sin activos asignados.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # 2. ACCIÓN: FINALIZAR (Aquí está tu validación)
-            elif accion == 'finalizar':
-                if orden.estado != OrdenMantenimiento.EstadoOrden.EN_CURSO:
-                    return Response({'message': 'Solo se pueden finalizar órdenes en curso.'}, status=status.HTTP_400_BAD_REQUEST)
+                    orden.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
+                    orden.save()
+                    verbo_auditoria = "Inició la ejecución de la Orden de Mantenimiento"
 
-                # --- VALIDACIÓN DE INTEGRIDAD ---
-                total_activos = orden.activos_afectados.count()
-                
-                # Contamos cuántos activos únicos tienen registros asociados a esta orden
-                # (Usamos distinct por si un activo tuviera más de un registro, aunque lo usual es 1)
-                activos_con_trabajo = orden.registros.values('activo_id').distinct().count()
+                    # Cambiar estado de activos a "EN REPARACIÓN"
+                    try:
+                        estado_reparacion = Estado.objects.get(nombre__iexact="EN REPARACIÓN")
+                        orden.activos_afectados.update(estado=estado_reparacion)
+                    except Estado.DoesNotExist:
+                        pass
 
-                if activos_con_trabajo < total_activos:
-                    pendientes = total_activos - activos_con_trabajo
-                    return Response({
-                        'status': 'error', 
-                        'message': f'No se puede finalizar. Faltan registros de mantenimiento en {pendientes} activo(s). Todos deben ser atendidos.'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                # --------------------------------
+                # 3. ACCIÓN: FINALIZAR (Aquí está tu validación)
+                elif accion == 'finalizar':
+                    if orden.estado != OrdenMantenimiento.EstadoOrden.EN_CURSO:
+                        return Response({'message': 'Solo se pueden finalizar órdenes en curso.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                orden.estado = OrdenMantenimiento.EstadoOrden.REALIZADA
-                orden.fecha_cierre = timezone.now()
-                orden.save()
-                verbo_auditoria = "Finalizó exitosamente la Orden de Mantenimiento"
-                
-                # Los activos vuelven a estar operativos (o lo que indique el registro individual, 
-                # pero generalmente al cerrar la orden se liberan)
-                try:
-                    estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
-                    # Opcional: Solo liberar los que no quedaron marcados como "DAÑADO" en su registro individual
-                    orden.activos_afectados.update(estado=estado_disponible)
-                except Estado.DoesNotExist:
-                    pass
+                    # --- VALIDACIÓN DE INTEGRIDAD ---
+                    total_activos = orden.activos_afectados.count()
 
-            # 3. ACCIÓN: CANCELAR
-            elif accion == 'cancelar':
-                orden.estado = OrdenMantenimiento.EstadoOrden.CANCELADA
-                orden.fecha_cierre = timezone.now()
-                orden.save()
-                verbo_auditoria = "Canceló la Orden de Mantenimiento"
+                    # Contamos cuántos activos únicos tienen registros asociados a esta orden
+                    # (Usamos distinct por si un activo tuviera más de un registro, aunque lo usual es 1)
+                    activos_con_trabajo = orden.registros.values('activo_id').distinct().count()
 
-                # Liberar activos
-                try:
-                    estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
-                    orden.activos_afectados.update(estado=estado_disponible)
-                except Estado.DoesNotExist:
-                    pass
+                    if activos_con_trabajo < total_activos:
+                        pendientes = total_activos - activos_con_trabajo
+                        return Response({
+                            'status': 'error', 
+                            'message': f'No se puede finalizar. Faltan registros de mantenimiento en {pendientes} activo(s). Todos deben ser atendidos.'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    # --------------------------------
 
-            else:
-                return Response({'message': 'Acción no válida (use iniciar, finalizar, cancelar).'}, status=status.HTTP_400_BAD_REQUEST)
+                    orden.estado = OrdenMantenimiento.EstadoOrden.REALIZADA
+                    orden.fecha_cierre = timezone.now()
+                    orden.save()
+                    verbo_auditoria = "Finalizó exitosamente la Orden de Mantenimiento"
 
-            # --- AUDITORÍA ---
-            self.auditar(
-                verbo=verbo_auditoria,
-                objetivo=orden,
-                objetivo_repr=f"Orden #{orden.id} ({orden.tipo_orden})",
-                detalles={
-                    'nuevo_estado': orden.estado,
-                    'origen_accion': 'APP MÓVIL'
-                }
-            )
+                    # Los activos vuelven a estar operativos (o lo que indique el registro individual, 
+                    # pero generalmente al cerrar la orden se liberan)
+                    try:
+                        estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
+                        # Opcional: Solo liberar los que no quedaron marcados como "DAÑADO" en su registro individual
+                        orden.activos_afectados.update(estado=estado_disponible)
+                    except Estado.DoesNotExist:
+                        pass
+
+                # 4. ACCIÓN: CANCELAR
+                elif accion == 'cancelar':
+                    orden.estado = OrdenMantenimiento.EstadoOrden.CANCELADA
+                    orden.fecha_cierre = timezone.now()
+                    orden.save()
+                    verbo_auditoria = "Canceló la Orden de Mantenimiento"
+
+                    # Liberar activos
+                    try:
+                        estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
+                        orden.activos_afectados.update(estado=estado_disponible)
+                    except Estado.DoesNotExist:
+                        pass
+
+                else:
+                    return Response({'message': 'Acción no válida (use iniciar, finalizar, cancelar).'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # --- AUDITORÍA ---
+                self.auditar(
+                    verbo=verbo_auditoria,
+                    objetivo=orden,
+                    objetivo_repr=f"Orden #{orden.id} ({orden.tipo_orden})",
+                    detalles={
+                        'nuevo_estado': orden.estado,
+                        'origen_accion': 'APP MÓVIL'
+                    }
+                )
 
             return Response({'status': 'ok', 'message': 'Estado actualizado correctamente.'})
         
@@ -2671,7 +2687,7 @@ class MantenimientoCambiarEstadoOrdenAPIView(AuditoriaMixin, APIView):
             return Response({'error': f'Error procesando la orden: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class MantenimientoRegistrarTareaAPIView(APIView):
+class MantenimientoRegistrarTareaAPIView(OrdenValidacionMixin, APIView):
     """
     API DRF: Crea un RegistroMantenimiento para un activo.
     """
@@ -2681,6 +2697,9 @@ class MantenimientoRegistrarTareaAPIView(APIView):
         try:
             estacion = request.estacion_activa
             orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=estacion)
+
+            # Validar Responsabilidad
+            self.validar_responsabilidad_orden(orden, request.user)
 
             if orden.estado != OrdenMantenimiento.EstadoOrden.EN_CURSO:
                 return Response({'message': 'Debe INICIAR la orden antes de registrar tareas.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -2785,7 +2804,7 @@ class MantenimientoBuscarActivoParaOrdenAPIView(APIView):
         return Response({'results': results})
 
 
-class MantenimientoAnadirActivoOrdenAPIView(APIView):
+class MantenimientoAnadirActivoOrdenAPIView(OrdenValidacionMixin, APIView):
     """
     API DRF: Añade un activo a la lista de 'activos_afectados' de una orden.
     """
@@ -2795,6 +2814,9 @@ class MantenimientoAnadirActivoOrdenAPIView(APIView):
         try:
             estacion = request.estacion_activa
             orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=estacion)
+
+            # Validar Responsabilidad
+            self.validar_responsabilidad_orden(orden, request.user)
 
             if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
                 return Response({'message': 'Solo se pueden agregar activos a órdenes PENDIENTES.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -2828,7 +2850,7 @@ class MantenimientoAnadirActivoOrdenAPIView(APIView):
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class MantenimientoQuitarActivoOrdenAPIView(APIView):
+class MantenimientoQuitarActivoOrdenAPIView(OrdenValidacionMixin, APIView):
     """
     API DRF: Quita un activo de la orden.
     """
@@ -2838,6 +2860,9 @@ class MantenimientoQuitarActivoOrdenAPIView(APIView):
         try:
             estacion = request.estacion_activa
             orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=estacion)
+
+            # Validar Responsabilidad
+            self.validar_responsabilidad_orden(orden, request.user)
 
             if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
                 return Response({'message': 'Solo se pueden quitar activos de órdenes PENDIENTES.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -2930,6 +2955,7 @@ class MantenimientoOrdenListAPIView(APIView):
                 "estado_codigo": orden.estado,
                 "fecha_programada": orden.fecha_programada.strftime('%d/%m/%Y') if orden.fecha_programada else "Sin fecha",
                 "responsable": orden.responsable.get_full_name if orden.responsable else "Sin asignar",
+                "es_responsable": (orden.responsable == request.user),
                 "es_vencido": es_vencido,
                 "activos_count": orden.activos_afectados.count()
             })
@@ -3015,7 +3041,7 @@ class MantenimientoOrdenDetalleAPIView(APIView):
     
     URL: /api/v1/mantenimiento/ordenes/<int:pk>/detalle/
     """
-    permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarOrdenes]
+    permission_classes = [IsAuthenticated, IsEstacionActiva, CanVerOrdenes]
 
     def get(self, request, pk):
         estacion = request.estacion_activa
@@ -3072,7 +3098,8 @@ class MantenimientoOrdenDetalleAPIView(APIView):
                 "estado": orden.get_estado_display(),
                 "estado_codigo": orden.estado,
                 "fecha_programada": orden.fecha_programada.strftime('%d/%m/%Y'),
-                "responsable": orden.responsable.get_full_name if orden.responsable else "Sin asignar"
+                "responsable": orden.responsable.get_full_name if orden.responsable else "Sin asignar",
+                "es_responsable": (orden.responsable == request.user),
             },
             "progreso": {
                 "total": total,

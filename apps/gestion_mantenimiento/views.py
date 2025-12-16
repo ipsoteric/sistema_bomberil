@@ -458,7 +458,7 @@ class OrdenMantenimientoDetalleView(BaseEstacionMixin, CustomPermissionRequiredM
         context['necesita_asignacion'] = self.object.responsable is None
         
         # Opcional: Validar si el usuario actual es quien la tiene asignada
-        context['es_mi_orden'] = self.object.responsable == self.request.user
+        context['es_responsable'] = (self.object.responsable == self.request.user)
 
         return context
     
