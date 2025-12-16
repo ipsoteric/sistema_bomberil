@@ -54,7 +54,14 @@
                     
                     <div class="mt-3 d-flex gap-4 text-xs text-muted">
                         <div><i class="far fa-calendar me-1"></i> Programada: <strong class="text-data-code">{{ orden.fecha_programada|date:"d M, Y" }}</strong></div>
-                        <div><i class="far fa-user me-1"></i> Responsable: <strong>{{ orden.responsable.get_full_name|default:orden.responsable.email }}</strong></div>
+                        <div>
+                            <i class="far fa-user me-1"></i> Responsable: 
+                            {% if orden.responsable %}
+                            <strong>{{ orden.responsable.get_full_name|default:orden.responsable.email }}</strong>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Sin Asignar</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -67,8 +74,24 @@
                     
                     {# PERMISO: Gestionar Orden (Iniciar/Finalizar) #}
                     {% if perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes %}
+                        {% if not orden.responsable %}
+                            <div class="alert alert-warning text-center p-2 mb-3 text-sm border-warning">
+                                <i class="fas fa-user-clock me-2"></i>
+                                <strong>Orden sin asignar</strong><br>
+                                Generada automáticamente
+                            </div>
+                            
+                            <form method="post" action="">
+                                {% csrf_token %}
+                                <button type="submit" name="accion_tomar_orden" value="1" class="btn btn-warning text-dark w-100 shadow-sm fw-bold mb-2 text-base">
+                                    <i class="fas fa-hand-paper me-2"></i> Asumir Responsabilidad
+                                </button>
+                            </form>
+                            <div class="text-center text-xs text-muted">
+                                Debes hacerte cargo de la orden para poder gestionarla.
+                            </div>
                     
-                        {% if orden.estado == 'PENDIENTE' %}
+                        {% elif orden.estado == 'PENDIENTE' %}
                             <button onclick="cambiarEstadoOrden('iniciar')" class="btn btn-primary btn-lg w-100 shadow-sm text-base">
                                 <i class="fas fa-play me-2"></i> Iniciar Trabajo
                             </button>

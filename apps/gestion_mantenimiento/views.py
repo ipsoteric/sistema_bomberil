@@ -453,5 +453,33 @@ class OrdenMantenimientoDetalleView(BaseEstacionMixin, CustomPermissionRequiredM
             'completados': completados,
             'porcentaje': int((completados / total) * 100) if total > 0 else 0
         }
+        # Flag para saber si mostrar el botón de "Tomar Orden"
+        # Mostramos el botón si NO tiene responsable
+        context['necesita_asignacion'] = self.object.responsable is None
+        
+        # Opcional: Validar si el usuario actual es quien la tiene asignada
+        context['es_mi_orden'] = self.object.responsable == self.request.user
 
         return context
+    
+
+    def post(self, request, *args, **kwargs):
+        """
+        Maneja la acción de 'Asumir Responsabilidad' de la orden.
+        """
+        self.object = self.get_object()
+        
+        # Verificar si la acción es "tomar_orden"
+        if 'accion_tomar_orden' in request.POST:
+            # Asignar al usuario actual como responsable
+            self.object.responsable = request.user
+            # Cambiar estado a EN_CURSO si estaba PENDIENTE
+            if self.object.estado == OrdenMantenimiento.EstadoOrden.PENDIENTE:
+                self.object.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
+            
+            self.object.save()
+            
+            messages.success(request, f"Has asumido la responsabilidad de la Orden #{self.object.id}")
+            return redirect('gestion_mantenimiento:ruta_gestionar_orden', pk=self.object.pk)
+            
+        return super().get(request, *args, **kwargs)
