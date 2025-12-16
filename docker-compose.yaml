@@ -66,4 +66,4 @@ services:
       - POSTGRES_PASSWORD=123456
 
 volumes:
-  postgres_data:  # Esto hace que los datos persistan aunque apagues Docker
+  postgres_data:  # Esto hace que los datos persistan aunque se apague Docker

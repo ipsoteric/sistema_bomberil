@@ -8,16 +8,12 @@ ENV PYTHONUNBUFFERED 1
 # 3. Establecer directorio de trabajo
 WORKDIR /app
 
-## 4. Instalar cliente SSH
-#RUN apt-get update && apt-get install -y openssh-client
-# 4. Instalamos dependencias del sistema necesarias para Postgres y compilación netcat-openbsd se usa para verificar si la base de datos está lista
+# 4. Instalar dependencias del sistema necesarias para Postgres y compilación netcat-openbsd se usa para verificar si la base de datos está lista
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
     netcat-openbsd \
     && apt-get clean
-
-
 
 # 5. Copiar archivo de dependencias
 COPY requirements.txt /app/requirements.txt
