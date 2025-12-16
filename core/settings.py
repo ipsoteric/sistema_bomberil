@@ -343,15 +343,15 @@ CELERY_BEAT_SCHEDULE = {
     # 1. Generador de Mantenimiento (00:05 AM)
     'mantenimiento-diario-preventivo': {
         'task': 'apps.gestion_mantenimiento.tasks.tarea_generar_mantenimiento_diario',
-        #'schedule': crontab(hour=0, minute=5),  # A las 00:05 todos los días
-        'schedule': crontab(minute='*/2'),  # Ejecutar cada 2 minutos (ej: 14:00, 14:02, 14:04)
+        'schedule': crontab(hour=0, minute=5),  # A las 00:05 todos los días
+        #'schedule': crontab(minute='*/2'),  # Ejecutar cada 2 minutos (ej: 14:00, 14:02, 14:04)
     },
     
     # 2. Reporte Diario de Actividad (23:30 PM)
     'reporte-diario-ejecutivo': {
         'task': 'apps.portal.tasks.tarea_enviar_reportes_diarios',
-        #'schedule': crontab(hour=23, minute=30),  # A las 23:30 todos los días
-        'schedule': crontab(minute='*/3'),  # Ejecutar cada 3 minutos (para que no se topen siempre)
+        'schedule': crontab(hour=23, minute=30),  # A las 23:30 todos los días
+        #'schedule': crontab(minute='*/30'),  # Ejecutar cada 3 minutos (para que no se topen siempre)
     },
 }
 
