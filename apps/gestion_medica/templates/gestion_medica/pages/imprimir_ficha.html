@@ -5,112 +5,7 @@
     <meta charset="UTF-8">
     <title>Ficha Médica - {{ voluntario.usuario.get_full_name }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        /* =========================================
-           VARIABLES DE TIPOGRAFÍA (SEGÚN GUÍA)
-           ========================================= */
-        :root {
-            /* --- TYPOGRAPHY SCALE (Modular: 1.25) --- */
-            /* Asumiendo base 1.6rem (16px) */
-            --font-xs:   1.2rem;
-            --font-sm:   1.4rem;
-            --font-base: 1.6rem;
-            --font-md:   2.0rem;
-            --font-lg:   2.5rem;
-            --font-xl:   3.1rem;
-            --font-2xl:  3.9rem;
-            --font-3xl:  4.8rem;
-
-            /* --- FONT WEIGHTS --- */
-            --weight-regular: 400;
-            --weight-medium:  500;
-            --weight-bold:    700;
-            --weight-black:   900;
-            
-            /* --- FONT FAMILIES --- */
-            --font-data: "Courier New", Courier, monospace; /* Fallback para datos */
-        }
-
-        /* =========================================
-           CLASES UTILITARIAS (SEGÚN GUÍA)
-           ========================================= */
-        
-        /* TAMAÑOS */
-        .text-xs   { font-size: var(--font-xs) !important; }
-        .text-sm   { font-size: var(--font-sm) !important; }
-        .text-base { font-size: var(--font-base) !important; }
-        .text-md   { font-size: var(--font-md) !important; }
-        .text-lg   { font-size: var(--font-lg) !important; line-height: 1.2 !important; }
-        .text-xl   { font-size: var(--font-xl) !important; line-height: 1.1 !important; letter-spacing: -0.02em !important; }
-        .text-2xl  { font-size: var(--font-2xl) !important; line-height: 1.1 !important; letter-spacing: -0.03em !important; }
-        .text-3xl  { font-size: var(--font-3xl) !important; line-height: 1.0 !important; letter-spacing: -0.04em !important; }
-
-        /* PESOS */
-        .font-regular { font-weight: var(--weight-regular) !important; }
-        .font-medium  { font-weight: var(--weight-medium) !important; }
-        .font-bold    { font-weight: var(--weight-bold) !important; }
-        .font-black   { font-weight: var(--weight-black) !important; }
-
-        /* TEXTO ESPECIAL */
-        .text-data-code { font-family: var(--font-data); }
-
-        /* =========================================
-           ESTILOS ESPECÍFICOS DE LA FICHA
-           ========================================= */
-        
-        /* Seteamos la base a 62.5% para que 1.6rem sea aprox 16px, o ajustamos según tu CSS global */
-        html { font-size: 62.5%; } 
-
-        body { 
-            font-family: "Arial", sans-serif; 
-            background: #fff; 
-            padding: 40px; 
-            /* Aplicamos el estilo base al cuerpo */
-            font-size: var(--font-base);
-            font-weight: var(--weight-regular);
-            color: #333;
-        }
-        
-        /* Encabezado */
-        .header { border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-        
-        /* Títulos de sección */
-        .section-title { 
-            background-color: #f1f3f5; 
-            padding: 8px 15px; 
-            text-transform: uppercase; 
-            margin-top: 25px; 
-            margin-bottom: 15px;
-            border-left: 5px solid #dc3545; /* Rojo bomberos */
-        }
-        
-        /* Filas de datos */
-        .data-row { margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        
-        /* Etiquetas: Usamos font-bold y text-sm para jerarquía */
-        .label { 
-            color: #555; 
-            width: 140px; 
-            display: inline-block; 
-        }
-        
-        /* Foto de perfil */
-        .ficha-avatar {
-            width: 100px; 
-            height: 100px; 
-            object-fit: cover; 
-            border: 1px solid #ddd; 
-            border-radius: 5px;
-        }
-
-        /* Estilos para impresión */
-        @media print {
-            .no-print { display: none !important; }
-            a { text-decoration: none; color: #000; }
-            body { padding: 0; }
-            .section-title { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'gestion_medica/css/imprimir_ficha.css' %}">
 </head>
 <body class="text-base font-regular">
     
@@ -133,10 +28,8 @@
             </div>
             
             <div>
-                <h2 class="text-2xl font-bold mb-1">{{ voluntario.usuario.get_full_name }}</h2>
-                
+                <h2 class="text-2xl font-black mb-1">{{ voluntario.usuario.get_full_name }}</h2>
                 <p class="mb-0 text-lg font-bold text-data-code">RUT: {{ voluntario.usuario.rut }}</p>
-                
                 <p class="text-muted mb-0 text-sm font-medium">Segunda Compañía de Bomberos - Hoja de Vida Médica</p>
             </div>
         </div>
@@ -192,11 +85,31 @@
 
         <div class="col-6">
             <div class="section-title text-lg font-bold">Datos Clínicos Base</div>
-            <div class="data-row text-base"><span class="label text-sm font-bold">Grupo Sangre:</span> <strong class="font-bold text-lg">{{ ficha.grupo_sanguineo.nombre|default:"N/A" }}</strong></div>
+            
+            <div class="data-row text-base">
+                <span class="label text-sm font-bold">Grupo Sangre:</span> 
+                <strong class="font-black text-lg text-danger">{{ ficha.grupo_sanguineo.nombre|default:"N/A" }}</strong>
+            </div>
+
+            <div class="box-donantes">
+                <div class="text-xs font-black text-uppercase text-muted mb-1">
+                    <i class="fas fa-hand-holding-medical me-1"></i>Puede recibir donación de:
+                </div>
+                {% if posibles_donantes %}
+                    <div class="text-sm font-medium lh-sm">
+                        {% for donante in posibles_donantes %}
+                            {{ donante.voluntario.usuario.get_full_name }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <span class="text-muted text-xs fst-italic">No hay donantes compatibles registrados en esta estación.</span>
+                {% endif %}
+            </div>
+
             <div class="data-row text-base"><span class="label text-sm font-bold">Sistema Salud:</span> {{ ficha.sistema_salud.nombre|default:"N/A" }}</div>
             <div class="data-row text-base"><span class="label text-sm font-bold">Peso:</span> <span class="text-data-code">{{ ficha.peso_kg|default:"--" }}</span> kg</div>
             <div class="data-row text-base"><span class="label text-sm font-bold">Altura:</span> <span class="text-data-code">{{ ficha.altura_mts|default:"--" }}</span> mts</div>
-            <div class="data-row text-base"><span class="label text-sm font-bold">Presión Art.:</span> <span class="text-data-code">{{ ficha.presion_arterial_sistolica|default:"-" }}/{{ ficha.presion_arterial_diastolica|default:"-" }}</span></div>
+            <div class="data-row text-base"><span class="label text-sm font-bold">Presión Art.:</span> <span class="text-data-code font-bold">{{ ficha.presion_arterial_sistolica|default:"-" }}/{{ ficha.presion_arterial_diastolica|default:"-" }}</span></div>
         </div>
     </div>
 
@@ -232,15 +145,42 @@
 
     <div class="row mb-4">
         <div class="col-6 mb-3">
-            <h6 class="font-bold text-base text-primary border-bottom pb-1 mb-2">Medicamentos Permanentes</h6>
+            <h6 class="font-bold text-base text-primary border-bottom pb-1 mb-2">
+                <i class="fas fa-prescription-bottle-alt me-2"></i>Medicamentos
+            </h6>
             {% if medicamentos %}
-                <ul class="mb-0 ps-3 text-base">
+                <ul class="mb-0 ps-2 list-unstyled">
                 {% for item in medicamentos %}
-                    <li>{{ item.medicamento.nombre }} <br><small class="text-muted text-xs">Dosis: {{ item.dosis_frecuencia|default:"No especificada" }}</small></li>
+                    <li class="med-list-item">
+                        <div class="d-flex align-items-center flex-wrap">
+                            <span class="med-name">{{ item.medicamento.nombre }}</span>
+                            
+                            <span class="med-conc ms-2">
+                                ({{ item.medicamento.concentracion }} {{ item.medicamento.unidad }})
+                            </span>
+
+                            {% if item.medicamento.clasificacion_riesgo %}
+                                {% if item.medicamento.clasificacion_riesgo == 'ANTICOAGULANTE' or item.medicamento.clasificacion_riesgo == 'ANTIPLAQUETARIO' %}
+                                    <span class="badge-print badge-danger-print">
+                                        {{ item.medicamento.clasificacion_riesgo }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge-print badge-warning-print">
+                                        {{ item.medicamento.clasificacion_riesgo }}
+                                    </span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+
+                        <div class="med-dosis">
+                            <i class="fas fa-clock me-1 text-muted" style="font-size: 0.8em;"></i>
+                            Dosis: {{ item.dosis_frecuencia|default:"Según indicación médica" }}
+                        </div>
+                    </li>
                 {% endfor %}
                 </ul>
             {% else %}
-                <p class="text-muted fst-italic text-sm mb-0">No utiliza medicamentos permanentes.</p>
+                <p class="text-muted fst-italic text-sm mb-0 ms-2">No utiliza medicamentos permanentes.</p>
             {% endif %}
         </div>
         
@@ -249,7 +189,12 @@
             {% if cirugias %}
                 <ul class="mb-0 ps-3 text-base">
                 {% for item in cirugias %}
-                    <li>{{ item.cirugia.nombre }} <small class="text-muted text-xs text-data-code">({{ item.fecha_cirugia|date:"Y"|default:"Fecha S/I" }})</small></li>
+                    <li>
+                        <strong class="font-bold">{{ item.cirugia.nombre }}</strong> 
+                        <small class="text-muted text-xs text-data-code ms-1">
+                            ({{ item.fecha_cirugia|date:"Y"|default:"Fecha S/I" }})
+                        </small>
+                    </li>
                 {% endfor %}
                 </ul>
             {% else %}

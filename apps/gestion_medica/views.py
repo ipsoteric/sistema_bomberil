@@ -8,7 +8,7 @@ from django.views import View
 from django.contrib import messages
 from django.urls import reverse  
 from django.db import IntegrityError
-from django.db.models import Count, ProtectedError
+from django.db.models import Count, ProtectedError, Q
 from datetime import date
 from django.http import HttpResponse, JsonResponse
 # --- Imports del Proyecto ---
@@ -330,8 +330,41 @@ class MedicoImprimirView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
             pk=pk,
             voluntario__usuario__membresias__estacion=self.estacion_activa
         )
-        
-        # Auditoría de descarga
+        # 2. Lógica de Receptores (¿De quién puedo recibir sangre?)
+        grupo_paciente = ficha.grupo_sanguineo.nombre if ficha.grupo_sanguineo else None
+        tipos_compatibles = []
+
+        if grupo_paciente:
+            gp = str(grupo_paciente).strip().upper()
+            if gp == 'AB+':
+                tipos_compatibles = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] # Receptor Universal
+            elif gp == 'AB-':
+                tipos_compatibles = ['A-', 'B-', 'AB-', 'O-']
+            elif gp == 'A+':
+                tipos_compatibles = ['A+', 'A-', 'O+', 'O-']
+            elif gp == 'A-':
+                tipos_compatibles = ['A-', 'O-']
+            elif gp == 'B+':
+                tipos_compatibles = ['B+', 'B-', 'O+', 'O-']
+            elif gp == 'B-':
+                tipos_compatibles = ['B-', 'O-']
+            elif gp == 'O+':
+                tipos_compatibles = ['O+', 'O-']
+            elif gp == 'O-':
+                tipos_compatibles = ['O-'] # Solo recibe de O-
+
+        # 3. Buscar compañeros compatibles en la base de datos
+        posibles_donantes = []
+        if tipos_compatibles:
+            posibles_donantes = FichaMedica.objects.filter(
+                grupo_sanguineo__nombre__in=tipos_compatibles,
+                voluntario__usuario__membresias__estacion=self.estacion_activa,
+                voluntario__usuario__membresias__estado='ACTIVO'
+            ).exclude(
+                pk=ficha.pk # Excluirse a sí mismo
+            ).select_related('voluntario__usuario').order_by('voluntario__usuario__last_name')
+
+        # 4. Auditoría y Contexto
         self.auditar(
             verbo="generó reporte clínico impreso de",
             objetivo=ficha.voluntario.usuario,
@@ -355,7 +388,8 @@ class MedicoImprimirView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
             'medicamentos': ficha.medicamentos.all(),
             'cirugias': ficha.cirugias.all(),
             'contactos': voluntario.contactos_emergencia.all(),
-            'fecha_reporte': date.today()
+            'fecha_reporte': date.today(),
+            'posibles_donantes': posibles_donantes,
         })
 
 
