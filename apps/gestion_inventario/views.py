@@ -4122,8 +4122,12 @@ class GestionarDevolucionView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
                 continue
 
             # 1. Capturar Inputs
-            cant_devolver = int(request.POST.get(f'cantidad-devolver-{detalle.id}', 0))
-            cant_perder = int(request.POST.get(f'cantidad-perder-{detalle.id}', 0)) # Nuevo input
+            raw_devuelta = request.POST.get(f'cantidad-devolver-{detalle.id}', 0)
+            raw_extraviada = request.POST.get(f'cantidad-perder-{detalle.id}', 0)
+
+            # Convertir de forma segura (si es vacío, asume 0)
+            cant_devolver = int(raw_devuelta) if raw_devuelta and raw_devuelta.strip() else 0
+            cant_perder = int(raw_extraviada) if raw_extraviada and raw_extraviada.strip() else 0
 
             # Validaciones básicas
             suma_accion = cant_devolver + cant_perder

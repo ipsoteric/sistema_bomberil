@@ -15,11 +15,11 @@ fixtures=(
     "apps/gestion_inventario/fixtures/inventario_datos_lotes.json"
     "apps/gestion_inventario/fixtures/inventario_datos_destinatarios.json"
     "apps/gestion_usuarios/fixtures/usuarios_datos_base.json"
-    "apps/gestion_usuarios/fixtures/usuarios_datos_usuarios.json"
+    #"apps/gestion_usuarios/fixtures/usuarios_datos_usuarios.json"
     "apps/gestion_voluntarios/fixtures/voluntarios_datos_base.json"
-    "apps/gestion_voluntarios/fixtures/voluntarios_datos_voluntarios.json"
+    #"apps/gestion_voluntarios/fixtures/voluntarios_datos_voluntarios.json"
     "apps/gestion_medica/fixtures/medica_datos_base.json"
-    "apps/gestion_medica/fixtures/medica_datos_fichas.json"
+    #"apps/gestion_medica/fixtures/medica_datos_fichas.json"
     "apps/gestion_documental/fixtures/documental_datos_base.json"
 )
 
