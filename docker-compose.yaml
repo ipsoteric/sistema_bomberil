@@ -14,7 +14,7 @@ services:
       - redis
     environment:
       - SQL_HOST=db
-      - LOCAL_DB_URL=postgres://bomberil_user:123456@db:5432/bomberildb
+      - DB_URL=postgres://bomberil_user:123456@db:5432/bomberildb
       - RUN_MIGRATIONS=true
 
   # --- 2. WORKER (Tareas asíncronas) ---
@@ -30,7 +30,7 @@ services:
       - redis
     environment:
       - SQL_HOST=db
-      - LOCAL_DB_URL=postgres://bomberil_user:123456@db:5432/bomberildb
+      - DB_URL=postgres://bomberil_user:123456@db:5432/bomberildb
 
   # --- 3. BEAT (Tareas periódicas) ---
   beat:
@@ -45,7 +45,7 @@ services:
       - redis
     environment:
       - SQL_HOST=db
-      - LOCAL_DB_URL=postgres://bomberil_user:123456@db:5432/bomberildb
+      - DB_URL=postgres://bomberil_user:123456@db:5432/bomberildb
 
   # --- 4. REDIS (Cola de mensajes) ---
   redis:

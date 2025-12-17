@@ -93,9 +93,9 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": env.str('SQL_ENGINE'),
-        "NAME": env.str('LOCAL_DB_NAME'),
-        "USER": env.str('LOCAL_DB_USER'),
-        "PASSWORD": env.str('LOCAL_DB_PASSWORD'),
+        "NAME": env.str('DB_NAME'),
+        "USER": env.str('DB_USER'),
+        "PASSWORD": env.str('DB_PASSWORD'),
         "HOST": env.str('SQL_HOST'),
         "PORT": env.str('SQL_PORT'),
         "TEST": {
@@ -254,13 +254,17 @@ AWS_QUERYSTRING_AUTH = False
 
 
 # Configuración para envío de correos
-EMAIL_BACKEND = env.str('EMAIL_BACKEND')
-DEFAULT_FROM_EMAIL = env.str('DEFAULT_FROM_EMAIL')
-EMAIL_HOST = env.str('EMAIL_HOST')
-EMAIL_HOST_USER = env.str('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = env.str('EMAIL_HOST_PASSWORD')
-EMAIL_PORT = env.str('EMAIL_PORT')
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS')
+EMAIL_BACKEND = env.str('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+DEFAULT_FROM_EMAIL = env.str('DEFAULT_FROM_EMAIL', default='no-reply@bomberil.cl')
+# Configuración SES (Solo necesaria en Prod)
+AWS_SES_REGION_NAME = env.str('AWS_SES_REGION_NAME', default='us-east-1')
+AWS_SES_REGION_ENDPOINT = env.str('AWS_SES_REGION_ENDPOINT', default='email.us-east-1.amazonaws.com')
+# Configuración SMTP
+EMAIL_HOST = env.str('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_HOST_USER = env.str('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env.str('EMAIL_HOST_PASSWORD', default='')
+EMAIL_PORT = env.str('EMAIL_PORT', default='587')
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 
 
 # URL del bucket de S3
