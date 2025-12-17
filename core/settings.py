@@ -257,8 +257,8 @@ AWS_QUERYSTRING_AUTH = False
 EMAIL_BACKEND = env.str('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
 DEFAULT_FROM_EMAIL = env.str('DEFAULT_FROM_EMAIL', default='no-reply@bomberil.cl')
 # Configuración SES (Solo necesaria en Prod)
-AWS_SES_REGION_NAME = env.str('AWS_SES_REGION_NAME', default='us-east-1')
-AWS_SES_REGION_ENDPOINT = env.str('AWS_SES_REGION_ENDPOINT', default='email.us-east-1.amazonaws.com')
+AWS_SES_REGION_NAME = env.str('AWS_SES_REGION_NAME', default='us-east-2')
+AWS_SES_REGION_ENDPOINT = env.str('AWS_SES_REGION_ENDPOINT', default='email.us-east-2.amazonaws.com')
 # Configuración SMTP
 EMAIL_HOST = env.str('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_HOST_USER = env.str('EMAIL_HOST_USER', default='')
