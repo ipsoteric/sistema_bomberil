@@ -99,15 +99,15 @@ class BomberilLoginView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         
-        try:
-            serializer.is_valid(raise_exception=True)
-        except Exception as e:
+        # Validamos sin lanzar excepción automática para poder imprimir errores
+        if not serializer.is_valid():
             print("\n" + "="*30)
-            print("🚨 ERROR DE VALIDACIÓN DETECTADO")
-            print("Datos Recibidos:", request.data)
-            print("Errores del Serializer:", serializer.errors)
+            print("🚨 ERROR DE LOGIN:")
+            print("Datos:", request.data)
+            print("Errores:", serializer.errors) # Ahora sí funcionará este print
             print("="*30 + "\n")
-            raise e # Vuelve a lanzar el error para que responda 400 normal
+            # Devolvemos el error 400/401 limpio a la App
+            return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
 
         return super().post(request, *args, **kwargs)
 
