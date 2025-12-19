@@ -105,6 +105,11 @@ DATABASES = {
         },
     },
 }
+# Si el host de la BD contiene 'amazonaws', activamos el modo seguro automáticamente
+if 'amazonaws.com' in env.str('SQL_HOST', default=''):
+    DATABASES['default']['OPTIONS'] = {
+        'sslmode': 'require'
+    }
 
 
 # Validaciones de contraseña
