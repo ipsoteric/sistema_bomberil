@@ -14,7 +14,9 @@ env.read_env(os.path.join(BASE_DIR, '.env'))
 
 SECRET_KEY = env.str('SECRET_KEY')
 DEBUG = env.bool('DEBUG', default=False)
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+# Configuración de CSRF para HTTPS: Como Nginx maneja el HTTPS y le pasa HTTP a Docker, Django necesita confiar en el dominio seguro. Si no pongo esto, no se podrá iniciar sesión (error CSRF).
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
 
 
 # Aplicaciones predeterminadas de Django
@@ -267,26 +269,53 @@ EMAIL_PORT = env.str('EMAIL_PORT', default='587')
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 
 
-# URL del bucket de S3
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+# ========================================================
+# CONFIGURACIÓN DE ALMACENAMIENTO (MEDIA Y STATIC)
+# ========================================================
 
+# Configuración base de Static Files (siempre usa WhiteNoise según tu config actual)
+STATICFILES_STORAGE_BACKEND = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Configuración de Storages para almacenamiento de archivos estáticos en AWS S3
-STORAGES = {
-    # MEDIA -> S3
-    "default": {
-        "BACKEND": "storages.backends.s3.S3Storage",
-        "OPTIONS": {
-            "bucket_name": AWS_STORAGE_BUCKET_NAME,
-            "location": "media",                # <— clave: prefijo dentro del bucket
-            "custom_domain": AWS_S3_CUSTOM_DOMAIN, 
+if not DEBUG:
+    # ----------------------------------------------------
+    # PRODUCCIÓN (AWS S3)
+    # ----------------------------------------------------
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "bucket_name": AWS_STORAGE_BUCKET_NAME,
+                "location": "media",
+                "custom_domain": AWS_S3_CUSTOM_DOMAIN,
+            },
         },
-    },
-    # STATIC -> local con WhiteNoise
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "staticfiles": {
+            "BACKEND": STATICFILES_STORAGE_BACKEND,
+        }
     }
-}
+
+else:
+    # ----------------------------------------------------
+    # DESARROLLO (LOCAL)
+    # ----------------------------------------------------
+    # URL pública para acceder a los archivos
+    MEDIA_URL = '/media/'
+    
+    # Ruta física en tu disco duro donde se guardarán
+    MEDIA_ROOT = BASE_DIR / 'media'
+
+    STORAGES = {
+        "default": {
+            # Backend por defecto de Django para guardar en disco
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": STATICFILES_STORAGE_BACKEND,
+        }
+    }
+
 
 
 # Configuración de Django Rest Framework

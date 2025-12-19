@@ -10,9 +10,9 @@
     "gtin": null,
     "categoria": 6,
     "vida_util_recomendada_anos": 30,
-    "imagen": "productos_globales/imagen/main/producto_7700b056-9a5e-43e6-902e-96623e3add2f.jpg",
-    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_7700b056-9a5e-43e6-902e-96623e3add2f_medium.jpg",
-    "imagen_thumb_small": "productos_globales/imagen/small/producto_7700b056-9a5e-43e6-902e-96623e3add2f_small.jpg",
+    "imagen": "productos_globales/imagen/main/producto_5796fe44-5085-448c-8666-89dac34eb14b.jpg",
+    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_5796fe44-5085-448c-8666-89dac34eb14b_medium.jpg",
+    "imagen_thumb_small": "productos_globales/imagen/small/producto_5796fe44-5085-448c-8666-89dac34eb14b_small.jpg",
     "created_at": "2025-12-04T06:55:47.884Z",
     "updated_at": "2025-12-04T06:57:07.655Z"
   }
@@ -28,9 +28,9 @@
     "gtin": null,
     "categoria": 6,
     "vida_util_recomendada_anos": null,
-    "imagen": "productos_globales/imagen/main/producto_7dc171c7-5e19-46a3-ba5b-ffea9a05c302.jpg",
-    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_7dc171c7-5e19-46a3-ba5b-ffea9a05c302_medium.jpg",
-    "imagen_thumb_small": "productos_globales/imagen/small/producto_7dc171c7-5e19-46a3-ba5b-ffea9a05c302_small.jpg",
+    "imagen": "productos_globales/imagen/main/producto_c819b4fb-521a-43da-824d-b7df9dd6b91f.jpg",
+    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_c819b4fb-521a-43da-824d-b7df9dd6b91f_medium.jpg",
+    "imagen_thumb_small": "productos_globales/imagen/small/producto_c819b4fb-521a-43da-824d-b7df9dd6b91f_small.jpg",
     "created_at": "2025-12-04T07:00:11.848Z",
     "updated_at": "2025-12-04T07:00:11.848Z"
   }
@@ -46,9 +46,9 @@
     "gtin": null,
     "categoria": 2,
     "vida_util_recomendada_anos": null,
-    "imagen": "productos_globales/imagen/main/11842eb6-04e8-4042-8631-7bdc8dd40e9d.jpg",
-    "imagen_thumb_medium": "productos_globales/imagen/medium/11842eb6-04e8-4042-8631-7bdc8dd40e9d_medium.jpg",
-    "imagen_thumb_small": "productos_globales/imagen/small/11842eb6-04e8-4042-8631-7bdc8dd40e9d_small.jpg",
+    "imagen": "productos_globales/imagen/main/producto_88eacdd0-c667-47af-8a9d-a0280b5f2718.jpg",
+    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_88eacdd0-c667-47af-8a9d-a0280b5f2718_medium.jpg",
+    "imagen_thumb_small": "productos_globales/imagen/small/producto_88eacdd0-c667-47af-8a9d-a0280b5f2718_small.jpg",
     "created_at": "2025-12-04T07:17:05.819Z",
     "updated_at": "2025-12-04T07:17:05.819Z"
   }
@@ -64,9 +64,9 @@
     "gtin": null,
     "categoria": 3,
     "vida_util_recomendada_anos": null,
-    "imagen": "productos_globales/imagen/main/0d33895d-267f-44de-acf1-6441db7a0f18.jpg",
-    "imagen_thumb_medium": "productos_globales/imagen/medium/0d33895d-267f-44de-acf1-6441db7a0f18_medium.jpg",
-    "imagen_thumb_small": "productos_globales/imagen/small/0d33895d-267f-44de-acf1-6441db7a0f18_small.jpg",
+    "imagen": "productos_globales/imagen/main/producto_91856ba7-8bbe-476c-8bac-7cd656d515d8.jpg",
+    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_91856ba7-8bbe-476c-8bac-7cd656d515d8_medium.jpg",
+    "imagen_thumb_small": "productos_globales/imagen/small/producto_91856ba7-8bbe-476c-8bac-7cd656d515d8_small.jpg",
     "created_at": "2025-12-04T07:22:10.709Z",
     "updated_at": "2025-12-04T07:22:10.709Z"
   }
@@ -82,9 +82,9 @@
     "gtin": null,
     "categoria": 3,
     "vida_util_recomendada_anos": null,
-    "imagen": "productos_globales/imagen/main/producto_6792f9b9-d32c-4ea6-b4fe-8df5fed68b70.jpg",
-    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_6792f9b9-d32c-4ea6-b4fe-8df5fed68b70_medium.jpg",
-    "imagen_thumb_small": "productos_globales/imagen/small/producto_6792f9b9-d32c-4ea6-b4fe-8df5fed68b70_small.jpg",
+    "imagen": "productos_globales/imagen/main/producto_13ebb817-c83b-4498-b99c-1c1a688aba3e.jpg",
+    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_13ebb817-c83b-4498-b99c-1c1a688aba3e_medium.jpg",
+    "imagen_thumb_small": "productos_globales/imagen/small/producto_13ebb817-c83b-4498-b99c-1c1a688aba3e_small.jpg",
     "created_at": "2025-12-04T07:24:04.917Z",
     "updated_at": "2025-12-04T07:24:57.909Z"
   }
@@ -100,9 +100,9 @@
     "gtin": null,
     "categoria": 2,
     "vida_util_recomendada_anos": null,
-    "imagen": "productos_globales/imagen/main/b8d44fba-25ea-4522-965a-055dd34955e1.jpg",
-    "imagen_thumb_medium": "productos_globales/imagen/medium/b8d44fba-25ea-4522-965a-055dd34955e1_medium.jpg",
-    "imagen_thumb_small": "productos_globales/imagen/small/b8d44fba-25ea-4522-965a-055dd34955e1_small.jpg",
+    "imagen": "productos_globales/imagen/main/producto_a2f70268-d6b9-4aad-a024-ae3879a8cf8a.jpg",
+    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_a2f70268-d6b9-4aad-a024-ae3879a8cf8a_medium.jpg",
+    "imagen_thumb_small": "productos_globales/imagen/small/producto_a2f70268-d6b9-4aad-a024-ae3879a8cf8a_small.jpg",
     "created_at": "2025-12-04T07:29:24.546Z",
     "updated_at": "2025-12-04T07:29:24.546Z"
   }
@@ -118,9 +118,9 @@
     "gtin": null,
     "categoria": 1,
     "vida_util_recomendada_anos": null,
-    "imagen": "productos_globales/imagen/main/16103c45-c5db-4b48-a6df-3e371306444f.jpg",
-    "imagen_thumb_medium": "productos_globales/imagen/medium/16103c45-c5db-4b48-a6df-3e371306444f_medium.jpg",
-    "imagen_thumb_small": "productos_globales/imagen/small/16103c45-c5db-4b48-a6df-3e371306444f_small.jpg",
+    "imagen": "productos_globales/imagen/main/producto_b6c15e81-a487-4348-a636-9b716c5e3eaf.jpg",
+    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_b6c15e81-a487-4348-a636-9b716c5e3eaf_medium.jpg",
+    "imagen_thumb_small": "productos_globales/imagen/small/producto_b6c15e81-a487-4348-a636-9b716c5e3eaf_small.jpg",
     "created_at": "2025-12-04T07:32:03.106Z",
     "updated_at": "2025-12-04T07:32:03.106Z"
   }
@@ -136,9 +136,9 @@
     "gtin": null,
     "categoria": 1,
     "vida_util_recomendada_anos": null,
-    "imagen": "productos_globales/imagen/main/cf511c96-44b5-4d2e-ba82-960633874284.jpg",
-    "imagen_thumb_medium": "productos_globales/imagen/medium/cf511c96-44b5-4d2e-ba82-960633874284_medium.jpg",
-    "imagen_thumb_small": "productos_globales/imagen/small/cf511c96-44b5-4d2e-ba82-960633874284_small.jpg",
+    "imagen": "productos_globales/imagen/main/producto_6deed4c3-470c-47e2-8625-3d228de88b4e.jpg",
+    "imagen_thumb_medium": "productos_globales/imagen/medium/producto_6deed4c3-470c-47e2-8625-3d228de88b4e_medium.jpg",
+    "imagen_thumb_small": "productos_globales/imagen/small/producto_6deed4c3-470c-47e2-8625-3d228de88b4e_small.jpg",
     "created_at": "2025-12-04T07:33:58.571Z",
     "updated_at": "2025-12-04T07:33:58.571Z"
   }
