@@ -169,7 +169,7 @@ class RegistroMantenimientoAdmin(SysPermissionMixin, admin.ModelAdmin):
 
     def orden_link(self, obj):
         return format_html(
-            '<a href="/admin/mantenimiento/ordenmantenimiento/{}/change/">Orden #{}</a>',
+            '<a href="/panel_gestion/mantenimiento/ordenmantenimiento/{}/change/">Orden #{}</a>',
             obj.orden_mantenimiento.id,
             obj.orden_mantenimiento.id
         )

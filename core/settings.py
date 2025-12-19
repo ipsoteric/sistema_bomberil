@@ -424,3 +424,10 @@ if not DEBUG:
             },
         },
     }
+
+
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = env.list('SECURE_PROXY_SSL_HEADER')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
