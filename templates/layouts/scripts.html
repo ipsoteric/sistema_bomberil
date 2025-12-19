@@ -7,10 +7,8 @@ integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
 crossorigin="anonymous">
 </script>
 
-<!--
 {# JQuery 3.7.1 LOCAL #}
-<script src="{% static 'lib/jquery/jquery-3.7.1.min.js' %}"></script>
--->
+{# <script src="{% static 'lib/jquery/jquery-3.7.1.min.js' %}"></script> #}
 
 {# Scripts propios #}
 <script src="{% static 'js/nav.js' %}"></script>
@@ -36,10 +34,8 @@ crossorigin="anonymous">
 src="https://cdn.datatables.net/2.3.2/js/dataTables.js">
 </script>
 
-<!--
 {# DataTablesJs JS LOCAL #}
-<script src="{% static 'lib/datatables/js/dataTables.js' %}"></script>
--->
+{# <script src="{% static 'lib/datatables/js/dataTables.js' %}"></script> #}
 
 {# Tom Select JS #}
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
@@ -47,10 +43,9 @@ src="https://cdn.datatables.net/2.3.2/js/dataTables.js">
 
 {# Toastify.js CDN #}
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-<!--
 {# Toastify.js LOCAL #}
-<script type="text/javascript" src="{% static 'lib/toastify-js/src/toastify.js' %}"></script>
--->
+{# <script type="text/javascript" src="{% static 'lib/toastify-js/src/toastify.js' %}"></script> #}
+
 <script>
     {% if messages %}
         {% for message in messages %}
