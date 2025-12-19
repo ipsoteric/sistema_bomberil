@@ -7,7 +7,7 @@ from django.conf import settings
 admin.site.site_url = "/"
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('panel_gestion/', admin.site.urls),
     path('gestion_usuarios/', include("apps.gestion_usuarios.urls")),
     path('inventario/', include("apps.gestion_inventario.urls")),
     path('mantenimiento/', include("apps.gestion_mantenimiento.urls")),
