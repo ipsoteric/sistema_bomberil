@@ -400,3 +400,27 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 INVENTARIO_UBICACION_AREA_NOMBRE = "ÁREA"
 INVENTARIO_UBICACION_VEHICULO_NOMBRE = "VEHÍCULO"
 INVENTARIO_UBICACION_ADMIN_NOMBRE = "ADMINISTRATIVA"
+
+
+# Configuración de LOGGING solo para Producción
+if not DEBUG:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': True,
+            },
+        },
+    }
