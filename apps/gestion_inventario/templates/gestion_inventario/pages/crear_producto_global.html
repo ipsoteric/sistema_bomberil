@@ -128,7 +128,12 @@
             // Busca todos los select que tengan la clase que definimos en forms.py
             document.querySelectorAll('.tom-select-creatable').forEach((el)=>{
                 new TomSelect(el,{
-                    create: true, // Habilita la creación de nuevas opciones
+                    create: function(input) {
+                        return {
+                            value: 'new__' + input, // Esto envía "new__420" al servidor
+                            text: input             // Esto muestra "420" al usuario en la lista
+                        }
+                    },
                     createOnBlur: true, // Permite crear la opción al salir del campo
                     persist: false, // No mantiene las opciones creadas en la lista desplegable después de seleccionar
                     maxItems: 1,

@@ -1352,65 +1352,94 @@ class ProductoGlobalCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
         """
         marca_input = request.POST.get('marca')
         
-        # Si no hay input o es un ID numérico, no hacemos nada especial
-        if not marca_input or marca_input.isdigit():
-            return request.POST, None
+        # 1. Si no hay input, devolvemos tal cual
+        if not marca_input:
+             return request.POST, None
 
-        # Si llegamos aquí, es texto libre
-        try:
-            marca_obj, created = Marca.objects.get_or_create(
-                nombre=marca_input.strip(), 
-                defaults={'descripcion': ''}
-            )
+        # 2. DETECCIÓN POR PREFIJO (Lógica JS new__)
+        if marca_input.startswith('new__'):
+            # Quitamos el prefijo para obtener el nombre real: "new__420" -> "420"
+            nombre_marca_limpio = marca_input.replace('new__', '', 1).strip()
             
-            if created:
-                # --- AUDITORÍA ---
-                self.auditar(
-                    verbo="creó la marca",
-                    objetivo=marca_obj,
-                    objetivo_repr=marca_obj.nombre,
+            try:
+                # Usamos get_or_create por si alguien intenta crear algo que ya existe por nombre
+                marca_obj, created = Marca.objects.get_or_create(
+                    nombre=nombre_marca_limpio, 
+                    defaults={'descripcion': ''}
                 )
-                messages.info(request, f'Se ha creado la nueva marca "{marca_obj.nombre}".')
-            
-            # Modificamos el POST para inyectar el ID real
-            post_data = request.POST.copy()
-            post_data['marca'] = str(marca_obj.id)
-            return post_data, None
+                
+                if created:
+                    # Auditoría
+                    self.auditar(
+                        verbo="creó la marca",
+                        objetivo=marca_obj,
+                        objetivo_repr=marca_obj.nombre
+                    )
+                    messages.info(request, f'Se ha creado la nueva marca "{marca_obj.nombre}".')
+                
+                # Inyectamos el ID real en el POST data para que el Form lo entienda
+                post_data = request.POST.copy()
+                post_data['marca'] = str(marca_obj.id)
+                return post_data, None
 
-        except IntegrityError:
-            return None, f'Error: La marca "{marca_input}" no se pudo crear (posible duplicado).'
-        except Exception as e:
-            return None, f'Error inesperado creando marca: {str(e)}'
+            except IntegrityError:
+                return None, f'Error: La marca "{nombre_marca_limpio}" ya existe o es inválida.'
+            except Exception as e:
+                return None, f'Error inesperado creando marca: {str(e)}'
+
+        # 3. SI NO TIENE PREFIJO, ES UN ID NORMAL
+        # No hacemos nada, dejamos que el form valide si el ID existe o no.
+        return request.POST, None
 
 
     def post(self, request, *args, **kwargs):
         """
         Interceptamos POST para procesar la marca antes de validar el formulario.
         """
+        self.object = None
+        
+        # Variable para guardar el formulario fallido y renderizarlo FUERA de la transacción
+        form_para_renderizar = None
+
         try:
             with transaction.atomic():
                 # 1. Gestionar Marca Dinámica
                 post_data_modificado, error_msg = self._gestionar_creacion_marca(request)
-                
+
                 if error_msg:
+                    # Si falla la marca, agregamos el error y forzamos rollback
                     messages.error(request, error_msg)
-                    # Renderizamos el form con los datos originales para no perder lo escrito
-                    form = self.get_form()
-                    return self.render_to_response(self.get_context_data(form=form))
-
-                # 2. Re-instanciar el form con los datos (posiblemente) modificados
-                form = self.get_form_class()(post_data_modificado, request.FILES)
-
-                # 3. Validar y Guardar (Flow estándar de Django)
-                if form.is_valid():
-                    return self.form_valid(form)
+                    transaction.set_rollback(True)
+                    # Preparamos el form original para renderizarlo fuera
+                    form_para_renderizar = self.get_form()
+                
                 else:
-                    return self.form_invalid(form)
+                    # 2. Instanciar Formulario
+                    # Usamos get_form_kwargs() para que el form reciba 'request', 'user', etc.
+                    # y luego sobrescribimos 'data' y 'files' con nuestra versión modificada.
+                    form_kwargs = self.get_form_kwargs()
+                    form_kwargs['data'] = post_data_modificado
+                    form_kwargs['files'] = request.FILES
+                    
+                    form = self.get_form_class()(**form_kwargs)
+
+                    if form.is_valid():
+                        # Éxito: form_valid guardará y retornará el redirect
+                        return self.form_valid(form)
+                    else:
+                        transaction.set_rollback(True)
+                        form_para_renderizar = form
 
         except Exception as e:
-            messages.error(request, f"Error crítico: {e}")
-            form = self.get_form()
-            return self.render_to_response(self.get_context_data(form=form))
+            messages.error(request, f"Error crítico del sistema: {e}")
+            # Si hubo una excepción, el atomic ya hizo rollback automático.
+            form_para_renderizar = self.get_form()
+
+        if form_para_renderizar:
+            return self.form_invalid(form_para_renderizar)
+        
+        # Fallback por si acaso (no debería llegar aquí)
+        return self.form_invalid(self.get_form())
 
 
     def form_valid(self, form):
