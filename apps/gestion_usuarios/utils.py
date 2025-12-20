@@ -10,6 +10,7 @@ from django.template.loader import render_to_string
 from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
+from core.settings import DEFAULT_FROM_EMAIL
 
 from .models import Usuario, Rol, Membresia, RegistroActividad
 
@@ -171,7 +172,7 @@ def _enviar_email_bienvenida(usuario, request, estacion):
     send_mail(
         subject=asunto,
         message=mensaje_texto,
-        from_email='noreply@bomberil.cl', # Tu remitente configurado
+        from_email=DEFAULT_FROM_EMAIL, 
         recipient_list=[usuario.email],
         html_message=mensaje_html,
         fail_silently=False 
