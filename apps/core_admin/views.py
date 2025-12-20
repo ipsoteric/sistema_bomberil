@@ -9,6 +9,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import PasswordResetForm
 from django.db import transaction
 from django.utils import timezone
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 
 from .mixins import SuperuserRequiredMixin, PermisosMatrixMixin
 from .forms import EstacionForm, ProductoGlobalForm, UsuarioCreationForm, UsuarioChangeForm, AsignarMembresiaForm, RolGlobalForm, MarcaForm, CategoriaForm
@@ -551,6 +556,7 @@ class UsuarioResetPasswordView(SuperuserRequiredMixin, View):
     """
     Vista para que el Superusuario fuerce el envío de un correo de 
     recuperación de contraseña. Reutiliza los templates del sistema.
+    ESTRATEGIA MANUAL: Generación de tokens y send_mail directo.
     """
     
     def post(self, request, pk):
@@ -563,26 +569,48 @@ class UsuarioResetPasswordView(SuperuserRequiredMixin, View):
             messages.error(request, f"El usuario {usuario.get_full_name} no tiene un correo registrado. No se puede enviar el reset.")
             return redirect('core_admin:usuario_list')
 
-        # 3. Instanciamos el formulario estándar de Django
-        # Truco: Le pasamos el email del usuario como si él mismo lo hubiera escrito
-        form = PasswordResetForm({'email': usuario.email})
+        try:
+            # --- ESTRATEGIA MANUAL ---
+            
+            # A. Generar Tokens
+            uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+            token = default_token_generator.make_token(usuario)
 
-        if form.is_valid():
-            try:
-                form.save(
-                    request=request,
-                    from_email=DEFAULT_FROM_EMAIL,
-                    email_template_name='acceso/emails/password_reset_email.txt',
-                    html_email_template_name='acceso/emails/password_reset_email.html',
-                    subject_template_name='acceso/emails/password_reset_subject.txt',
-                )
-                messages.success(request, f"Se ha enviado el correo de restablecimiento a {usuario.email}.")
-            except Exception as e:
-                # Aquí capturamos errores de conexión o SMTP
-                messages.error(request, f"Error crítico enviando el correo: {str(e)}. Intente más tarde.")
-        else:
-            messages.error(request, "Error interno al generar el token.")
+            # B. Preparar Contexto
+            context = {
+                'email': usuario.email,
+                'domain': request.get_host(),
+                'site_name': 'Bomberil System',
+                'uid': uid,
+                'user': usuario,
+                'token': token,
+                'protocol': 'https' if request.is_secure() else 'http',
+            }
 
+            # C. Renderizar Templates (Usando los mismos que ya te funcionan)
+            subject = render_to_string('acceso/emails/password_reset_subject.txt', context).strip()
+            body = render_to_string('acceso/emails/password_reset_email.txt', context)
+            html_email = render_to_string('acceso/emails/password_reset_email.html', context)
+
+            # D. Enviar Correo (Fail Loudly)
+            send_mail(
+                subject=subject,
+                message=body,
+                from_email=DEFAULT_FROM_EMAIL, 
+                recipient_list=[usuario.email],
+                html_message=html_email,
+                fail_silently=False
+            )
+
+            # E. Mensaje de Éxito
+            messages.success(request, f"Correo de restablecimiento enviado a {usuario.email}.")
+
+        except Exception as e:
+            # F. Captura de errores reales
+            print(f"ERROR CRÍTICO CORE_ADMIN: {e}")
+            messages.error(request, f"Error al enviar correo: {str(e)}")
+
+        # 3. Retorno
         return redirect('core_admin:ruta_lista_usuarios')
 
 

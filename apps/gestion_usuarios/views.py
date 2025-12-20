@@ -31,6 +31,7 @@ from .forms import FormularioCrearUsuario, FormularioEditarUsuario, FormularioRo
 from .mixins import MembresiaGestionableMixin
 from .utils import servicio_crear_usuario_y_notificar
 from apps.common.mixins import BaseEstacionMixin, AuditoriaMixin, CustomPermissionRequiredMixin
+from core.settings import DEFAULT_FROM_EMAIL
 
 
 class UsuarioInicioView(BaseEstacionMixin, View):
@@ -1532,7 +1533,7 @@ class UsuarioRestablecerContrasena(BaseEstacionMixin, CustomPermissionRequiredMi
             send_mail(
                 subject=subject,
                 message=body,
-                from_email='noreply@bomberilsystem.castillodev.cl', # <--- HARDCODEADO PARA PROBAR
+                from_email=DEFAULT_FROM_EMAIL,
                 recipient_list=[usuario.email],
                 html_message=html_email,
                 fail_silently=False
