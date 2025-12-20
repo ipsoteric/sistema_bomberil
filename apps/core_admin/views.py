@@ -14,6 +14,7 @@ from .mixins import SuperuserRequiredMixin, PermisosMatrixMixin
 from .forms import EstacionForm, ProductoGlobalForm, UsuarioCreationForm, UsuarioChangeForm, AsignarMembresiaForm, RolGlobalForm, MarcaForm, CategoriaForm
 from apps.gestion_inventario.models import Estacion, Ubicacion, Vehiculo, Prestamo, Compartimento, Categoria, Marca, ProductoGlobal, Producto, Activo, LoteInsumo, MovimientoInventario
 from apps.gestion_usuarios.models import Membresia, Rol
+from core.settings import DEFAULT_FROM_EMAIL
 
 
 class AdministracionInicioView(SuperuserRequiredMixin, TemplateView):
@@ -570,7 +571,7 @@ class UsuarioResetPasswordView(SuperuserRequiredMixin, View):
             try:
                 form.save(
                     request=request,
-                    from_email='noreply@bomberil.cl',
+                    from_email=DEFAULT_FROM_EMAIL,
                     email_template_name='acceso/emails/password_reset_email.txt',
                     html_email_template_name='acceso/emails/password_reset_email.html',
                     subject_template_name='acceso/emails/password_reset_subject.txt',
