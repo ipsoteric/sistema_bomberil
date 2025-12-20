@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
-from core.settings import DEFAULT_FROM_EMAIL
 from django.views import View
 from django.views.generic import ListView
 from django.contrib import messages
@@ -18,6 +17,11 @@ from collections import defaultdict
 from django.apps import apps
 from django.core.exceptions import PermissionDenied
 from user_sessions.models import Session
+from django.template.loader import render_to_string
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 
 # Clases para paginación manual
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -1496,47 +1500,57 @@ class UsuarioRestablecerContrasena(BaseEstacionMixin, CustomPermissionRequiredMi
     def post(self, request, *args, **kwargs):
         # El mixin ya validó la membresía y la guardó en self.object
         membresia = self.object
-        usuario_a_resetear = membresia.usuario
+        usuario = membresia.usuario
 
         # Validación: Email existente
-        if not usuario_a_resetear.email:
-            messages.error(request, f"El usuario {usuario_a_resetear.get_full_name} no tiene un correo electrónico registrado.")
+        if not usuario.email:
+            messages.error(request, f"El usuario {usuario.get_full_name} no tiene un correo electrónico registrado.")
             return redirect('gestion_usuarios:ruta_lista_usuarios')
 
-        # Instanciamos el formulario estándar de Django
-        form = PasswordResetForm({'email': usuario_a_resetear.email})
+        try:
+            # 1. Generamos los tokens
+            uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+            token = default_token_generator.make_token(usuario)
 
-        if form.is_valid():
-            # Enviamos el correo
-            # NOTA: domain_override usualmente espera un dominio (ej: 'bomberil.cl').
-            # 'acceso' funciona porque hay una config muy específica,
-            try:
-                form.save(
-                    request=request,
-                    from_email=None,
-                    email_template_name='acceso/emails/password_reset_email.txt',
-                    html_email_template_name='acceso/emails/password_reset_email.html',
-                    subject_template_name='acceso/emails/password_reset_subject.txt',
-                )
-                # --- AUDITORÍA ---
-                self.auditar(
-                    verbo="solicitó el restablecimiento de contraseña para",
-                    objetivo=usuario_a_resetear,
-                    objetivo_repr=usuario_a_resetear.get_full_name,
-                    detalles={'metodo': 'email'}
-                )
-                messages.success(request, f"Se ha enviado un correo para restablecer la contraseña a {usuario_a_resetear.email}.")
-                return redirect(reverse('gestion_usuarios:ruta_lista_usuarios'))
-            
-            except Exception as e:
-                # Error en el envío (SMTP, Brevo, etc)
-                print(f"Error SMTP: {e}") # Ver esto en los logs es vital
-                messages.error(request, f"Error al enviar el correo: {str(e)}")
-                return redirect('gestion_usuarios:ruta_lista_usuarios')
+            # 2. Contexto explícito
+            context = {
+                'email': usuario.email,
+                'domain': request.get_host(),
+                'site_name': 'Bomberil System',
+                'uid': uid,
+                'user': usuario,
+                'token': token,
+                'protocol': 'https' if request.is_secure() else 'http',
+            }
 
-        messages.error(request, "Error interno al procesar el correo del usuario.")
-        return redirect('gestion_usuarios:ruta_lista_usuarios')
+            # 3. Renderizamos los templates
+            subject = render_to_string('acceso/emails/password_reset_subject.txt', context).strip()
+            body = render_to_string('acceso/emails/password_reset_email.txt', context)
+            html_email = render_to_string('acceso/emails/password_reset_email.html', context)
 
+            # 4. ENVIAR
+            send_mail(
+                subject=subject,
+                message=body,
+                from_email='noreply@bomberilsystem.castillodev.cl', # <--- HARDCODEADO PARA PROBAR
+                recipient_list=[usuario.email],
+                html_message=html_email,
+                fail_silently=False
+            )
+
+            self.auditar(
+                verbo="solicitó restablecimiento manual",
+                objetivo=usuario,
+                detalles={'email': usuario.email}
+            )
+
+            messages.success(request, f"Correo enviado a {usuario.email} (Modo Manual).")
+            return redirect('gestion_usuarios:ruta_lista_usuarios')
+
+        except Exception as e:
+            print(f"ERROR CRÍTICO AL ENVIAR: {e}")
+            messages.error(request, f"Error técnico: {e}")
+            return redirect('gestion_usuarios:ruta_lista_usuarios')
 
 
 
