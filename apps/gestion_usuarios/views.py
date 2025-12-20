@@ -1501,7 +1501,7 @@ class UsuarioRestablecerContrasena(BaseEstacionMixin, CustomPermissionRequiredMi
         # Validación: Email existente
         if not usuario_a_resetear.email:
             messages.error(request, f"El usuario {usuario_a_resetear.get_full_name} no tiene un correo electrónico registrado.")
-            return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': usuario_a_resetear.id}))
+            return redirect('gestion_usuarios:ruta_lista_usuarios')
 
         # Instanciamos el formulario estándar de Django
         form = PasswordResetForm({'email': usuario_a_resetear.email})
@@ -1513,11 +1513,10 @@ class UsuarioRestablecerContrasena(BaseEstacionMixin, CustomPermissionRequiredMi
             try:
                 form.save(
                     request=request,
-                    from_email=DEFAULT_FROM_EMAIL,
+                    from_email=None,
                     email_template_name='acceso/emails/password_reset_email.txt',
                     html_email_template_name='acceso/emails/password_reset_email.html',
                     subject_template_name='acceso/emails/password_reset_subject.txt',
-                    # extra_email_context={'nombre_usuario': usuario_a_resetear.first_name}, # Útil si quieres personalizar el email
                 )
                 # --- AUDITORÍA ---
                 self.auditar(
@@ -1527,12 +1526,16 @@ class UsuarioRestablecerContrasena(BaseEstacionMixin, CustomPermissionRequiredMi
                     detalles={'metodo': 'email'}
                 )
                 messages.success(request, f"Se ha enviado un correo para restablecer la contraseña a {usuario_a_resetear.email}.")
+                return redirect(reverse('gestion_usuarios:ruta_lista_usuarios'))
             
             except Exception as e:
+                # Error en el envío (SMTP, Brevo, etc)
+                print(f"Error SMTP: {e}") # Ver esto en los logs es vital
                 messages.error(request, f"Error al enviar el correo: {str(e)}")
+                return redirect('gestion_usuarios:ruta_lista_usuarios')
 
         messages.error(request, "Error interno al procesar el correo del usuario.")
-        return redirect(reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': usuario_a_resetear.id}))
+        return redirect('gestion_usuarios:ruta_lista_usuarios')
 
 
 
