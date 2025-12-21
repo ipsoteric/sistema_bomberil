@@ -1,6 +1,7 @@
 from django import forms
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 from .models import PlanMantenimiento, OrdenMantenimiento
 
 class PlanMantenimientoForm(forms.ModelForm):
@@ -145,12 +146,29 @@ class OrdenCorrectivaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Valor por defecto para la fecha: Hoy
-        if not self.initial.get('fecha_programada'):
-            self.initial['fecha_programada'] = timezone.now().date()
+        # 1. Extraemos la estación y la eliminamos de kwargs para evitar errores en super()
+        estacion = kwargs.pop('estacion', None)
         
-        # Mejora Visual: Etiqueta más clara
+        super().__init__(*args, **kwargs)
+
+        # 2. Si recibimos la estación, filtramos el QuerySet
+        if estacion:
+            User = get_user_model()
+            
+            # AQUÍ SE FILTRA:
+            # Asumo que tu modelo de Usuario tiene una relación inversa 'membresia'
+            # o similar que apunta a la estación. Ajusta 'membresia__estacion' 
+            # según tus modelos reales.
+            self.fields['responsable'].queryset = User.objects.filter(
+                membresias__estacion=estacion,
+                membresias__estado='ACTIVO',
+                is_active=True # Buena práctica: filtrar solo usuarios activos
+            ).distinct()
+
+        # ... (el resto de tu configuración visual: fecha, labels, etc) ...
+        if not self.initial.get('fecha_programada'):
+             self.initial['fecha_programada'] = timezone.now().date()
+        
         self.fields['fecha_programada'].label = "Fecha de Ejecución"
         self.fields['fecha_programada'].help_text = "Fecha estimada para realizar la reparación."
 

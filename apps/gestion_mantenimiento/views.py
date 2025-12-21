@@ -373,6 +373,15 @@ class OrdenCorrectivaCreateView(BaseEstacionMixin, CustomPermissionRequiredMixin
     form_class = OrdenCorrectivaForm
     template_name = 'gestion_mantenimiento/pages/crear_orden_correctiva.html'
     permission_required = 'gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes'
+
+    def get_form_kwargs(self):
+        """
+        Pasa la estación activa al formulario para filtrar los usuarios.
+        """
+        kwargs = super().get_form_kwargs()
+        # Inyectamos la estación actual en los argumentos del form
+        kwargs['estacion'] = self.estacion_activa
+        return kwargs
     
     def get_context_data(self, **kwargs):
         """
