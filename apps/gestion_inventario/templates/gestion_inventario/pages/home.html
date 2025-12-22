@@ -340,18 +340,33 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card shadow-sm h-100">
-                            <div class="card-header py-2">
-                                <h6 class="mb-0 font-bold text-sm">Estado General</h6>
+                    <div class="col-lg-6 mb-4">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="mb-0 font-bold text-sm">Estado del Inventario</h6>
                             </div>
-                            <div class="card-body p-2">
-                                <div style="height: 250px; position: relative d-flex justify-content-center align-items-center">
-                                     <canvas id="graficoEstados"></canvas>
+                            <div class="card-body">
+                                <div class="chart-pie pt-4 pb-2">
+                                    <canvas id="myPieChart"></canvas>
+                                </div>
+                                <div class="mt-4 text-center small">
+                                    <span class="mr-2"><i class="fas fa-circle text-success"></i> Disp.</span>
+                                    <span class="mr-2"><i class="fas fa-circle text-primary"></i> Préstamo</span>
+                                    <span class="mr-2"><i class="fas fa-circle text-info"></i> Prep.</span>
+                                    <span class="mr-2"><i class="fas fa-circle text-warning"></i> Tránsito</span>
+                                    <span class="mr-2"><i class="fas fa-circle text-secondary"></i> Rev.</span>
+                                    <span class="mr-2"><i class="fas fa-circle text-danger"></i> Rep.</span>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    {{ kpi_disponible|json_script:"data-disponible" }}
+                    {{ kpi_prestamo|json_script:"data-prestamo" }}
+                    {{ kpi_en_preparacion|json_script:"data-preparacion" }}
+                    {{ kpi_en_transito|json_script:"data-transito" }}
+                    {{ kpi_pendiente_revision|json_script:"data-revision" }}
+                    {{ kpi_en_reparacion|json_script:"data-reparacion" }}
                 </div>
 
                 <!-- Actividad Reciente -->

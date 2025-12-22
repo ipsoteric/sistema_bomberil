@@ -111,17 +111,24 @@ class InventarioInicioView(BaseEstacionMixin, TemplateView):
         # 2. KPIs Numéricos: Agregación Condicional (1 consulta por modelo en lugar de N)
         # A) ACTIVOS: Usamos Count (1 registro = 1 unidad)
         kpis_activos = activos_qs.aggregate(
-            operativos=Count('id', filter=Q(estado__tipo_estado__nombre='OPERATIVO')),
-            no_operativos=Count('id', filter=Q(estado__tipo_estado__nombre='NO OPERATIVO')),
+            disponible=Count('id', filter=Q(estado__nombre='DISPONIBLE')),
             prestamo=Count('id', filter=Q(estado__nombre='EN PRÉSTAMO EXTERNO')),
+            en_preparacion=Count('id', filter=Q(estado__nombre='EN PREPARACIÓN')),
+            en_transito=Count('id', filter=Q(estado__nombre='EN TRÁNSITO')),
+            pendiente_revision=Count('id', filter=Q(estado__nombre='PENDIENTE REVISIÓN')),
+            en_reparacion=Count('id', filter=Q(estado__nombre='EN REPARACIÓN')),
+            # Mantenemos el conteo de vencimientos aparte
             vencen=Count('id', filter=Q(fecha_expiracion__range=[hoy, fecha_limite_vencimiento]) | Q(fin_vida_util_calculada__range=[hoy, fecha_limite_vencimiento]))
         )
 
         # B) LOTES: Usamos Sum('cantidad') y Coalesce para evitar None
         kpis_lotes = lotes_qs.aggregate(
-            operativos=Coalesce(Sum('cantidad', filter=Q(estado__tipo_estado__nombre='OPERATIVO')), 0),
-            no_operativos=Coalesce(Sum('cantidad', filter=Q(estado__tipo_estado__nombre='NO OPERATIVO')), 0),
+            disponible=Coalesce(Sum('cantidad', filter=Q(estado__nombre='DISPONIBLE')), 0),
             prestamo=Coalesce(Sum('cantidad', filter=Q(estado__nombre='EN PRÉSTAMO EXTERNO')), 0),
+            en_preparacion=Coalesce(Sum('cantidad', filter=Q(estado__nombre='EN PREPARACIÓN')), 0),
+            en_transito=Coalesce(Sum('cantidad', filter=Q(estado__nombre='EN TRÁNSITO')), 0),
+            pendiente_revision=Coalesce(Sum('cantidad', filter=Q(estado__nombre='PENDIENTE REVISIÓN')), 0),
+            en_reparacion=Coalesce(Sum('cantidad', filter=Q(estado__nombre='EN REPARACIÓN')), 0),
             vencen=Coalesce(Sum('cantidad', filter=Q(fecha_expiracion__range=[hoy, fecha_limite_vencimiento])), 0)
         )
 
@@ -157,13 +164,47 @@ class InventarioInicioView(BaseEstacionMixin, TemplateView):
         context['alerta_stock_critico_lista'] = productos_en_alerta[:5] # Top 5 para el widget
         context['kpi_stock_critico_count'] = productos_en_alerta.count() # Número total para el badge rojo
 
-        # 3. Suma de Totales (Ahora sí sumará 4 + 40)
-        context['kpi_total_operativas'] = kpis_activos['operativos'] + kpis_lotes['operativos']
-        context['kpi_total_no_operativas'] = kpis_activos['no_operativos'] + kpis_lotes['no_operativos']
-        context['kpi_total_prestamo'] = kpis_activos['prestamo'] + kpis_lotes['prestamo']
+        # 3. Suma de Totales por Estado (Para el gráfico detallado)
+        kpi_disponible = kpis_activos['disponible'] + kpis_lotes['disponible']
+        kpi_prestamo = kpis_activos['prestamo'] + kpis_lotes['prestamo']
+        kpi_en_preparacion = kpis_activos['en_preparacion'] + kpis_lotes['en_preparacion']
+        kpi_en_transito = kpis_activos['en_transito'] + kpis_lotes['en_transito']
+        kpi_pendiente_revision = kpis_activos['pendiente_revision'] + kpis_lotes['pendiente_revision']
+        kpi_en_reparacion = kpis_activos['en_reparacion'] + kpis_lotes['en_reparacion']
+
+        # Pasamos los datos individuales para el gráfico
+        context['kpi_disponible'] = kpi_disponible
+        context['kpi_prestamo'] = kpi_prestamo
+        context['kpi_en_preparacion'] = kpi_en_preparacion
+        context['kpi_en_transito'] = kpi_en_transito
+        context['kpi_pendiente_revision'] = kpi_pendiente_revision
+        context['kpi_en_reparacion'] = kpi_en_reparacion
+        
+        # ==============================================================================
+        # 4. CONSTRUCCIÓN DE KPIs GENERALES (Para las Tarjetas Superiores)
+        # ==============================================================================
+        
+        # Tarjeta Verde: Existencias Operativas (Solo lo DISPONIBLE en estación)
+        # Nota: Antes sumabas "Tipo Operativo" (que incluía préstamos). 
+        # Al tener una tarjeta separada para préstamos, es más limpio mostrar aquí solo lo físico disponible.
+        context['kpi_total_operativas'] = kpi_disponible
+
+        # Tarjeta Amarilla: No Operativas (Suma de todo lo que no está listo para usar)
+        # Basado en tus fixtures de Tipo Estado 2 (No Operativo)
+        context['kpi_total_no_operativas'] = (
+            kpi_en_preparacion + 
+            kpi_en_transito + 
+            kpi_pendiente_revision + 
+            kpi_en_reparacion
+        )
+
+        # Tarjeta Cyan: Items en Préstamo
+        context['kpi_total_prestamo'] = kpi_prestamo
+
+        # Tarjeta Roja: Vencimientos (Esta ya funcionaba, pero la mantenemos)
         context['kpi_proximos_a_vencer'] = kpis_activos['vencen'] + kpis_lotes['vencen']
 
-        # 3. Listas para Alertas (Widgets)
+        # 4. Listas para Alertas (Widgets)
         # Optimizamos con select_related para evitar N+1 en el template
         select_related_fields = ('producto__producto_global', 'compartimento')
         
@@ -190,7 +231,7 @@ class InventarioInicioView(BaseEstacionMixin, TemplateView):
             estado=Prestamo.EstadoPrestamo.PENDIENTE
         ).select_related('destinatario')[:5]
 
-        # 4. Widget de Actividad Reciente
+        # 5. Widget de Actividad Reciente
         # Usamos Abs() en la DB para calcular el valor absoluto sin iterar en Python
         context['actividad_reciente'] = MovimientoInventario.objects.filter(
             estacion_id=self.estacion_activa_id
