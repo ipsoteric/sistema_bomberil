@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function initializeFormRow(formRow) {
-        // 1. Selector de UBICACIÓN
+        // 1. Selector de UBICACIÓN (Filtro)
         const ubicacionSelect = formRow.querySelector('.select-ubicacion-filter');
         if (ubicacionSelect && ubicacionSelect.options.length <= 1) { 
             for (const [id, data] of Object.entries(ubicacionesData)) {
@@ -365,61 +365,77 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // 2. Selector de COMPARTIMENTO
+        // 2. Selector de COMPARTIMENTO (TomSelect)
         const compartimentoSelect = formRow.querySelector('select[name$="-compartimento_destino"]');
         let tsCompartimento;
 
         if (compartimentoSelect) {
+            // === CANDADO DE SEGURIDAD ===
             if (compartimentoSelect.tomselect) {
-                var initialValue = compartimentoSelect.tomselect.getValue();
-                compartimentoSelect.tomselect.destroy();
-            }
-
-            tsCompartimento = new TomSelect(compartimentoSelect, { 
-                ...tomSelectConfig, 
-                placeholder: "Seleccione ubicación primero...",
-                valueField: 'id',
-                labelField: 'nombre',
-                searchField: 'nombre',
-                options: [], 
-                create: false
-            });
-            
-            const valorActual = compartimentoSelect.getAttribute('value') || initialValue;
-            
-            if (valorActual) {
-                for (const [ubiId, ubiData] of Object.entries(ubicacionesData)) {
-                    const compEncontrado = ubiData.compartimentos.find(c => c.id == valorActual);
-                    if (compEncontrado) {
-                        ubicacionSelect.value = ubiId; 
-                        tsCompartimento.addOption(ubiData.compartimentos);
-                        tsCompartimento.setValue(valorActual); 
-                        tsCompartimento.settings.placeholder = "Seleccione compartimento...";
-                        tsCompartimento.inputState(); 
-                        break;
-                    }
-                }
+                tsCompartimento = compartimentoSelect.tomselect;
             } else {
-                 tsCompartimento.disable();
+                const valorActual = compartimentoSelect.value;
+
+                tsCompartimento = new TomSelect(compartimentoSelect, { 
+                    ...tomSelectConfig, 
+                    placeholder: "Seleccione ubicación primero...",
+                    valueField: 'id',
+                    labelField: 'nombre',
+                    searchField: 'nombre',
+                    options: [], 
+                    create: false
+                });
+                
+                if (valorActual) {
+                    let encontrado = false;
+                    for (const [ubiId, ubiData] of Object.entries(ubicacionesData)) {
+                        const compEncontrado = ubiData.compartimentos.find(c => c.id == valorActual);
+                        
+                        if (compEncontrado) {
+                            if (ubicacionSelect) ubicacionSelect.value = ubiId;
+
+                            // --- CAMBIO CLAVE 1: CLONAR DATOS ---
+                            // Usamos .map(...) para crear una copia nueva de la lista
+                            // así TomSelect no modifica el original compartido.
+                            const copiaOpciones = ubiData.compartimentos.map(c => ({...c}));
+                            
+                            tsCompartimento.addOption(copiaOpciones);
+                            tsCompartimento.setValue(valorActual); 
+                            tsCompartimento.settings.placeholder = "Seleccione compartimento...";
+                            
+                            encontrado = true;
+                            break;
+                        }
+                    }
+                    if (!encontrado) tsCompartimento.disable();
+                } else {
+                     tsCompartimento.disable();
+                }
             }
         }
 
+        // 3. EVENT LISTENER DEL FILTRO
         if (ubicacionSelect && tsCompartimento) {
-            ubicacionSelect.addEventListener('change', function() {
+            ubicacionSelect.onchange = function() {
                 const ubicacionId = this.value;
+                
                 tsCompartimento.clear();
                 tsCompartimento.clearOptions();
 
                 if (ubicacionId && ubicacionesData[ubicacionId]) {
                     tsCompartimento.enable();
-                    tsCompartimento.addOption(ubicacionesData[ubicacionId].compartimentos);
+                    
+                    // --- CAMBIO CLAVE 2: CLONAR DATOS AQUÍ TAMBIÉN ---
+                    const copiaOpciones = ubicacionesData[ubicacionId].compartimentos.map(c => ({...c}));
+                    
+                    tsCompartimento.addOption(copiaOpciones);
                     tsCompartimento.settings.placeholder = "Seleccione compartimento...";
                 } else {
                     tsCompartimento.disable();
                     tsCompartimento.settings.placeholder = "Seleccione ubicación primero...";
                 }
                 tsCompartimento.sync(); 
-            });
+            };
         }
         
         // 3. TomSelect para PRODUCTO
