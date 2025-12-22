@@ -1,7 +1,7 @@
 from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
 
-from .views import LoginView, LogoutView, CustomPasswordResetView, SeleccionarEstacionView
+from .views import LoginView, LogoutView, CustomPasswordResetView, CustomPasswordResetConfirmView, SeleccionarEstacionView
 
 
 app_name = "acceso"
@@ -23,10 +23,7 @@ urlpatterns = [
 
     # Restablecer contraseña: Confirmación
     path('reset/<uidb64>/<token>/',
-        auth_views.PasswordResetConfirmView.as_view(
-            template_name="acceso/pages/password_reset_confirm.html",
-            success_url = reverse_lazy('acceso:password_reset_complete')
-        ),    
+        CustomPasswordResetConfirmView.as_view(),    
         name="password_reset_confirm"),
 
     # Restablecer contraseña: Completada
