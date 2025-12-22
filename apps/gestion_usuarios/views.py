@@ -295,73 +295,114 @@ class UsuarioObtenerView(BaseEstacionMixin, CustomPermissionRequiredMixin, Membr
 
 class UsuarioAgregarView(BaseEstacionMixin, CustomPermissionRequiredMixin, AuditoriaMixin, View):
     """
-    Vista para agregar un usuario existente (sin membresía activa)
-    a la estación actual.
+    Controlador para gestionar la incorporación de un usuario existente a la dotación
+    de la estación actual.
+
+    Esta vista no crea un nuevo registro en la tabla de Usuarios, sino que genera
+    una nueva relación en la tabla Membresia, vinculando al usuario con la estación
+    activa en la sesión.
     """
-    # --- 1. Atributos de Configuración ---
+    
+    # --- Configuración de la Vista y Permisos ---
+    # Definir la ruta relativa de la plantilla HTML a renderizar.
     template_name = "gestion_usuarios/pages/agregar_usuario.html"
+    
+    # Especificar el identificador del permiso requerido para acceder a esta vista.
+    # Valida que el usuario solicitante tenga privilegios de creación de usuarios.
     permission_required = 'gestion_usuarios.accion_gestion_usuarios_crear_usuario'
-    # URLs para redirección
+    
+    # Definir los nombres de las rutas (namespaces) para la redirección post-procesamiento.
     success_redirect_url = 'gestion_usuarios:ruta_lista_usuarios'
     fail_redirect_url = 'gestion_usuarios:ruta_agregar_usuario'
 
-
     def get(self, request, *args, **kwargs):
-        """Maneja GET: Simplemente renderiza el template."""
+        """
+        Procesar la solicitud HTTP GET.
+        
+        Renderizar el formulario que permite seleccionar un usuario existente
+        para agregarlo a la estación.
+        """
         return render(request, self.template_name)
-
 
     def post(self, request, *args, **kwargs):
         """
-        Maneja POST: Valida y crea la nueva membresía.
+        Procesar la solicitud HTTP POST.
+        
+        Ejecutar la lógica de negocio para validar la disponibilidad del usuario,
+        verificar restricciones de membresía única y crear el registro de vinculación.
         """
         
-        # 1. OBTENER DATOS de la petición
+        # 1. Recuperación de datos
+        # Extraer el ID del usuario desde el cuerpo de la solicitud POST.
         usuario_id = request.POST.get('usuario_id')
 
-        # 2. VALIDAR DATOS DE ENTRADA
+        # 2. Validación de entrada
+        # Verificar que se haya recibido un identificador válido antes de proceder.
         if not usuario_id:
             messages.error(request, 'No se proporcionó un ID de usuario.')
             return redirect(self.fail_redirect_url)
 
         try:
-            # 3. OBTENER OBJETOS
+            # 3. Consulta de ORM
+            # Intentar recuperar la instancia del modelo Usuario correspondiente al ID.
+            # Lanza Usuario.DoesNotExist si no se encuentra registro.
             usuario = Usuario.objects.get(id=usuario_id)
             
-            # 4. REGLA DE NEGOCIO: Verificar que el usuario esté disponible
-            # (Usamos el Enum del modelo como buena práctica)
+            # 4. Validación de Reglas de Negocio (Unicidad de Membresía)
+            # Definir los estados que impiden una nueva afiliación.
+            # Un usuario no puede ser agregado si ya está 'ACTIVO' o 'INACTIVO' (pero vinculado)
+            # en cualquier otra estación del sistema.
             estados_restringidos = [
                 Membresia.Estado.ACTIVO,
                 Membresia.Estado.INACTIVO
             ]
             
+            # Consultar si existe alguna membresía conflictiva para este usuario.
             if Membresia.objects.filter(
                 usuario=usuario, 
                 estado__in=estados_restringidos
             ).exists():
+                # Notificar al usuario sobre el conflicto de estado y abortar la operación.
                 messages.warning(request, f'El usuario {usuario.get_full_name.title()} ya se encuentra activo o inactivo en otra estación.')
                 return redirect(self.fail_redirect_url)
 
-            # 5. CREAR LA MEMBRESÍA (envuelta en transacción)
+            # 5. Persistencia de Datos (Transaccional)
+            # Utilizar un bloque atómico para garantizar que la creación de la membresía
+            # y el registro de auditoría se ejecuten completamente o fallen en conjunto.
             with transaction.atomic():
+                # Crear la nueva instancia de Membresia.
                 Membresia.objects.create(
                     usuario=usuario,
-                    estacion=self.estacion_activa, # <-- Usamos el objeto del mixin
-                    estado=Membresia.Estado.ACTIVO, # <-- Usamos el Enum
+                    # Obtener la estación actual desde el contexto inyectado por BaseEstacionMixin.
+                    estacion=self.estacion_activa, 
+                    # Establecer el estado inicial utilizando el Enumerador del modelo.
+                    estado=Membresia.Estado.ACTIVO,
+                    # Registrar la fecha actual del servidor como inicio de la membresía.
                     fecha_inicio=timezone.now().date()
                 )
-                # --- AUDITORÍA ---
+                
+                # --- Registro de Auditoría ---
+                # Invocar el método del AuditoriaMixin para guardar traza de la operación.
                 self.auditar(
                     verbo="agregó a la compañía a",
                     objetivo=usuario
                 )
 
+            # 6. Finalización Exitosa
+            # Notificar éxito en la interfaz y redirigir al listado general.
             messages.success(request, f'¡{usuario.get_full_name.title()} ha sido agregado a la estación exitosamente!')
             return redirect(self.success_redirect_url)
 
         except Usuario.DoesNotExist:
+            # 7. Manejo de Errores
+            # Capturar el caso donde el ID proporcionado no corresponde a ningún usuario en BD.
             messages.error(request, 'El usuario que intentas agregar no existe.')
             return redirect(self.fail_redirect_url)
+        
+        except Exception as e:
+            messages.error(request, 'Hubo un error al intentar agregar al usuario')
+            return redirect(self.fail_redirect_url)
+
     
 
 
@@ -369,19 +410,35 @@ class UsuarioAgregarView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
 
 class UsuarioCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, AuditoriaMixin, View):
     """
-    Vista para crear un nuevo Usuario y su Membresía inicial.
-    Refactorizada con el patrón de helpers de CBV.
+    Controlador encargado de la gestión del ciclo de vida de creación de un nuevo usuario.
+    
+    Esta vista orquesta la creación del registro de Usuario, la generación de su
+    Membresía inicial asociada a la estación actual y el disparo de notificaciones
+    de bienvenida. Implementa el patrón de métodos helper para mantener la legibilidad.
     """
     
-    # --- 1. Atributos de Configuración ---
+    # --- Configuración de la Vista y Dependencias ---
+    # Ruta de la plantilla para renderizar el formulario de creación.
     template_name = "gestion_usuarios/pages/crear_usuario.html"
+    
+    # Identificador del permiso necesario para ejecutar esta acción.
     permission_required = 'gestion_usuarios.accion_gestion_usuarios_crear_usuario'
+    
+    # Clase del formulario que se utilizará para la validación de datos.
     form_class = FormularioCrearUsuario
+    
+    # URL de redirección tras una operación exitosa (Lazy para resolución en tiempo de ejecución).
     success_url = reverse_lazy('gestion_usuarios:ruta_lista_usuarios')
 
-    # --- 2. Métodos Helper (Formulario, Contexto) ---
+    # --- Métodos Helper (Construcción y Contexto) ---
+
     def get_form(self, data=None, files=None):
-        """Helper para instanciar el formulario (incluye files y valores iniciales)."""
+        """
+        Instanciar y configurar el formulario de creación.
+        
+        Inyectar dependencias del contexto (usuario actual, estación activa) en los
+        kwargs del formulario y gestionar el pre-llenado de datos vía QueryParams.
+        """
         form_kwargs = {
             'data': data,
             'files': files,
@@ -389,66 +446,107 @@ class UsuarioCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, Auditor
             'estacion': self.estacion_activa
         }
         
-        # Si es una petición GET (sin datos POST), intentamos pre-llenar
+        # Lógica de Pre-llenado:
+        # Si la solicitud no contiene datos (GET), verificar si existe el parámetro 'rut'
+        # en la URL para inicializar el campo correspondiente en el formulario.
         if data is None:
-            rut_prellenado = self.request.GET.get('rut') # Capturamos '?rut=...'
+            rut_prellenado = self.request.GET.get('rut') # Capturar '?rut=...'
             if rut_prellenado:
                 form_kwargs['initial'] = {'rut': rut_prellenado}
         
         return self.form_class(**form_kwargs)
 
     def get_context_data(self, form=None):
+        """
+        Construir el diccionario de contexto para la plantilla.
+        
+        Asegurar que una instancia del formulario esté siempre presente en el contexto.
+        """
         if form is None:
             form = self.get_form()
         return {'formulario': form}
 
+    # --- Manejadores de Métodos HTTP ---
 
     def get(self, request, *args, **kwargs):
+        """
+        Procesar la solicitud HTTP GET.
+        
+        Renderizar la plantilla con el formulario vacío o pre-llenado (si aplica).
+        """
         return render(request, self.template_name, self.get_context_data())
 
-
     def post(self, request, *args, **kwargs):
+        """
+        Procesar la solicitud HTTP POST.
+        
+        Recibir los datos del formulario, validar su integridad y despachar
+        al método correspondiente (éxito o fallo).
+        """
         form = self.get_form(data=request.POST, files=request.FILES)
 
         if form.is_valid():
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
-            
+
+    # --- Lógica de Negocio y Respuesta ---
 
     def form_valid(self, form):
+        """
+        Ejecutar la lógica de negocio tras una validación de formulario exitosa.
+        
+        Delegar la creación compleja a un servicio de dominio, registrar auditoría
+        y notificar al usuario.
+        """
         try:
-            # 4. CREACIÓN DE USUARIO, MEMBRESÍA Y GENERACIÓN DEL CORREO DE BIENVENIDA
+            # 1. Ejecución de Servicio de Dominio
+            # Invocar el servicio encargado de:
+            # - Crear el usuario en BD.
+            # - Crear la membresía vinculada a la estación activa.
+            # - Generar token y enviar correo de configuración de contraseña.
             nuevo_usuario = servicio_crear_usuario_y_notificar(
                 datos_usuario=form.cleaned_data,
                 estacion=self.estacion_activa,
                 request=self.request
             )
 
-            # 5. Auditoría
+            # 2. Registro de Auditoría
+            # Persistir la acción en el log de auditoría del sistema.
             self.auditar(
                 verbo="creó y envió invitación a",
                 objetivo=nuevo_usuario,
                 detalles={'rut': nuevo_usuario.rut}
             )
 
+            # 3. Notificación de UI
+            # Informar al administrador que el proceso concluyó correctamente.
             messages.success(self.request, f"Usuario creado. Se ha enviado un correo a {nuevo_usuario.email} para que configure su contraseña.")
             return redirect(self.success_url)
 
         except IntegrityError:
-            # Si 'create_user' falla (RUT/email duplicado)
+            # Manejo de Conflictos de Integridad
+            # Capturar errores de base de datos específicos (ej. RUT o Email duplicados)
+            # que no hayan sido atrapados por la validación del formulario.
             messages.error(self.request, "Ya existe un usuario con el mismo RUT o correo electrónico.")
+        
         except Exception as e:
-            # Captura cualquier otro error inesperado
+            # Manejo de Errores Generales
+            # Capturar cualquier excepción no prevista para evitar errores 500 al usuario final.
+            # (Se recomienda logging del error 'e' en un sistema de monitoreo real).
             print(f"Ocurrió un error inesperado: {e}")
             messages.error(self.request, "Ocurrió un error inesperado. Intenta nuevamente más tarde.")
         
-        # Si la transacción falló, volvemos a renderizar el formulario
+        # En caso de excepción, tratar el envío como inválido para preservar los datos ingresados.
         return self.form_invalid(form)
-    
 
     def form_invalid(self, form):
-        # Añadimos un mensaje de error solo si 'form_valid' no lo hizo ya
+        """
+        Manejar el flujo cuando el formulario contiene errores de validación o
+        cuando ocurre una excepción durante el procesamiento exitoso.
+        """
+        # Agregar mensaje genérico de error solo si no existen mensajes previos
+        # (para evitar duplicidad con los mensajes de las excepciones capturadas).
         if not messages.get_messages(self.request):
             messages.error(self.request, "Formulario no válido. Por favor, revisa los campos.")
             
@@ -1324,141 +1422,176 @@ class RolEliminarView(BaseEstacionMixin, CustomPermissionRequiredMixin, Auditori
 
 class UsuarioAsignarRolesView(BaseEstacionMixin, CustomPermissionRequiredMixin, MembresiaGestionableMixin, AuditoriaMixin, View):
     """
-    Vista para gestionar los ROLES de un usuario dentro de la estación activa.
+    Controlador para la gestión de roles y permisos de un usuario dentro del contexto
+    de la estación activa.
     
-    FUNCIONAMIENTO:
-    1. Obtiene la Membresía del usuario (validada por Mixins).
-    2. Muestra una lista de roles disponibles (Globales + De la Estación).
-    3. Permite marcar/desmarcar roles y guardar los cambios.
+    Funcionalidad Principal:
+    1. Recuperación de la membresía del usuario validando su pertenencia a la estación.
+    2. Visualización de roles disponibles (Globales + Específicos de la Estación).
+    3. Asignación segura de roles mediante validación de listas de confianza.
     
-    SEGURIDAD:
-    - Solo permite ver usuarios de la propia estación (via get_object).
-    - Solo permite asignar roles que pertenezcan a la estación o sean globales (via POST validation).
+    Mecanismos de Seguridad:
+    - Aislamiento de datos: Solo permite visualizar y asignar roles pertenecientes a la estación activa.
+    - Protección de privilegios: Restringe la asignación del rol 'Administrador' exclusivamente a superusuarios.
+    - Validación de estado: Impide la gestión si la membresía no está vigente (vía MembresiaGestionableMixin).
     """
     
+    # --- Configuración de la Vista ---
     template_name = 'gestion_usuarios/pages/asignar_roles.html'
     permission_required = 'gestion_usuarios.accion_gestion_usuarios_asignar_roles'
     
-    # Mensaje específico si el mixin bloquea el acceso
+    # Definir mensaje de error para el mixin MembresiaGestionableMixin en caso de bloqueo.
     mensaje_no_gestiona = "No se pueden asignar roles porque la membresía del usuario no está vigente."
 
 
-    # --- 1. Método de Obtención (El corazón de la seguridad) ---
+    # --- 1. Recuperación de Recursos (Core de Seguridad) ---
     def get_object(self):
         """
-        Obtiene la *última* membresía del usuario en la estación activa.
-        El mixin 'MembresiaGestionableMixin' usará esto para validar 
-        que sea ACTIVA o INACTIVA.
+        Recuperar la instancia de Membresía más reciente del usuario en la estación activa.
+        
+        Este método es invocado automáticamente por los mixins para validar permisos
+        y estado. Lanza Http404 si no existe relación entre el usuario y la estación.
         """
         usuario_id = self.kwargs.get('id')
         try:
             return Membresia.objects.filter(
                 usuario_id=usuario_id,
-                estacion_id=self.estacion_activa_id # Del BaseEstacionMixin
+                # Filtrar explícitamente por la estación inyectada por BaseEstacionMixin
+                estacion_id=self.estacion_activa_id 
             ).latest('created_at')
         except Membresia.DoesNotExist:
             raise Http404("El usuario no pertenece a esta estación.")
 
 
     def get_success_url(self):
-        """Redirige al perfil del usuario."""
+        """
+        Determinar la URL de redirección tras una operación exitosa.
+        Retorna a la vista de detalle del usuario modificado.
+        """
         return reverse('gestion_usuarios:ruta_ver_usuario', kwargs={'id': self.object.usuario.id})
 
 
-    # --- 2. Helper de Roles Disponibles ---
+    # --- 2. Lógica de Roles Disponibles (Fuente de Confianza) ---
     def get_roles_queryset(self):
         """
-        Retorna el QuerySet de todos los roles que esta estación PUEDE usar.
-        (Roles Globales + Roles creados en esta estación).
+        Construir el QuerySet de roles asignables en el contexto actual.
+        
+        Criterios de inclusión:
+        - Roles Globales (estacion es NULL).
+        - Roles Específicos creados por la estación activa.
 
-        SEGURIDAD: 
-        Excluye el rol 'Administrador' si el usuario actual no es superusuario.
-        Esto protege tanto la visualización (GET) como la asignación (POST).
+        Criterios de exclusión (Seguridad):
+        - Ocultar el rol crítico "Administrador" si el usuario solicitante no es superusuario,
+          previniendo escalada de privilegios no autorizada.
         """
         queryset = Rol.objects.filter(
             Q(estacion__isnull=True) | Q(estacion=self.estacion_activa_id)
         ).order_by('nombre')
 
-        # --- VALIDACIÓN DE SUPERUSUARIO ---
+        # Verificar nivel de acceso del solicitante para filtrar roles sensibles
         if not self.request.user.is_superuser:
-            # Si no es superuser, ocultamos el rol "Administrador" (case-insensitive)
+            # Excluir rol 'Administrador' (coincidencia insensible a mayúsculas/minúsculas)
             queryset = queryset.exclude(nombre__iexact="Administrador")
             
         return queryset
 
 
-
-    # --- 3. Contexto ---
+    # --- 3. Construcción del Contexto para Renderizado ---
     def get_context_data(self, **kwargs):
+        """
+        Preparar los datos necesarios para la interfaz de usuario.
+        
+        Agrupa los roles en categorías (Universales vs Estación) para facilitar
+        la visualización y pre-marca los roles que el usuario ya posee.
+        """
         roles_disponibles = self.get_roles_queryset()
         
         context = {
-            'membresia': self.object, # La membresía validada
+            'membresia': self.object, # Instancia validada por get_object
             'usuario': self.object.usuario,
             'estacion': self.object.estacion,
             
-            # Agrupación para la vista
+            # Segmentación de roles para la vista
             'roles_universales': roles_disponibles.filter(estacion__isnull=True),
             'roles_de_estacion': roles_disponibles.filter(estacion__isnull=False),
             
-            # IDs actuales para marcar los checkboxes
+            # Conjunto de IDs actuales para estado inicial de checkboxes (pre-llenado)
             'usuario_roles_ids': set(self.object.roles.values_list('id', flat=True))
         }
         return context
 
 
-    # --- 4. Manejador GET ---
+    # --- 4. Manejador de Solicitud GET ---
     def get(self, request, *args, **kwargs):
-        # El mixin ya llamó a get_object, validó el estado y guardó en self.object
+        """
+        Procesar solicitud GET.
+        
+        El flujo de ejecución es:
+        1. Mixins ejecutan get_object y validan estado/permisos.
+        2. Se almacena el objeto en self.object.
+        3. Se construye el contexto y renderiza la plantilla.
+        """
+        # Nota: El objeto self.object ya fue establecido por los mixins previos
         context = self.get_context_data()
         return render(request, self.template_name, context)
 
 
-    # --- 5. Manejador POST (Validación de Seguridad) ---
+    # --- 5. Manejador de Solicitud POST (Validación y Persistencia) ---
     def post(self, request, *args, **kwargs):
-        # El mixin valida nuevamente la membresía
+        """
+        Procesar solicitud POST para actualización de roles.
+        
+        Realiza una validación estricta de los IDs recibidos contra la fuente de confianza
+        (get_roles_queryset) para evitar asignación de roles no permitidos o de otras estaciones.
+        """
+        # Re-validar membresía y estado al inicio del procesamiento POST
         self.object = self.get_object() 
         
-        # --- VALIDACIÓN DE ROLES (CRÍTICO) ---
-        # El usuario envía una lista de IDs. Debemos asegurarnos de que NO 
-        # esté intentando inyectar un ID de un rol que no le pertenece (de otra estación).
+        # --- FILTRADO DE SEGURIDAD (SANITIZACIÓN) ---
         
-        # 1. IDs enviados por el usuario
+        # 1. Obtener entrada del usuario (Lista de IDs crudos)
         selected_roles_ids = request.POST.getlist('roles')
         
-        # 2. IDs válidos (Trusted Source)
-        # Usamos values_list para obtener solo los IDs de la query segura
+        # 2. Obtener lista blanca de IDs válidos (Trusted Source)
+        # Se reutiliza la lógica de get_roles_queryset para garantizar consistencia en permisos.
         valid_roles_ids = set(self.get_roles_queryset().values_list('id', flat=True))
         
-        # 3. Filtrado Seguro
-        # Convertimos a int y filtramos. Solo pasan los que existen en valid_roles_ids.
+        # 3. Intersección y Limpieza
+        # Iterar sobre la entrada, convertir a entero y validar pertenencia a la lista blanca.
         roles_para_guardar = []
         for role_id in selected_roles_ids:
             try:
                 rid = int(role_id)
+                # Solo agregar si el ID pertenece al conjunto de roles permitidos para este usuario/estación
                 if rid in valid_roles_ids:
                     roles_para_guardar.append(rid)
                 else:
-                    # Opcional: Loguear intento de hacking
-                    print(f"SECURITY WARNING: Intento de asignar rol inválido {rid}")
+                    # Registrar intento de asignación de rol fuera de alcance (potencial manipulación)
+                    # Se omite en producción silenciosamente, pero podría loguearse en sistema de monitoreo.
+                    print(f"SECURITY WARNING: Intento de asignar rol inválido o no autorizado ID: {rid}")
             except (ValueError, TypeError):
-                continue
+                continue # Ignorar valores no numéricos
 
         try:
-            # --- GUARDADO ---
-            # .set() reemplaza los roles anteriores con la nueva lista limpia
+            # --- PERSISTENCIA DE DATOS ---
+            # Actualizar la relación Many-to-Many.
+            # El método .set() reemplaza todas las asociaciones previas con la nueva lista sanitizada.
             self.object.roles.set(roles_para_guardar)
-            # --- AUDITORÍA ---
-            # Registramos sobre el usuario, no sobre la membresía (más legible)
+            
+            # --- AUDITORÍA DE OPERACIONES ---
+            # Registrar el evento asociado al Usuario (objetivo lógico) en lugar de la Membresía.
             self.auditar(
                 verbo="actualizó la asignación de roles de",
                 objetivo=self.object.usuario, 
                 objetivo_repr=self.object.usuario.get_full_name,
                 detalles={'cantidad_roles': len(roles_para_guardar)}
             )
+            
+            # Notificar éxito al usuario
             messages.success(request, f"Roles de '{self.object.usuario.get_full_name.title()}' actualizados correctamente.")
 
         except Exception as e:
+            # Capturar errores inesperados durante la persistencia
             messages.error(request, f"Error al asignar roles: {str(e)}")
 
         return redirect(self.get_success_url())

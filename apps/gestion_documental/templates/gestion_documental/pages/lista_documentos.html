@@ -146,7 +146,7 @@
                             <div class="btn-group">
                                 {# LÓGICA DE ACCESO #}
                                 {# Si NO es confidencial O el usuario tiene permiso de gestionar, puede ver #}
-                                {% if not doc.es_confidencial or perms.gestion_documental.accion_gestion_documental_gestionar_documentos %}
+                                {% if not doc.es_confidencial or perms.gestion_usuarios.accion_gestion_documental_gestionar_documentos %}
                                     <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary text-sm font-medium" title="Ver archivo">
                                         <i class="fas fa-eye"></i>
                                     </a>
@@ -253,7 +253,7 @@
                                     {# ACCIONES (TABLA) #}
                                     <div class="btn-group">
                                         {# Lógica de Confidencialidad en Tabla #}
-                                        {% if not doc.es_confidencial or perms.gestion_documental.accion_gestion_documental_gestionar_documentos %}
+                                        {% if not doc.es_confidencial or perms.gestion_usuarios.accion_gestion_documental_gestionar_documentos %}
                                             <a href="{{ doc.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary text-sm font-medium" title="Ver Documento">
                                                 <i class="fas fa-eye"></i>
                                             </a>

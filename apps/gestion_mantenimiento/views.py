@@ -362,44 +362,83 @@ class OrdenMantenimientoListView(BaseEstacionMixin, CustomPermissionRequiredMixi
 
 class OrdenCorrectivaCreateView(BaseEstacionMixin, CustomPermissionRequiredMixin, AuditoriaMixin, CreateView):
     """
-    Vista para crear una Orden de Mantenimiento Correctiva (sin plan).
+    Controlador encargado de la instanciación de Órdenes de Mantenimiento Correctivo.
+    
+    Esta vista gestiona el ciclo de vida inicial de órdenes no planificadas (break-fix),
+    estableciendo el contexto de estación y el estado base sin requerir un plan de mantenimiento previo.
     """
+    
+    # --- Configuración de la Vista ---
     model = OrdenMantenimiento
     form_class = OrdenCorrectivaForm
     template_name = 'gestion_mantenimiento/pages/crear_orden_correctiva.html'
     permission_required = 'gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes'
+
+    def get_form_kwargs(self):
+        """
+        Pasa la estación activa al formulario para filtrar los usuarios.
+        """
+        kwargs = super().get_form_kwargs()
+        # Inyectamos la estación actual en los argumentos del form
+        kwargs['estacion'] = self.estacion_activa
+        return kwargs
     
     def get_context_data(self, **kwargs):
+        """
+        Construir el contexto para la renderización de la plantilla.
+        
+        Inyecta metadatos de UI (título) adicionales al contexto estándar de CreateView.
+        """
         context = super().get_context_data(**kwargs)
         context['titulo_pagina'] = 'Nueva Orden Correctiva'
         return context
 
     def form_valid(self, form):
+        """
+        Ejecutar lógica de negocio tras validación exitosa del formulario.
+        
+        Operaciones:
+        1. Intercepción del guardado para inyección de dependencias automáticas (Estación).
+        2. Configuración de constantes de dominio (Tipo: Correctiva, Estado: Pendiente).
+        3. Persistencia de la orden.
+        4. Registro de auditoría del evento de creación.
+        5. Redirección al panel de gestión de la orden creada.
+        """
         try:
+            # 1. Preparación de la Instancia
             orden = form.save(commit=False)
-            # Asignamos datos automáticos
+            
+            # 2. Asignación de Valores del Sistema
             orden.estacion = self.estacion_activa
             orden.tipo_orden = OrdenMantenimiento.TipoOrden.CORRECTIVA
             orden.estado = OrdenMantenimiento.EstadoOrden.PENDIENTE
+            
+            # 3. Persistencia
             orden.save()
 
-            # --- AUDITORÍA ---
+            # 4. Auditoría
             self.auditar(
                 verbo="creó una nueva Orden de Mantenimiento Correctiva",
                 objetivo=orden,
                 objetivo_repr=f"Orden #{orden.id} (Correctiva)",
                 detalles={
-                    'descripcion_inicial': orden.descripcion_falla if hasattr(orden, 'descripcion_falla') else 'Sin descripción inicial'
+                    'descripcion_inicial': getattr(orden, 'descripcion_falla', 'Sin descripción inicial')
                 }
             )
+            
+            # 5. Feedback y Navegación
             messages.success(self.request, f"Orden Correctiva #{orden.id} creada. Ahora añade los activos afectados.")
             return redirect(reverse('gestion_mantenimiento:ruta_gestionar_orden', kwargs={'pk': orden.pk}))
     
         except Exception as e:
+            # Manejo de fallos en la capa de persistencia
             messages.error(self.request, f"Error del sistema al crear la orden: {str(e)}")
             return self.form_invalid(form)
     
     def form_invalid(self, form):
+        """
+        Gestionar la respuesta ante fallos de validación.
+        """
         messages.error(self.request, "No se pudo crear la orden correctiva. Por favor, revisa los campos marcados en rojo.")
         return super().form_invalid(form)
 
@@ -408,56 +447,83 @@ class OrdenCorrectivaCreateView(BaseEstacionMixin, CustomPermissionRequiredMixin
 
 class OrdenMantenimientoDetalleView(BaseEstacionMixin, CustomPermissionRequiredMixin, ObjectInStationRequiredMixin, DetailView):
     """
-    Panel de control para ejecutar una orden de trabajo específica.
-    Muestra los activos involucrados y permite registrar tareas.
+    Controlador de detalle que funge como tablero de operaciones para la ejecución de una
+    Orden de Mantenimiento específica.
+    
+    Funcionalidad Principal:
+    1. Visualización consolidada de los activos involucrados y su estado de intervención.
+    2. Cálculo de métricas de progreso (KPIs de la orden).
+    3. Gestión de la asignación de responsabilidad (Toma de orden por el técnico).
+    
+    Seguridad:
+    - ObjectInStationRequiredMixin garantiza que solo se acceda a órdenes de la estación activa.
     """
+    
+    # --- Configuración de la Vista ---
     model = OrdenMantenimiento
     template_name = 'gestion_mantenimiento/pages/gestionar_orden.html'
     permission_required = 'gestion_usuarios.accion_gestion_mantenimiento_gestionar_ordenes'
     context_object_name = 'orden'
+    
+    # Definir el campo de búsqueda para validar pertenencia a la estación (usado por ObjectInStationRequiredMixin).
     station_lookup = 'estacion'
 
     def get_context_data(self, **kwargs):
+        """
+        Construir el contexto extendido para el tablero de gestión.
+        
+        Realiza una correlación en memoria entre los activos planificados y los registros
+        de trabajo ya ejecutados para determinar el estado individual de cada ítem.
+        """
+        # Invocar la implementación base para obtener el contexto inicial (incluye self.object).
         context = super().get_context_data(**kwargs)
         context['titulo_pagina'] = f'Orden #{self.object.id}'
         
-        # Obtenemos los activos afectados
-        # Optimizamos consulta trayendo datos del producto
+        # 1. Recuperación de Activos Afectados
+        # Recuperar el conjunto de activos vinculados a la orden.
+        # Aplicar `select_related` para optimización de consultas (Eager Loading) de relaciones
+        # profundas (Producto Global -> Ubicación), evitando el problema N+1 en la plantilla.
         activos = self.object.activos_afectados.select_related(
             'producto__producto_global', 
             'compartimento__ubicacion'
         ).all()
 
-        # Estructuramos los datos para la plantilla:
-        # Necesitamos saber para cada activo si YA TIENE un registro en esta orden.
+        # 2. Correlación de Datos (Activos vs Registros)
         lista_activos = []
+        
+        # Construir un índice en memoria (Hash Map) de los registros de trabajo existentes
+        # para acceso O(1) durante la iteración, indexado por el ID del activo.
         registros_existentes = {
             reg.activo_id: reg for reg in self.object.registros.all()
         }
 
+        # Iterar sobre la lista de activos planificados para correlacionarlos con sus intervenciones.
         for activo in activos:
             registro = registros_existentes.get(activo.id)
             lista_activos.append({
                 'activo': activo,
                 'registro': registro, # Será None si no se ha trabajado aún
+                # Determinar estado derivado para la UI
                 'estado_trabajo': 'COMPLETADO' if registro else 'PENDIENTE'
             })
         
         context['lista_activos_trabajo'] = lista_activos
         
-        # Progreso
+        # 3. Cálculo de Progreso (KPIs)
         total = len(activos)
         completados = len(registros_existentes)
+        
         context['progreso'] = {
             'total': total,
             'completados': completados,
             'porcentaje': int((completados / total) * 100) if total > 0 else 0
         }
-        # Flag para saber si mostrar el botón de "Tomar Orden"
-        # Mostramos el botón si NO tiene responsable
+        
+        # 4. Determinación de Permisos de UI (Botones de Acción)
+        # Banguera para mostrar el botón de "Tomar Orden" si la orden está huérfana.
         context['necesita_asignacion'] = self.object.responsable is None
         
-        # Opcional: Validar si el usuario actual es quien la tiene asignada
+        # Bandera para habilitar controles de edición solo si el usuario actual es el responsable.
         context['es_responsable'] = (self.object.responsable == self.request.user)
 
         return context
@@ -465,21 +531,31 @@ class OrdenMantenimientoDetalleView(BaseEstacionMixin, CustomPermissionRequiredM
 
     def post(self, request, *args, **kwargs):
         """
-        Maneja la acción de 'Asumir Responsabilidad' de la orden.
+        Procesar solicitudes de acción sobre la orden (Cambios de estado/responsabilidad).
+        
+        Actualmente gestiona la acción 'Tomar Orden', que asigna al usuario actual
+        como responsable técnico e inicia el ciclo de vida de ejecución.
         """
+        # Recuperar la instancia actual validada por los mixins.
         self.object = self.get_object()
         
-        # Verificar si la acción es "tomar_orden"
+        # Verificar la presencia de la clave de acción específica en el payload POST.
         if 'accion_tomar_orden' in request.POST:
-            # Asignar al usuario actual como responsable
+            # 1. Asignación de Responsabilidad
+            # Vincular al usuario autenticado como responsable técnico.
             self.object.responsable = request.user
-            # Cambiar estado a EN_CURSO si estaba PENDIENTE
+            
+            # 2. Transición de Estado Automática
+            # Si la orden estaba en espera (PENDIENTE), avanzar a EN_CURSO para reflejar el inicio de labores.
             if self.object.estado == OrdenMantenimiento.EstadoOrden.PENDIENTE:
                 self.object.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
             
+            # 3. Persistencia
             self.object.save()
             
+            # 4. Feedback y Navegación
             messages.success(request, f"Has asumido la responsabilidad de la Orden #{self.object.id}")
             return redirect('gestion_mantenimiento:ruta_gestionar_orden', pk=self.object.pk)
             
+        # Delegar al manejador GET si la acción no es reconocida (comportamiento idempotente).
         return super().get(request, *args, **kwargs)

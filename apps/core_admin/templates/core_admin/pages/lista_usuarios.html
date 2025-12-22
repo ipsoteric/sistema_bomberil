@@ -91,19 +91,41 @@
                 <tr>
                     <td class="ps-4">
                         <div class="d-flex align-items-center">
-                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-3 text-secondary font-bold border text-sm" 
-                                 style="width: 40px; height: 40px;">
-                                {{ usuario.username|slice:":2"|upper }}
-                            </div>
+                            {% if usuario.avatar_thumb_small %}
+                                <img class="rounded-circle me-2" 
+                                     src="{{ usuario.avatar_thumb_small.url }}" 
+                                     alt="Avatar" style="width: 32px; height: 32px; object-fit: cover;">
+                            {% else %}
+                                <img class="rounded-circle me-2" 
+                                     src="{% static 'imagenes/default_avatar.png' %}" 
+                                     alt="Avatar" style="width: 32px; height: 32px;">
+                            {% endif %}
+                            
                             <div>
-                                <div class="font-bold text-dark text-base">
-                                    {{ usuario.get_full_name|default:usuario.rut }}
+                                <div>
+                                    <div class="font-bold text-dark text-base">
+                                        {{ usuario.get_full_name|default:usuario.rut }}
+                                    </div>
+                                    <div class="text-muted text-xs">{{ usuario.email }}</div>
                                 </div>
-                                <div class="text-muted text-xs">{{ usuario.email }}</div>
+                                
+                                {# --- ICONOS REQUERIDOS --- #}
+                                <small class="text-muted text-xs"> {# Ajuste fino para iconos #}
+                                    {% if usuario.is_verified %}
+                                        <i class="fas fa-check-circle color_azul me-1" title="Usuario verificado"></i>
+                                    {% endif %}
+                                    {% if usuario.is_superuser %}
+                                        <i class="fas fa-shield-alt text-danger me-1" title="Super Administrador"></i>
+                                    {% endif %}
+                                    {% if usuario.is_staff %}
+                                        <i class="fas fa-clipboard-user text-warning me-1" title="Acceso al Admin"></i>
+                                    {% endif %}
+                                </small>
+                                {# --- FIN ICONOS --- #}
                             </div>
                         </div>
                     </td>
-                    
+                
                     <td>
                         {% if usuario.is_superuser %}
                             <span class="badge bg-dark border border-secondary text-xs font-medium">Superuser</span>
@@ -124,12 +146,12 @@
                             <div class="d-flex flex-wrap gap-1">
                                 {% for membresia in membresias %}
                                     {# CORRECCIÓN 1: Solo mostrar membresías ACTIVAS #}
-                                    {% if membresia.estado == 'ACTIVO' %}
+                                    {% if estado == 'ACTIVO' %}
                                         <span class="badge bg-light text-secondary border text-xs" 
                                               data-bs-toggle="tooltip" 
                                               {# CORRECCIÓN 2: Iterar sobre la relación ManyToMany de roles #}
-                                              title="Roles: {% for r in membresia.roles.all %}{{ r.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}">
-                                            <i class="fas fa-building me-1 text-muted"></i>{{ membresia.estacion.nombre|truncatechars:15 }}
+                                              title="Roles: {% for r in roles.all %}{{ r.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                                            <i class="fas fa-building me-1 text-muted"></i>{{ estacion.nombre|truncatechars:15 }}
                                         </span>
                                     {% endif %}
                                 {% endfor %}

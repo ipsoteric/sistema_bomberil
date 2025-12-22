@@ -183,6 +183,33 @@ class CustomPasswordResetView(auth_views.PasswordResetView):
 
 
 
+class CustomPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
+    """
+    Vista personalizada para confirmar el cambio de contraseña.
+    Si el cambio es exitoso, marcamos al usuario como verificado.
+    """
+    template_name = "acceso/pages/password_reset_confirm.html"
+    success_url = reverse_lazy('acceso:password_reset_complete')
+
+    def form_valid(self, form):
+        # 1. Llamamos al método padre. Esto guarda la nueva contraseña y retorna la redirección.
+        response = super().form_valid(form)
+        
+        # 2. La vista PasswordResetConfirmView guarda el usuario en 'self.user' 
+        #    después de validar el token en el método dispatch.
+        user = self.user
+        
+        # 3. Verificamos y actualizamos el flag
+        if not user.is_verified:
+            user.is_verified = True
+            # Usamos update_fields para ser más eficientes y solo tocar ese campo
+            user.save(update_fields=['is_verified'])
+            
+        return response
+
+
+
+
 class SeleccionarEstacionView(LoginRequiredMixin, UserPassesTestMixin, View):
     """
     Permite al usuario seleccionar con qué estación desea trabajar ("Modo Dios").

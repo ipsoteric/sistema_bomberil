@@ -113,7 +113,7 @@
                                            data-plan-id="{{ plan.pk }}" 
                                            id="switchPlan{{ plan.pk }}" 
                                            {% if plan.activo_en_sistema %}checked{% endif %}
-                                           {% if not perms.gestion_mantenimiento.accion_gestion_mantenimiento_gestionar_planes %}disabled{% endif %}>
+                                           {% if not perms.gestion_usuarios.accion_gestion_mantenimiento_gestionar_planes %}disabled{% endif %}>
                                     
                                     <label class="form-check-label ms-2 text-xs text-muted" for="switchPlan{{ plan.pk }}" id="labelPlan{{ plan.pk }}">
                                         {% if plan.activo_en_sistema %}Activo{% else %}Inactivo{% endif %}

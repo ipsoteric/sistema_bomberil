@@ -145,7 +145,7 @@
                     </div>
 
                     <div class="d-flex justify-content-end gap-2 pt-2 border-top">
-                        <a href="{% url 'gestion_inventario:ruta_stock_actual' %}" class="btn btn-light text-muted text-base px-4">Cancelar</a>
+                        <a href="{% url 'gestion_inventario:ruta_historial_prestamos' %}" class="btn btn-light text-muted text-base px-4">Cancelar</a>
                         
                         {# PERMISO: Gestionar Préstamos (Crear) #}
                         {% if perms.gestion_usuarios.accion_gestion_inventario_gestionar_prestamos %}

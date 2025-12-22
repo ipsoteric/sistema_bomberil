@@ -111,17 +111,24 @@ class InventarioInicioView(BaseEstacionMixin, TemplateView):
         # 2. KPIs Numéricos: Agregación Condicional (1 consulta por modelo en lugar de N)
         # A) ACTIVOS: Usamos Count (1 registro = 1 unidad)
         kpis_activos = activos_qs.aggregate(
-            operativos=Count('id', filter=Q(estado__tipo_estado__nombre='OPERATIVO')),
-            no_operativos=Count('id', filter=Q(estado__tipo_estado__nombre='NO OPERATIVO')),
+            disponible=Count('id', filter=Q(estado__nombre='DISPONIBLE')),
             prestamo=Count('id', filter=Q(estado__nombre='EN PRÉSTAMO EXTERNO')),
+            en_preparacion=Count('id', filter=Q(estado__nombre='EN PREPARACIÓN')),
+            en_transito=Count('id', filter=Q(estado__nombre='EN TRÁNSITO')),
+            pendiente_revision=Count('id', filter=Q(estado__nombre='PENDIENTE REVISIÓN')),
+            en_reparacion=Count('id', filter=Q(estado__nombre='EN REPARACIÓN')),
+            # Mantenemos el conteo de vencimientos aparte
             vencen=Count('id', filter=Q(fecha_expiracion__range=[hoy, fecha_limite_vencimiento]) | Q(fin_vida_util_calculada__range=[hoy, fecha_limite_vencimiento]))
         )
 
         # B) LOTES: Usamos Sum('cantidad') y Coalesce para evitar None
         kpis_lotes = lotes_qs.aggregate(
-            operativos=Coalesce(Sum('cantidad', filter=Q(estado__tipo_estado__nombre='OPERATIVO')), 0),
-            no_operativos=Coalesce(Sum('cantidad', filter=Q(estado__tipo_estado__nombre='NO OPERATIVO')), 0),
+            disponible=Coalesce(Sum('cantidad', filter=Q(estado__nombre='DISPONIBLE')), 0),
             prestamo=Coalesce(Sum('cantidad', filter=Q(estado__nombre='EN PRÉSTAMO EXTERNO')), 0),
+            en_preparacion=Coalesce(Sum('cantidad', filter=Q(estado__nombre='EN PREPARACIÓN')), 0),
+            en_transito=Coalesce(Sum('cantidad', filter=Q(estado__nombre='EN TRÁNSITO')), 0),
+            pendiente_revision=Coalesce(Sum('cantidad', filter=Q(estado__nombre='PENDIENTE REVISIÓN')), 0),
+            en_reparacion=Coalesce(Sum('cantidad', filter=Q(estado__nombre='EN REPARACIÓN')), 0),
             vencen=Coalesce(Sum('cantidad', filter=Q(fecha_expiracion__range=[hoy, fecha_limite_vencimiento])), 0)
         )
 
@@ -157,13 +164,47 @@ class InventarioInicioView(BaseEstacionMixin, TemplateView):
         context['alerta_stock_critico_lista'] = productos_en_alerta[:5] # Top 5 para el widget
         context['kpi_stock_critico_count'] = productos_en_alerta.count() # Número total para el badge rojo
 
-        # 3. Suma de Totales (Ahora sí sumará 4 + 40)
-        context['kpi_total_operativas'] = kpis_activos['operativos'] + kpis_lotes['operativos']
-        context['kpi_total_no_operativas'] = kpis_activos['no_operativos'] + kpis_lotes['no_operativos']
-        context['kpi_total_prestamo'] = kpis_activos['prestamo'] + kpis_lotes['prestamo']
+        # 3. Suma de Totales por Estado (Para el gráfico detallado)
+        kpi_disponible = kpis_activos['disponible'] + kpis_lotes['disponible']
+        kpi_prestamo = kpis_activos['prestamo'] + kpis_lotes['prestamo']
+        kpi_en_preparacion = kpis_activos['en_preparacion'] + kpis_lotes['en_preparacion']
+        kpi_en_transito = kpis_activos['en_transito'] + kpis_lotes['en_transito']
+        kpi_pendiente_revision = kpis_activos['pendiente_revision'] + kpis_lotes['pendiente_revision']
+        kpi_en_reparacion = kpis_activos['en_reparacion'] + kpis_lotes['en_reparacion']
+
+        # Pasamos los datos individuales para el gráfico
+        context['kpi_disponible'] = kpi_disponible
+        context['kpi_prestamo'] = kpi_prestamo
+        context['kpi_en_preparacion'] = kpi_en_preparacion
+        context['kpi_en_transito'] = kpi_en_transito
+        context['kpi_pendiente_revision'] = kpi_pendiente_revision
+        context['kpi_en_reparacion'] = kpi_en_reparacion
+        
+        # ==============================================================================
+        # 4. CONSTRUCCIÓN DE KPIs GENERALES (Para las Tarjetas Superiores)
+        # ==============================================================================
+        
+        # Tarjeta Verde: Existencias Operativas (Solo lo DISPONIBLE en estación)
+        # Nota: Antes sumabas "Tipo Operativo" (que incluía préstamos). 
+        # Al tener una tarjeta separada para préstamos, es más limpio mostrar aquí solo lo físico disponible.
+        context['kpi_total_operativas'] = kpi_disponible
+
+        # Tarjeta Amarilla: No Operativas (Suma de todo lo que no está listo para usar)
+        # Basado en tus fixtures de Tipo Estado 2 (No Operativo)
+        context['kpi_total_no_operativas'] = (
+            kpi_en_preparacion + 
+            kpi_en_transito + 
+            kpi_pendiente_revision + 
+            kpi_en_reparacion
+        )
+
+        # Tarjeta Cyan: Items en Préstamo
+        context['kpi_total_prestamo'] = kpi_prestamo
+
+        # Tarjeta Roja: Vencimientos (Esta ya funcionaba, pero la mantenemos)
         context['kpi_proximos_a_vencer'] = kpis_activos['vencen'] + kpis_lotes['vencen']
 
-        # 3. Listas para Alertas (Widgets)
+        # 4. Listas para Alertas (Widgets)
         # Optimizamos con select_related para evitar N+1 en el template
         select_related_fields = ('producto__producto_global', 'compartimento')
         
@@ -190,7 +231,7 @@ class InventarioInicioView(BaseEstacionMixin, TemplateView):
             estado=Prestamo.EstadoPrestamo.PENDIENTE
         ).select_related('destinatario')[:5]
 
-        # 4. Widget de Actividad Reciente
+        # 5. Widget de Actividad Reciente
         # Usamos Abs() en la DB para calcular el valor absoluto sin iterar en Python
         context['actividad_reciente'] = MovimientoInventario.objects.filter(
             estacion_id=self.estacion_activa_id
@@ -1334,10 +1375,15 @@ class CatalogoGlobalListView(BaseEstacionMixin, CustomPermissionRequiredMixin, L
 
 class ProductoGlobalCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, AuditoriaMixin, CreateView):
     """
-    Vista para crear un Producto Global.
-    Utiliza CreateView y extrae la lógica de negocio compleja 
-    (creación dinámica de marcas) a un método helper encapsulado.
+    Controlador encargado de la creación de nuevos registros en el Catálogo Global de Productos.
+    
+    Extiende la funcionalidad estándar de CreateView para incluir lógica de negocio específica:
+    1. Intercepción del flujo POST para permitir la creación dinámica de Marcas "al vuelo".
+    2. Encapsulamiento de operaciones en transacciones atómicas para integridad de datos.
+    3. Registro de auditoría detallado post-creación.
     """
+    
+    # --- Configuración de la Vista ---
     model = ProductoGlobal
     form_class = ProductoGlobalForm
     template_name = 'gestion_inventario/pages/crear_producto_global.html'
@@ -1347,29 +1393,39 @@ class ProductoGlobalCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
 
     def _gestionar_creacion_marca(self, request):
         """
-        Helper para detectar si se ingresó texto libre en 'marca' y crearla al vuelo.
-        Retorna (POST_DATA modificado, None) o (None, ErrorMessage).
+        Método auxiliar para procesar la creación dinámica de marcas basada en entrada de texto libre.
+        
+        Analiza el payload POST en busca de indicadores de "nueva marca" (prefijo 'new__').
+        Si se detecta, crea la entidad en base de datos y actualiza los datos del request
+        con el ID generado, permitiendo que el formulario estándar procese la relación FK correctamente.
+        
+        Retorna:
+            tuple: (QueryDict modificado con ID de marca, None) en caso de éxito o irrelevancia.
+                   (None, str mensaje_error) en caso de fallo durante la creación.
         """
         marca_input = request.POST.get('marca')
         
-        # 1. Si no hay input, devolvemos tal cual
+        # 1. Validación preliminar
+        # Retornar datos originales si el campo está vacío.
         if not marca_input:
              return request.POST, None
 
-        # 2. DETECCIÓN POR PREFIJO (Lógica JS new__)
+        # 2. Detección de patrón de creación (Protocolo Frontend 'new__')
         if marca_input.startswith('new__'):
-            # Quitamos el prefijo para obtener el nombre real: "new__420" -> "420"
+            # Sanitización: Eliminar prefijo para aislar el nombre real de la marca.
             nombre_marca_limpio = marca_input.replace('new__', '', 1).strip()
             
             try:
-                # Usamos get_or_create por si alguien intenta crear algo que ya existe por nombre
+                # Persistencia Condicional
+                # Utilizar get_or_create para evitar duplicados si la marca ya existe por nombre exacto.
                 marca_obj, created = Marca.objects.get_or_create(
                     nombre=nombre_marca_limpio, 
                     defaults={'descripcion': ''}
                 )
                 
                 if created:
-                    # Auditoría
+                    # Registro de Auditoría (Sub-operación)
+                    # Auditar explícitamente la creación de la entidad dependiente.
                     self.auditar(
                         verbo="creó la marca",
                         objetivo=marca_obj,
@@ -1377,76 +1433,99 @@ class ProductoGlobalCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
                     )
                     messages.info(request, f'Se ha creado la nueva marca "{marca_obj.nombre}".')
                 
-                # Inyectamos el ID real en el POST data para que el Form lo entienda
+                # Manipulación de Datos del Request
+                # Crear una copia mutable del QueryDict para inyectar el ID de la marca resuelta.
+                # Esto es necesario para que el ModelForm valide el campo ForeignKey correctamente.
                 post_data = request.POST.copy()
                 post_data['marca'] = str(marca_obj.id)
                 return post_data, None
 
             except IntegrityError:
+                # Manejo de violaciones de restricciones de base de datos.
                 return None, f'Error: La marca "{nombre_marca_limpio}" ya existe o es inválida.'
             except Exception as e:
+                # Captura de errores no controlados durante la creación de la dependencia.
                 return None, f'Error inesperado creando marca: {str(e)}'
 
-        # 3. SI NO TIENE PREFIJO, ES UN ID NORMAL
-        # No hacemos nada, dejamos que el form valide si el ID existe o no.
+        # 3. Flujo Estándar
+        # Si no hay prefijo, se asume que el valor es un ID de marca existente.
+        # Se delega la validación de existencia al formulario principal.
         return request.POST, None
 
 
     def post(self, request, *args, **kwargs):
         """
-        Interceptamos POST para procesar la marca antes de validar el formulario.
+        Sobrescribir el manejador POST para inyectar lógica pre-validación.
+        
+        Establece un bloque transaccional para asegurar que tanto la posible creación de marca
+        como la creación del producto ocurran atómicamente.
         """
         self.object = None
         
-        # Variable para guardar el formulario fallido y renderizarlo FUERA de la transacción
+        # Inicializar contenedor para el formulario en caso de fallo, permitiendo
+        # su renderizado fuera del contexto transaccional (rollback).
         form_para_renderizar = None
 
         try:
+            # Inicio de Bloque Transaccional
             with transaction.atomic():
-                # 1. Gestionar Marca Dinámica
+                # 1. Procesamiento de Dependencias (Marca)
                 post_data_modificado, error_msg = self._gestionar_creacion_marca(request)
 
                 if error_msg:
-                    # Si falla la marca, agregamos el error y forzamos rollback
+                    # Interrupción por fallo en dependencia
+                    # Notificar error, forzar rollback de cualquier cambio (ej. marca creada parcialmente)
+                    # y preparar el estado para re-renderizar el formulario.
                     messages.error(request, error_msg)
                     transaction.set_rollback(True)
-                    # Preparamos el form original para renderizarlo fuera
                     form_para_renderizar = self.get_form()
                 
                 else:
-                    # 2. Instanciar Formulario
-                    # Usamos get_form_kwargs() para que el form reciba 'request', 'user', etc.
-                    # y luego sobrescribimos 'data' y 'files' con nuestra versión modificada.
+                    # 2. Instanciación del Formulario Principal
+                    # Construir el formulario inyectando los datos modificados (con ID de marca real).
                     form_kwargs = self.get_form_kwargs()
                     form_kwargs['data'] = post_data_modificado
                     form_kwargs['files'] = request.FILES
                     
                     form = self.get_form_class()(**form_kwargs)
 
+                    # 3. Validación y Persistencia del Producto
                     if form.is_valid():
-                        # Éxito: form_valid guardará y retornará el redirect
+                        # Delegar a form_valid para guardar y redireccionar.
                         return self.form_valid(form)
                     else:
+                        # Fallo de validación del formulario principal
+                        # Forzar rollback (deshacer creación de marca si la hubo) y capturar formulario con errores.
                         transaction.set_rollback(True)
                         form_para_renderizar = form
 
         except Exception as e:
+            # Manejo de Excepciones Críticas
+            # Capturar errores de sistema, notificar y asegurar estado seguro.
             messages.error(request, f"Error crítico del sistema: {e}")
-            # Si hubo una excepción, el atomic ya hizo rollback automático.
             form_para_renderizar = self.get_form()
 
+        # Renderizado de respuesta de error
+        # Se ejecuta fuera del bloque atomic para evitar efectos secundarios.
         if form_para_renderizar:
             return self.form_invalid(form_para_renderizar)
         
-        # Fallback por si acaso (no debería llegar aquí)
+        # Fallback de seguridad (camino inalcanzable bajo flujo normal).
         return self.form_invalid(self.get_form())
 
 
     def form_valid(self, form):
-        # 1. Ejecutamos super().form_valid(form) primero.
-        # Esto guarda el objeto en la BD y asigna self.object
+        """
+        Ejecutar lógica post-validación exitosa.
+        
+        Persiste el objeto ProductoGlobal y registra la operación en auditoría.
+        """
+        # 1. Persistencia Base
+        # Invocar método padre para guardar el objeto en base de datos.
         response = super().form_valid(form)
-        # --- AUDITORÍA ---
+        
+        # 2. Registro de Auditoría
+        # Documentar la creación del producto con metadatos relevantes.
         self.auditar(
             verbo="registró el producto global",
             objetivo=self.object,
@@ -1457,11 +1536,18 @@ class ProductoGlobalCrearView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
                 'modelo': self.object.modelo
             }
         )
+        
+        # 3. Notificación de UI
         messages.success(self.request, f'Producto Global "{self.object.nombre_oficial}" creado exitosamente.')
         return response
     
 
     def form_invalid(self, form):
+        """
+        Manejar el flujo de formulario inválido.
+        
+        Agregar feedback visual genérico al usuario antes de renderizar los errores de campo.
+        """
         messages.error(self.request, "Hubo un error al crear el producto global. Revisa los datos ingresados.")
         return super().form_invalid(form)
 
@@ -2503,15 +2589,29 @@ class StockActualListView(BaseEstacionMixin, CustomPermissionRequiredMixin, Temp
 
 class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, AuditoriaMixin, View):
     """
-    Vista transaccional compleja para recepción de stock.
-    Descompone la lógica monolítica en métodos de servicio privados,
-    maneja formsets dinámicos y encapsula la creación polimórfica (Activo/Lote).
+    Controlador transaccional complejo para la gestión de recepción de stock.
+    
+    Esta vista actúa como orquestador principal del proceso de entrada de mercancía.
+    Características técnicas:
+    - Descomposición de lógica monolítica en servicios privados para mantenibilidad.
+    - Manejo de FormSets dinámicos para inserción masiva de ítems.
+    - Encapsulamiento de lógica polimórfica (creación diferenciada de Activos vs Lotes).
+    - Gestión de atomicidad en base de datos para garantizar integridad referencial.
     """
+    
+    # --- Configuración de la Vista ---
     template_name = 'gestion_inventario/pages/recepcion_stock.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_recepcionar_stock"
 
 
     def get(self, request, *args, **kwargs):
+        """
+        Procesar la solicitud HTTP GET.
+        
+        Inicializar formularios de cabecera y detalle (FormSet) inyectando el contexto
+        de la estación activa. Generar y serializar datos auxiliares (productos, ubicaciones)
+        en formato JSON para habilitar la lógica dinámica en el cliente (JavaScript).
+        """
         cabecera_form = RecepcionCabeceraForm(estacion=self.estacion_activa)
         detalle_formset = RecepcionDetalleFormSet(
             form_kwargs={'estacion': self.estacion_activa}, 
@@ -2521,6 +2621,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
         context = {
             'cabecera_form': cabecera_form,
             'detalle_formset': detalle_formset,
+            # Inyección de datos maestros para manipulación en frontend
             'product_data_json': self._get_product_data_json(),
             'ubicaciones_data_json': self._get_ubicaciones_data_json()
         }
@@ -2528,6 +2629,13 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
 
 
     def post(self, request, *args, **kwargs):
+        """
+        Procesar la solicitud HTTP POST.
+        
+        Reconstruir los formularios con los datos recibidos y ejecutar validación.
+        Si la validación es exitosa, delegar el procesamiento a `_procesar_recepcion`.
+        En caso de error, capturar excepciones críticas y re-renderizar los formularios con feedback.
+        """
         cabecera_form = RecepcionCabeceraForm(request.POST, estacion=self.estacion_activa)
         detalle_formset = RecepcionDetalleFormSet(
             request.POST, 
@@ -2537,14 +2645,16 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
 
         if cabecera_form.is_valid() and detalle_formset.is_valid():
             try:
-                # Delegamos la lógica transaccional a un método dedicado
+                # Delegar la lógica de negocio y persistencia al método transaccional
                 redirect_url = self._procesar_recepcion(cabecera_form, detalle_formset)
                 return HttpResponseRedirect(redirect_url)
 
             except Exception as e:
+                # Manejo de fallos críticos durante la transacción
                 messages.error(request, f"Error crítico al guardar la recepción: {e}")
-                # Fallthrough para renderizar el formulario con el error
+                # El flujo continúa hacia el renderizado del formulario para mostrar el error
         else:
+            # Feedback para errores de validación estándar (campos requeridos, tipos de datos)
             messages.warning(request, "Por favor, corrija los errores en el formulario.")
 
         context = {
@@ -2559,38 +2669,52 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
     @transaction.atomic
     def _procesar_recepcion(self, cabecera_form, detalle_formset):
         """
-        Método transaccional que orquesta la creación de Activos/Lotes y Movimientos.
-        Retorna la URL de redirección final.
+        Orquestar la lógica de negocio bajo una transacción atómica.
+        
+        Este método es responsable de:
+        1. Crear instancias de Activo o LoteInsumo según la configuración del producto.
+        2. Generar los movimientos de inventario correspondientes (Trazabilidad).
+        3. Actualizar costos de productos.
+        4. Consolidar datos para auditoría y generar URL de redirección.
+        
+        Si ocurre cualquier error dentro de este método, todos los cambios en BD se revierten.
         """
+        # Extracción de datos de cabecera validados
         proveedor = cabecera_form.cleaned_data['proveedor']
         fecha_recepcion = cabecera_form.cleaned_data['fecha_recepcion']
         notas = cabecera_form.cleaned_data['notas']
         
-        # Obtener estado UNA SOLA VEZ para toda la transacción
+        # Optimización: Recuperar la instancia de Estado 'DISPONIBLE' una sola vez
+        # para reutilizarla en todos los ítems del bucle.
         estado_disponible = Estado.objects.get(nombre='DISPONIBLE', tipo_estado__nombre='OPERATIVO')
 
+        # Contenedores para seguimiento de resultados
         nuevos_ids = {'activos': [], 'lotes': []}
-        cantidad_total_items = 0 # Suma total de unidades físicas
-        compartimentos_destino_set = set() # Para capturar destinos únicos
+        cantidad_total_items = 0 # Contador de unidades físicas totales
+        compartimentos_destino_set = set() # Registro de destinos únicos para auditoría
 
+        # Iteración sobre los formularios del FormSet (Items de la recepción)
         for form in detalle_formset:
+            # Omitir formularios vacíos o marcados para eliminación
             if not form.cleaned_data or form.cleaned_data.get('DELETE'):
                 continue
 
             data = form.cleaned_data
             producto = data['producto']
 
-            # Capturar nombre del compartimento destino para el log
+            # Registrar compartimento destino para enriquecer el log de auditoría
             if data.get('compartimento_destino'):
                 compartimentos_destino_set.add(data['compartimento_destino'].nombre)
             
-            # Actualización de costos (Side-effect intencional)
+            # Actualización de Costos (Efecto secundario)
+            # Si el costo unitario ingresado difiere del registrado, actualizar el maestro de productos.
             costo = data.get('costo_unitario')
             if costo is not None and producto.costo_compra != costo:
                 producto.costo_compra = costo
                 producto.save(update_fields=['costo_compra'])
 
-            # Dispatch polimórfico
+            # Dispatch Polimórfico
+            # Determinar si se debe instanciar un Activo (traza individual) o un Lote (traza agrupada).
             if producto.es_serializado:
                 item_id = self._crear_activo(data, proveedor, fecha_recepcion, notas, estado_disponible)
                 nuevos_ids['activos'].append(item_id)
@@ -2600,10 +2724,11 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
                 nuevos_ids['lotes'].append(item_id)
                 cantidad_total_items += data['cantidad']
 
-        # --- CONSTRUCCIÓN DE VERBO DETALLADO ---
+        # --- Construcción de Metadatos para Auditoría ---
         cant_activos = len(nuevos_ids['activos'])
         cant_insumos = cantidad_total_items - cant_activos
         
+        # Generación dinámica del mensaje de auditoría (Verbo)
         partes_msg = []
         if cant_activos > 0:
             partes_msg.append(f"{cant_activos} Activo{'s' if cant_activos != 1 else ''}")
@@ -2612,11 +2737,11 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
         
         detalle_texto = " y ".join(partes_msg) if partes_msg else "carga de inventario"
         
-        # Texto de destinos (Ej: " en Pañol 1, Bodega B")
+        # Formateo de destinos (ej. " en Pañol 1, Bodega B")
         lista_destinos = list(compartimentos_destino_set)
         texto_destinos = ""
         if lista_destinos:
-            # Limitamos a mostrar 2 nombres para no saturar el feed si son muchos
+            # Limitar a 2 nombres explícitos para evitar logs excesivamente largos
             if len(lista_destinos) > 2:
                 texto_destinos = f" en {', '.join(lista_destinos[:2])} y otros"
             else:
@@ -2624,7 +2749,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
 
         verbo_final = f"recepcionó {detalle_texto}{texto_destinos} desde el proveedor"
 
-        # --- AUDITORÍA CONSOLIDADA ---
+        # Registro de Auditoría Consolidado
         self.auditar(
             verbo=verbo_final,
             objetivo=proveedor, 
@@ -2632,7 +2757,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
                 'total_unidades': cantidad_total_items,
                 'desglose': {'activos': cant_activos, 'insumos': cant_insumos},
                 'destinos': lista_destinos,
-                # FIX: Serialización explícita de UUIDs a string
+                # Serialización explícita de UUIDs a string para compatibilidad JSON
                 'nuevos_activos_ids': [str(uid) for uid in nuevos_ids['activos']],
                 'nuevos_lotes_ids': [str(uid) for uid in nuevos_ids['lotes']],
                 'nota_recepcion': notas
@@ -2644,7 +2769,10 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
 
 
     def _crear_activo(self, data, proveedor, fecha, notas, estado):
-        """Helper para crear un Activo y su movimiento."""
+        """
+        Método auxiliar para la persistencia de un Activo Serializado.
+        Crea la entidad Activo y registra su Movimiento de Entrada asociado.
+        """
         activo = Activo.objects.create(
             producto=data['producto'],
             estacion=self.estacion_activa,
@@ -2670,7 +2798,10 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
 
 
     def _crear_lote(self, data, proveedor, fecha, notas, estado):
-        """Helper para crear un Lote y su movimiento."""
+        """
+        Método auxiliar para la persistencia de un Lote de Insumos.
+        Crea la entidad LoteInsumo y registra su Movimiento de Entrada asociado.
+        """
         lote = LoteInsumo.objects.create(
             producto=data['producto'],
             compartimento=data['compartimento_destino'],
@@ -2695,7 +2826,13 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
 
 
     def _construir_url_redireccion(self, ids_dict):
-        """Construye la URL final (Impresión o Stock) según resultados."""
+        """
+        Determinar la URL de destino post-recepción.
+        
+        Si se crearon elementos, redirigir a la vista de impresión de etiquetas
+        adjuntando los IDs generados como parámetros GET.
+        Caso contrario, redirigir al inventario general.
+        """
         if not ids_dict['activos'] and not ids_dict['lotes']:
              return reverse('gestion_inventario:ruta_stock_actual')
 
@@ -2711,24 +2848,28 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
 
     def _get_product_data_json(self):
         """
-        Método auxiliar para obtener los datos del producto.
-        Reutilizable en GET y POST sin causar errores de recursión.
+        Serializar configuración de productos a JSON.
+        
+        Este método provee al frontend de un mapa {id: config} para controlar
+        la visibilidad de campos (ej. mostrar campo 'Serie' solo si es serializado).
+        Utiliza `.values()` para optimizar el rendimiento y reducir consumo de memoria.
         """
-        # Optimizamos usando .values() para no instanciar objetos pesados
         productos = Producto.objects.filter(estacion=self.estacion_activa).values(
             'id', 'es_serializado', 'es_expirable'
         )
-        # Convertimos a diccionario {id: data}
+        # Transformación a diccionario indexado por ID
         data = {p['id']: {'es_serializado': p['es_serializado'], 'es_expirable': p['es_expirable']} for p in productos}
         return json.dumps(data)
     
 
     def _get_ubicaciones_data_json(self):
         """
-        Genera una estructura JSON con Ubicaciones y sus Compartimentos,
-        EXCLUYENDO las ubicaciones de tipo 'ADMINISTRATIVA' (el limbo).
+        Serializar jerarquía de Ubicaciones y Compartimentos a JSON.
+        
+        Filtra ubicaciones administrativas para asegurar que el stock se reciba
+        en ubicaciones físicas válidas. Estructura utilizada para selectores en cascada.
         """
-        # 1. Filtramos ubicaciones que NO sean administrativas
+        # 1. Recuperación de datos con filtrado y optimización de consultas (prefetch)
         ubicaciones = Ubicacion.objects.filter(
             estacion=self.estacion_activa
         ).exclude(
@@ -2737,7 +2878,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
 
         data = {}
         for ubi in ubicaciones:
-            # 2. Convertimos los compartimentos manualmente para asegurar que el ID sea string
+            # 2. Construcción manual de lista de compartimentos para control de tipos (ID string)
             compartimentos_list = []
             for comp in ubi.compartimento_set.all():
                 compartimentos_list.append({
@@ -2745,7 +2886,7 @@ class RecepcionStockView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audit
                     'nombre': comp.nombre
                 })
             
-            # 3. Usamos el ID de ubicación como string para la clave
+            # 3. Asignación al diccionario principal usando ID de ubicación como clave
             data[str(ubi.id)] = {
                 'nombre': ubi.nombre,
                 'compartimentos': compartimentos_list
@@ -3830,15 +3971,31 @@ class TransferenciaExistenciaView(BaseEstacionMixin, CustomPermissionRequiredMix
 
 class CrearPrestamoView(BaseEstacionMixin, CustomPermissionRequiredMixin, AuditoriaMixin, View):
     """
-    Vista para crear un Préstamo (Cabecera y Detalles).
-    Manejo híbrido de Formulario + JSON, con lógica transaccional
-    desacoplada y validación de concurrencia robusta.
+    Controlador para la gestión y registro de nuevos Préstamos de Inventario.
+    
+    Arquitectura Híbrida:
+    Combina el procesamiento de un formulario Django estándar (para la cabecera del préstamo)
+    con un payload JSON crudo (para el detalle de ítems), permitiendo una interfaz dinámica
+    en el frontend sin la complejidad de FormSets anidados.
+    
+    Características Críticas:
+    - Atomicidad: Toda la operación es transaccional.
+    - Concurrencia: Implementa bloqueo de filas (row-locking) para prevenir condiciones de carrera
+      al descontar stock o cambiar estados de activos.
     """
+    
+    # --- Configuración de la Vista ---
     template_name = 'gestion_inventario/pages/crear_prestamo.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
 
 
     def get(self, request, *args, **kwargs):
+        """
+        Procesar la solicitud HTTP GET.
+        
+        Inicializar el formulario de cabecera con el contexto de la estación activa
+        y renderizar la interfaz de usuario.
+        """
         context = {
             'cabecera_form': PrestamoCabeceraForm(estacion=self.estacion_activa),
         }
@@ -3846,66 +4003,98 @@ class CrearPrestamoView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audito
 
 
     def post(self, request, *args, **kwargs):
+        """
+        Procesar la solicitud HTTP POST.
+        
+        Flujo de Ejecución:
+        1. Deserializar y validar la estructura JSON de los ítems seleccionados.
+        2. Validar el formulario de cabecera (Destinatario, fechas, notas).
+        3. Invocar la transacción de negocio principal.
+        4. Gestionar excepciones de concurrencia o errores de integridad.
+        """
         cabecera_form = PrestamoCabeceraForm(request.POST, estacion=self.estacion_activa)
         items_json_str = request.POST.get('items_json')
         
-        # 1. Validación Inicial de JSON
+        # 1. Validación de Integridad Estructural (JSON)
         items_list = []
         if items_json_str:
             try:
                 items_list = json.loads(items_json_str)
             except json.JSONDecodeError:
-                messages.error(request, "Error: Los datos de los ítems están corruptos.")
+                messages.error(request, "Error: Los datos de los ítems están corruptos o mal formados.")
         
+        # Validación de Regla de Negocio: El préstamo debe tener contenido.
         if not items_list:
             cabecera_form.add_error(None, "Debe escanear al menos un ítem.")
 
-        # 2. Proceso Transaccional si todo es válido
+        # 2. Ejecución Transaccional
         if cabecera_form.is_valid() and items_list:
             try:
+                # Delegar la lógica de persistencia al método atómico
                 prestamo_id = self._procesar_transaccion_prestamo(cabecera_form, items_list)
+                
+                # Feedback y Redirección
                 messages.success(request, f"Préstamo #{prestamo_id} creado exitosamente.")
                 return redirect('gestion_inventario:ruta_historial_prestamos')
 
             except (Activo.DoesNotExist, LoteInsumo.DoesNotExist):
-                messages.error(request, "Error de concurrencia: Un ítem ya no está disponible.")
+                # Manejo de Conflictos de Concurrencia
+                # Capturar el caso donde otro proceso modificó o eliminó un ítem 
+                # milisegundos antes de que esta transacción adquiriera el bloqueo.
+                messages.error(request, "Error de concurrencia: Uno de los ítems seleccionados ya no está disponible o ha sido modificado por otro usuario.")
+            
             except Exception as e:
-                messages.error(request, f"Error inesperado: {e}")
+                # Captura de errores no controlados para evitar crash del servidor
+                messages.error(request, f"Error inesperado al procesar el préstamo: {e}")
         else:
             messages.warning(request, "Por favor, corrija los errores del formulario.")
 
-        # Fallback: Renderizar con errores
+        # Fallback: Re-renderizado con estado de error
+        # Se devuelve el string JSON original para permitir que el JS restaure la tabla visualmente.
         context = {
             'cabecera_form': cabecera_form,
-            'items_json_error': items_json_str # Para que el JS intente recuperar el estado
+            'items_json_error': items_json_str 
         }
         return render(request, self.template_name, context)
 
 
     @transaction.atomic
     def _procesar_transaccion_prestamo(self, form, items_list):
-        """Orquesta la creación del préstamo, detalles y movimientos."""
+        """
+        Orquestar la lógica de negocio para la persistencia del préstamo.
+        Decorado con @transaction.atomic para garantizar integridad total.
         
-        # A. Preparar Datos Base
+        Pasos:
+        A. Resolución del Destinatario (Existente o Nuevo).
+        B. Persistencia de la Cabecera del Préstamo.
+        C. Iteración y procesamiento polimórfico de ítems (Activos vs Lotes).
+        D. Registro centralizado de auditoría.
+        """
+        
+        # A. Preparación de Entidades Base
         destinatario = self._get_or_create_destinatario(form)
+        
+        # Obtener estados de referencia una única vez para optimizar consultas
         estado_prestamo = Estado.objects.get(nombre='EN PRÉSTAMO EXTERNO')
         estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
         
-        # B. Crear Cabecera
+        # B. Creación de Cabecera
         prestamo = form.save(commit=False)
         prestamo.estacion = self.estacion_activa
         prestamo.usuario_responsable = self.request.user
         prestamo.destinatario = destinatario
         prestamo.save()
 
-        # C. Procesar Ítems
+        # C. Procesamiento de Ítems (Detalles)
         notas = form.cleaned_data['notas_prestamo']
-
+        
+        # Contadores para Auditoría
         total_items_fisicos = 0
         conteo_activos = 0
         conteo_insumos = 0
         
         for item_data in items_list:
+            # Dispatch Polimórfico basado en el tipo de ítem
             if item_data['tipo'] == 'activo':
                 self._procesar_item_activo(prestamo, item_data, notas, estado_disponible, estado_prestamo, destinatario)
                 total_items_fisicos += 1
@@ -3916,7 +4105,8 @@ class CrearPrestamoView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audito
                 total_items_fisicos += cantidad
                 conteo_insumos += cantidad
 
-        # --- AUDITORÍA (Registro Consolidado) ---
+        # D. Auditoría Consolidada
+        # Construcción dinámica del mensaje de log
         partes_msg = []
         if conteo_activos > 0:
             partes_msg.append(f"{conteo_activos} Activo{'s' if conteo_activos != 1 else ''}")
@@ -3927,7 +4117,7 @@ class CrearPrestamoView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audito
         
         self.auditar(
             verbo=f"registró el préstamo de {detalle_texto} a",
-            objetivo=destinatario, # El objetivo lógico es quien recibe
+            objetivo=destinatario, # Definir al receptor como el objetivo lógico de la acción
             objetivo_repr=destinatario.nombre_entidad,
             detalles={
                 'id_prestamo': prestamo.id,
@@ -3942,9 +4132,18 @@ class CrearPrestamoView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audito
 
 
     def _get_or_create_destinatario(self, form):
-        """Busca o crea el destinatario según los datos del form."""
+        """
+        Resolver la entidad Destinatario.
+        
+        Lógica:
+        - Si se selecciona un destinatario existente, retornarlo.
+        - Si se ingresan datos para uno nuevo, crearlo "al vuelo" (lazy creation)
+          y registrar la auditoría de dicha sub-operación.
+        """
         destinatario = form.cleaned_data.get('destinatario')
+        
         if not destinatario:
+            # Creación condicionada por falta de selección previa
             destinatario, created = Destinatario.objects.get_or_create(
                 estacion=self.estacion_activa,
                 nombre_entidad=form.cleaned_data.get('nuevo_destinatario_nombre'),
@@ -3954,7 +4153,7 @@ class CrearPrestamoView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audito
                 }
             )
 
-            # --- AUDITORÍA (Creación implícita) ---
+            # Auditoría explícita para la creación implícita de una entidad maestra
             if created:
                 self.auditar(
                     verbo="registró como nuevo destinatario a",
@@ -3969,35 +4168,65 @@ class CrearPrestamoView(BaseEstacionMixin, CustomPermissionRequiredMixin, Audito
 
 
     def _procesar_item_activo(self, prestamo, data, notas, estado_disp, estado_prest, destinatario):
-        """Procesa un activo individual."""
-        # select_for_update bloquea la fila para evitar race conditions
+        """
+        Procesar la salida de un Activo Único (Serializado).
+        
+        Mecanismo de Seguridad (Critical Section):
+        Utiliza `select_for_update()` para bloquear la fila de la base de datos correspondiente
+        al activo. Esto impide que otra transacción concurrente modifique su estado mientras
+        esta operación está en curso.
+        """
+        # Bloqueo pesimista: Esperar liberación si otro proceso está tocando este activo.
         activo = Activo.objects.select_for_update().get(id=data['id'], estado=estado_disp)
         
+        # 1. Crear relación detalle
         PrestamoDetalle.objects.create(prestamo=prestamo, activo=activo, cantidad_prestada=1)
         
+        # 2. Actualización de Estado (Efecto Secundario)
         activo.estado = estado_prest
         activo.save(update_fields=['estado', 'updated_at'])
         
+        # 3. Trazabilidad (Movimiento)
         self._crear_movimiento(activo.compartimento, activo, None, -1, destinatario, notas)
 
+
     def _procesar_item_lote(self, prestamo, data, notas, estado_disp, destinatario):
-        """Procesa un lote individual."""
+        """
+        Procesar la salida parcial o total de un Lote de Insumos.
+        
+        Mecanismo de Seguridad:
+        Utiliza `select_for_update()` para garantizar la consistencia del conteo de stock.
+        Valida que la cantidad disponible sea suficiente en el momento exacto de la escritura (Atomic check-then-act).
+        """
         cantidad = int(data['cantidad_prestada'])
+        
+        # Bloqueo pesimista + Filtro de integridad (cantidad__gte)
+        # Si el stock bajó de la cantidad requerida durante el proceso, lanzará DoesNotExist.
         lote = LoteInsumo.objects.select_for_update().get(
             id=data['id'], 
             estado=estado_disp, 
             cantidad__gte=cantidad
         )
         
+        # 1. Crear relación detalle
         PrestamoDetalle.objects.create(prestamo=prestamo, lote=lote, cantidad_prestada=cantidad)
         
+        # 2. Descuento de Inventario
         lote.cantidad -= cantidad
         lote.save(update_fields=['cantidad', 'updated_at'])
         
+        # 3. Trazabilidad (Movimiento)
+        # Se registra cantidad negativa para indicar salida lógica, aunque el tipo de movimiento ya lo implica.
         self._crear_movimiento(lote.compartimento, None, lote, -1 * cantidad, destinatario, notas)
 
+
     def _crear_movimiento(self, compartimento, activo, lote, cantidad, destinatario, notas):
-        """Helper genérico para movimientos."""
+        """
+        Helper genérico para la creación estandarizada de Movimientos de Inventario.
+        
+        Centraliza la lógica de creación de historial para asegurar consistencia
+        en los campos de auditoría operativa (Usuario, Estación, Timestamp).
+        """
         MovimientoInventario.objects.create(
             tipo_movimiento=TipoMovimiento.PRESTAMO,
             usuario=self.request.user,
@@ -4072,15 +4301,29 @@ class HistorialPrestamosView(BaseEstacionMixin, CustomPermissionRequiredMixin, L
 
 class GestionarDevolucionView(BaseEstacionMixin, CustomPermissionRequiredMixin, AuditoriaMixin, View):
     """
-    Vista para gestionar devoluciones de préstamos.
-    Descompone la lógica de devolución masiva en servicios
-    transaccionales, optimiza queries y asegura la integridad del stock.
+    Controlador para la administración del ciclo de vida de devolución de préstamos.
+    
+    Esta vista implementa la lógica transaccional necesaria para el reingreso masivo
+    de activos e insumos al inventario operativo.
+    
+    Capacidades Técnicas:
+    - Procesamiento por lotes (Bulk Processing) para optimizar escrituras en BD.
+    - Validación de integridad de stock (evitar devoluciones excedentes).
+    - Gestión híbrida de eventos: Permite registrar devoluciones y reportes de extravío simultáneamente.
+    - Cálculo dinámico del estado del préstamo (Parcial vs Completado).
     """
+    
+    # --- Configuración de la Vista ---
     template_name = 'gestion_inventario/pages/gestionar_devolucion.html'
     permission_required = "gestion_usuarios.accion_gestion_inventario_gestionar_prestamos"
 
     def get_prestamo_seguro(self, prestamo_id):
-        """Obtiene el préstamo asegurando pertenencia a la estación."""
+        """
+        Recuperar la instancia del préstamo validando estrictamente su pertenencia a la estación activa.
+        
+        Utiliza `get_object_or_404` para garantizar que no se acceda a registros de otras estaciones,
+        aplicando `select_related` para optimizar la carga de relaciones clave (destinatario, responsable).
+        """
         return get_object_or_404(
             Prestamo.objects.select_related('destinatario', 'usuario_responsable'),
             id=prestamo_id,
@@ -4089,15 +4332,22 @@ class GestionarDevolucionView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
 
 
     def get(self, request, prestamo_id):
+        """
+        Procesar la solicitud HTTP GET.
+        
+        Recuperar el detalle del préstamo optimizando la carga de relaciones profundas (productos globales)
+        para minimizar el problema de N+1 consultas. Realizar cálculo en memoria de los saldos pendientes
+        para su correcta representación en la interfaz de usuario.
+        """
         prestamo = self.get_prestamo_seguro(prestamo_id)
         
-        # Optimización: Traer detalles con productos relacionados
+        # Optimización: Eager loading de la jerarquía de productos para los ítems
         items_prestados = prestamo.items_prestados.select_related(
             'activo__producto__producto_global', 
             'lote__producto__producto_global'
         ).order_by('id')
 
-        # Cálculo en memoria para la UI
+        # Cálculo de propiedades no persistentes (Saldo Pendiente) para la vista
         for item in items_prestados:
             item.pendiente_real = item.cantidad_prestada - item.cantidad_devuelta - item.cantidad_extraviada
 
@@ -4108,108 +4358,129 @@ class GestionarDevolucionView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
         return render(request, self.template_name, context)
 
     def post(self, request, prestamo_id):
+        """
+        Procesar la solicitud HTTP POST.
+        
+        Ejecutar la transacción de devolución.
+        1. Verificar que el préstamo no esté cerrado para asegurar inmutabilidad histórica.
+        2. Iniciar bloque transaccional atómico.
+        3. Invocar el servicio de procesamiento de devoluciones.
+        4. Notificar el resultado de la operación (éxito o advertencia por falta de cambios).
+        """
         prestamo = self.get_prestamo_seguro(prestamo_id)
 
+        # Regla de Negocio: No permitir modificaciones en préstamos completados
         if prestamo.estado == Prestamo.EstadoPrestamo.COMPLETADO:
             messages.warning(request, "Este préstamo ya ha sido completado.")
             return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
 
         try:
+            # Inicio de Transacción Atómica
             with transaction.atomic():
                 resultado = self._procesar_devoluciones(request, prestamo)
                 
                 if resultado['procesados'] > 0:
                     messages.success(request, f"Se registraron {resultado['procesados']} devoluciones correctamente.")
                 else:
-                    messages.warning(request, "No se registraron devoluciones (revise las cantidades).")
+                    messages.warning(request, "No se registraron devoluciones (revise las cantidades ingresadas).")
 
         except Exception as e:
+            # Captura de errores para evitar inconsistencias y notificar al usuario
             messages.error(request, f"Error al procesar devolución: {e}")
 
         return redirect('gestion_inventario:ruta_gestionar_devolucion', prestamo_id=prestamo.id)
 
 
     def _procesar_devoluciones(self, request, prestamo):
-        """Orquesta la lógica de devolución de ítems."""
+        """
+        Orquestar la lógica de negocio para la reconciliación de ítems prestados.
+        
+        Itera sobre las líneas de detalle del préstamo, valida las entradas del usuario
+        y despacha las acciones correspondientes (Devolución física o Reporte de Pérdida).
+        Actualiza los contadores del préstamo y su estado final.
+        """
         items_prestados = prestamo.items_prestados.select_related('activo', 'lote').all()
+        # Obtener referencia de estado 'DISPONIBLE' una sola vez para eficiencia
         estado_disponible = Estado.objects.get(nombre='DISPONIBLE')
         
-        movimientos_bulk = []
+        movimientos_bulk = [] # Contenedor para inserción masiva de movimientos
         items_actualizados_count = 0
         
         total_items_prestamo = len(items_prestados)
         total_items_completados = 0
-        total_unidades_fisicas_devueltas = 0 # Contador para el log
+        total_unidades_fisicas_devueltas = 0 # Contador para métricas de auditoría
 
         items_perdidos_count = 0
         ahora = timezone.now()
 
         for detalle in items_prestados:
+            # Calcular saldo actual para validar límites
             pendiente = detalle.cantidad_prestada - detalle.cantidad_devuelta - detalle.cantidad_extraviada
             if pendiente <= 0:
                 total_items_completados += 1
                 continue
 
-            # 1. Capturar Inputs
+            # 1. Extracción y Sanitización de Inputs
+            # Se utilizan claves dinámicas basadas en ID para mapear el formulario
             raw_devuelta = request.POST.get(f'cantidad-devolver-{detalle.id}', 0)
             raw_extraviada = request.POST.get(f'cantidad-perder-{detalle.id}', 0)
 
-            # Convertir de forma segura (si es vacío, asume 0)
             cant_devolver = int(raw_devuelta) if raw_devuelta and raw_devuelta.strip() else 0
             cant_perder = int(raw_extraviada) if raw_extraviada and raw_extraviada.strip() else 0
 
-            # Validaciones básicas
+            # 2. Validación de Integridad
             suma_accion = cant_devolver + cant_perder
             if suma_accion <= 0:
                 continue 
             
             if suma_accion > pendiente:
-                # Error de validación: intentan devolver/perder más de lo que deben
+                # Rechazar intento de devolver más de lo prestado
                 messages.warning(request, f"Error en {detalle}: La suma de devolución y pérdida excede lo pendiente.")
                 continue
 
             hubo_cambios = False
 
-            # PROCESAR DEVOLUCIÓN (Tu lógica existente)
+            # 3. Procesamiento de Devolución (Reingreso de Stock)
             if cant_devolver > 0:
                 detalle.cantidad_devuelta += cant_devolver
+                # Generar movimiento de reingreso y preparar objeto para bulk_create
                 movimiento = self._restaurar_stock(detalle, cant_devolver, estado_disponible, prestamo.id)
                 movimientos_bulk.append(movimiento)
                 total_unidades_fisicas_devueltas += cant_devolver
                 hubo_cambios = True
 
-            # PROCESAR PÉRDIDA (Nueva lógica integrada)
+            # 4. Procesamiento de Pérdida (Ajuste de Inventario)
             if cant_perder > 0:
                 detalle.cantidad_extraviada += cant_perder
+                # Ejecutar lógica de baja administrativa
                 self._procesar_perdida_desde_prestamo(detalle, cant_perder, request.user)
                 items_perdidos_count += cant_perder
                 hubo_cambios = True
 
-            # ACTUALIZACIÓN DE FECHA ULTIMOS CAMBIOS
+            # 5. Persistencia de Cambios en la Línea de Detalle
             if hubo_cambios:
                 detalle.fecha_ultima_devolucion = ahora
 
-            # Actualizar Detalle
             detalle.save()
             items_actualizados_count += 1
 
-            # Verificar si esta línea quedó saldada
+            # Verificar si la línea quedó saldada tras las operaciones
             if detalle.esta_saldado:
                 total_items_completados += 1
 
 
-        # Guardar Movimientos en Lote (Eficiencia)
+        # 6. Ejecución Masiva de Movimientos (Optimización DB)
         if movimientos_bulk:
             MovimientoInventario.objects.bulk_create(movimientos_bulk)
 
-        # Actualizar Estado del Préstamo
+        # 7. Actualización de Cabecera
         self._actualizar_estado_prestamo(prestamo, total_items_completados, total_items_prestamo)
 
-         # --- AUDITORÍA ---
+         # 8. Registro de Auditoría
         if total_unidades_fisicas_devueltas > 0:
             self.auditar(
                 verbo=f"registró la devolución de {total_unidades_fisicas_devueltas} unidad(es) del Préstamo #{prestamo.id}",
-                objetivo=prestamo.destinatario, # Quien devuelve
+                objetivo=prestamo.destinatario, # Entidad que realiza la devolución
                 objetivo_repr=f"Préstamo #{prestamo.id} - {prestamo.destinatario.nombre_entidad}",
                 detalles={
                     'id_prestamo': prestamo.id,
@@ -4226,12 +4497,21 @@ class GestionarDevolucionView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
 
 
     def _restaurar_stock(self, detalle, cantidad, estado_disp, prestamo_id):
-        """Restaura el stock (Activo o Lote) y retorna el objeto Movimiento (sin guardar)."""
+        """
+        Generar el movimiento de inventario para el reingreso físico de mercancía.
+        
+        Lógica Polimórfica:
+        - Activos: Restaura el estado a 'DISPONIBLE' y mantiene la referencia única.
+        - Lotes: Incrementa el contador de cantidad disponible.
+        
+        Retorna:
+            MovimientoInventario: Instancia no persistida lista para inserción en lote.
+        """
         movimiento = MovimientoInventario(
             tipo_movimiento=TipoMovimiento.DEVOLUCION,
             usuario=self.request.user,
             estacion=self.estacion_activa,
-            cantidad_movida=cantidad, # Positivo (Entrada)
+            cantidad_movida=cantidad, # Valor positivo indica entrada
             notas=f"Devolución Préstamo Folio #{prestamo_id}",
             fecha_hora=timezone.now()
         )
@@ -4243,7 +4523,7 @@ class GestionarDevolucionView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
             
             movimiento.activo = activo
             movimiento.compartimento_destino = activo.compartimento
-            # Nota: cantidad_movida para activos siempre es 1 en lógica, pero aquí usamos la recibida por consistencia
+            # Nota: Lógicamente un activo es cantidad 1, se usa 'cantidad' por consistencia de firma
 
         elif detalle.lote:
             lote = detalle.lote
@@ -4257,12 +4537,18 @@ class GestionarDevolucionView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
 
 
     def _actualizar_estado_prestamo(self, prestamo, completados, total):
-        """Calcula y guarda el nuevo estado del préstamo."""
+        """
+        Evaluar y transicionar el estado del préstamo.
+        
+        Lógica de Estado:
+        - COMPLETADO: Si todas las líneas de detalle están saldadas.
+        - DEVUELTO_PARCIAL: Si existe progreso en alguna línea pero no totalidad.
+        """
         nuevo_estado = None
         if completados == total:
             nuevo_estado = Prestamo.EstadoPrestamo.COMPLETADO
         elif completados > 0 or any(i.cantidad_devuelta > 0 for i in prestamo.items_prestados.all()):
-             # Si hay al menos algo devuelto (aunque no ítems completos), es parcial
+             # Transicionar a Parcial si hay actividad registrada y no estaba ya en ese estado
              if prestamo.estado != Prestamo.EstadoPrestamo.DEVUELTO_PARCIAL:
                  nuevo_estado = Prestamo.EstadoPrestamo.DEVUELTO_PARCIAL
         
@@ -4273,19 +4559,23 @@ class GestionarDevolucionView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
     
     def _procesar_perdida_desde_prestamo(self, detalle, cantidad, usuario):
         """
-        Ejecuta la lógica de extravío (cambio de estado y movimiento) para un ítem prestado.
+        Ejecutar el procedimiento de baja para ítems reportados como extraviados.
+        
+        - Activos: Se marcan como 'EXTRAVIADO' y se mueven a una ubicación lógica de limbo.
+        - Lotes: Se registra un movimiento de 'AJUSTE' (salida lógica) sin reingreso físico.
         """
         estado_extraviado = Estado.objects.get(nombre='EXTRAVIADO')
-        compartimento_limbo = get_or_create_extraviado_compartment(self.estacion_activa) # Tu función helper
+        # Resolución de ubicación virtual para activos perdidos
+        compartimento_limbo = get_or_create_extraviado_compartment(self.estacion_activa) 
         
-        # A. Si es Activo Serializado
+        # Caso A: Activo Serializado
         if detalle.activo:
             activo = detalle.activo
             activo.estado = estado_extraviado
             activo.compartimento = compartimento_limbo
             activo.save()
             
-            # Movimiento de Ajuste (Cantidad 0 porque ya estaba fuera)
+            # Movimiento de Ajuste (Cantidad 0: Cambio lógico de ubicación/estado, no flujo de stock operativo)
             MovimientoInventario.objects.create(
                 tipo_movimiento=TipoMovimiento.AJUSTE,
                 usuario=usuario,
@@ -4296,17 +4586,17 @@ class GestionarDevolucionView(BaseEstacionMixin, CustomPermissionRequiredMixin, 
                 notas=f"Reportado extraviado durante devolución de Préstamo #{detalle.prestamo.id}"
             )
 
-        # B. Si es Lote (Insumo)
+        # Caso B: Lote de Insumos
         elif detalle.lote:
-            # Aquí NO cambiamos el estado del lote original (porque el lote original sigue en bodega)
-            # Simplemente registramos que esas unidades prestadas "murieron" afuera.
+            # Nota: El lote original en bodega no se modifica. Las unidades prestadas se consideran consumidas/perdidas.
+            # Se registra el ajuste para documentar el destino final de esas unidades.
             MovimientoInventario.objects.create(
                 tipo_movimiento=TipoMovimiento.AJUSTE,
                 usuario=usuario,
                 estacion=self.estacion_activa,
                 compartimento_destino=compartimento_limbo,
                 lote_insumo=detalle.lote,
-                cantidad_movida=0, # Igual es 0 porque salieron del stock prestado, no del físico
+                cantidad_movida=0, # 0 indica que no salieron de la bodega física en este momento (ya estaban fuera)
                 notas=f"Reportado extraviado ({cantidad} u.) durante devolución de Préstamo #{detalle.prestamo.id}"
             )
 

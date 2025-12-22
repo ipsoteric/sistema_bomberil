@@ -87,7 +87,7 @@ class EstacionActivaRequiredMixin(AccessMixin):
         # ¡Éxito! El usuario tiene un ID y es válido.
         # self.estacion_activa y self.estacion_activa_id están ahora
         # disponibles en la vista (en self.get, self.post, etc.)
-        print("El usuario tiene una estación activa")
+        # print("El usuario tiene una estación activa")
         return super().dispatch(request, *args, **kwargs)
     
 
@@ -221,8 +221,8 @@ class ImageProcessingFormMixin:
             base_name = uuid_str
         
         main_name = f"{base_name}{ext}"
-        medium_name = f"{base_name}_medium.jpg"
-        small_name = f"{base_name}_small.jpg"
+        medium_name = f"{base_name}_medium{ext}"
+        small_name = f"{base_name}_small{ext}"
 
         # 3. Procesar Imagen Principal (Usando TU función)
         # Nota: procesar_imagen_en_memoria retorna un ContentFile

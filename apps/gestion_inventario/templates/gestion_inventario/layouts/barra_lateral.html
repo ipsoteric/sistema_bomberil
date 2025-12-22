@@ -18,7 +18,7 @@
 
     {# Sección: Existencias (Catálogo y Stock) #}
     {# Se muestra si tiene al menos permiso de ver stock o catálogos #}
-    {% if perms.gestion_usuarios.accion_gestion_inventario_ver_stock or perms.gestion_inventario.accion_gestion_inventario_ver_catalogos %}
+    {% if perms.gestion_usuarios.accion_gestion_inventario_ver_stock or perms.gestion_usuarios.accion_gestion_inventario_ver_catalogos %}
     <section class="barra_lateral__seccion">
         <div class="barra_lateral__modulo" data-toggle="modulo">
             <a href="{% url 'gestion_inventario:ruta_stock_actual' %}" class="barra_lateral__modulo_nombre text-base color_primario hover_scale text-decoration-none">

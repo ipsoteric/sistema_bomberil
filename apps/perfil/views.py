@@ -86,38 +86,59 @@ class CambiarContrasenaView(PasswordChangeView):
 # =============================================================================
 
 class DescargarMiHojaVidaView(LoginRequiredMixin, AuditoriaMixin, View):
+    """
+    Controlador encargado de la generación y descarga del reporte PDF "Hoja de Vida"
+    para el usuario actualmente autenticado.
+    
+    Funcionalidad Técnica:
+    - Recuperación de perfil de Voluntario asociado a la sesión.
+    - Agregación de datos históricos (Cargos, Sanciones, Cursos) y estado actual.
+    - Renderizado de plantilla HTML y conversión a binario PDF utilizando xhtml2pdf (Pisa).
+    - Registro de auditoría de auto-consulta.
+    """
+
     def get(self, request):
         try:
+            # 1. Recuperación de Entidad Principal
+            # Obtener el perfil de voluntario vinculado al usuario de la sesión.
             voluntario = Voluntario.objects.get(usuario=request.user)
             
-            # Buscamos datos extra para el encabezado (Membresía y Cargo Actual)
-            # Nota: Usamos filter().first() para evitar errores si no existen
+            # 2. Recuperación de Datos Complementarios (Safe Retrieval)
+            # Utilizar .first() para obtener relaciones 1:N que actúan como 1:1 en el contexto actual (Estado actual).
+            # Esto previene excepciones DoesNotExist si la data no está íntegra.
             membresia = Membresia.objects.filter(usuario=request.user, estado='ACTIVO').first()
             cargo_actual_obj = HistorialCargo.objects.filter(voluntario=voluntario, fecha_fin__isnull=True).first()
 
+            # 3. Construcción del Contexto de Reporte
             context = {
                 'voluntario': voluntario,
                 'membresia': membresia,
                 'cargo_actual': cargo_actual_obj,
-                'request': request, # Importante para imágenes estáticas en PDF
-                # Historiales
+                'request': request, # Inyectar request para resolución de rutas absolutas de imágenes en PDF (static)
+                
+                # Colecciones Históricas (Ordenamiento Cronológico Inverso)
                 'cargos': HistorialCargo.objects.filter(voluntario=voluntario).order_by('-fecha_inicio'),
                 'reconocimientos': HistorialReconocimiento.objects.filter(voluntario=voluntario).order_by('-fecha_evento'),
                 'sanciones': HistorialSancion.objects.filter(voluntario=voluntario).order_by('-fecha_evento'),
                 'cursos': HistorialCurso.objects.filter(voluntario=voluntario).order_by('-fecha_curso'),
             }
 
-            # RUTA CORREGIDA: Apunta exactamente a donde lo tienes en gestion_voluntarios
+            # 4. Generación de PDF en Memoria
+            # Renderizar plantilla HTML a string.
             html_string = render_to_string("gestion_voluntarios/pages/hoja_vida_pdf.html", context)
             
+            # Crear buffer de bytes para el flujo de salida.
             result = io.BytesIO()
+            # Convertir HTML a PDF.
             pdf = pisa.pisaDocument(io.BytesIO(html_string.encode("UTF-8")), result)
 
+            # 5. Entrega de Respuesta
             if not pdf.err:
                 response = HttpResponse(result.getvalue(), content_type='application/pdf')
+                # Configurar header para descarga de archivo adjunto con nombre dinámico.
                 response['Content-Disposition'] = f'attachment; filename="Hoja_Vida_{request.user.rut}.pdf"'
 
-                # Auditoría (Registramos que descargó su propia ficha)
+                # --- Auditoría ---
                 self.auditar(
                     verbo="Descargó su hoja de vida",
                     objetivo=request.user,
@@ -126,28 +147,38 @@ class DescargarMiHojaVidaView(LoginRequiredMixin, AuditoriaMixin, View):
                 )
 
                 return response
+            
+            # Manejo de error en generación de PDF
             messages.error(request, "Error interno al generar el PDF. Contacte a soporte.")
             return redirect('perfil:ver')
 
         except Voluntario.DoesNotExist:
+            # Manejo de consistencia: Usuario sin perfil de voluntario asignado.
             messages.error(request, "No tienes perfil de voluntario asociado.")
             return redirect('perfil:ver')
         
         except Exception as e:
+            # Captura de errores no controlados
             messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
             return redirect('perfil:ver')
 
 
+
+
 class VerMiFichaMedicaView(LoginRequiredMixin, AuditoriaMixin, View):
     """
-    Permite al usuario autenticado visualizar su propia ficha médica
-    usando el mismo diseño de impresión que el módulo de gestión.
+    Controlador para la visualización de la Ficha Clínica Personal.
+    
+    Permite al usuario autenticado acceder a sus antecedentes médicos en modo solo lectura,
+    reutilizando la plantilla de impresión del módulo de gestión médica para garantizar
+    consistencia visual en los reportes.
     """
     
     def get(self, request):
         try:
-            # 1. Buscamos la ficha asociada al usuario logueado (request.user)
-            # Mantenemos las optimizaciones (select_related/prefetch_related) para no golpear la BD múltiples veces
+            # 1. Recuperación Optimizada de Datos (Eager Loading)
+            # Utilizar select_related para relaciones ForeignKey directas y prefetch_related
+            # para relaciones ManyToMany o inversas, minimizando consultas a la base de datos (N+1 Problem).
             ficha = FichaMedica.objects.select_related(
                 'voluntario', 'voluntario__usuario', 'voluntario__domicilio_comuna', 
                 'grupo_sanguineo', 'sistema_salud'
@@ -156,23 +187,27 @@ class VerMiFichaMedicaView(LoginRequiredMixin, AuditoriaMixin, View):
                 'cirugias__cirugia', 'voluntario__contactos_emergencia'
             ).get(voluntario__usuario=request.user)
             
-            # 2. Auditoría (Registramos que vio su propia ficha)
+            # 2. Registro de Auditoría
+            # Documentar el acceso a información sensible (PHI).
             self.auditar(
                 verbo="visualizó su propia ficha clínica",
                 objetivo=request.user,
                 detalles={'accion': 'Visualización Propia Ficha'}
             )
 
-            # 3. Lógica de cálculo de edad (Reutilizada)
+            # 3. Lógica de Presentación (Cálculo de Edad)
+            # Determinar edad exacta basada en fecha de nacimiento del voluntario o del usuario base.
             voluntario = ficha.voluntario
             fecha_nac = voluntario.fecha_nacimiento or voluntario.usuario.birthdate
             edad = "S/I"
             
             if fecha_nac: 
                 today = date.today()
+                # Ajuste booleano para restar un año si aún no cumple en el año actual.
                 edad = today.year - fecha_nac.year - ((today.month, today.day) < (fecha_nac.month, fecha_nac.day))
 
-            # 4. Renderizamos la MISMA plantilla que usas para el reporte administrativo
+            # 4. Renderizado de Vista
+            # Inyección de dependencias para la plantilla de impresión.
             return render(request, "gestion_medica/pages/imprimir_ficha.html", {
                 'ficha': ficha,
                 'voluntario': voluntario,
@@ -186,9 +221,11 @@ class VerMiFichaMedicaView(LoginRequiredMixin, AuditoriaMixin, View):
             })
 
         except FichaMedica.DoesNotExist:
+            # Manejo de caso donde el usuario no tiene ficha creada.
             messages.error(request, "No se encontró una ficha médica asociada a tu cuenta.")
             return redirect('perfil:ver')
         
         except Exception as e:
+            # Captura de errores generales.
             messages.error(request, f"Error al cargar la ficha médica: {str(e)}")
             return redirect('perfil:ver')

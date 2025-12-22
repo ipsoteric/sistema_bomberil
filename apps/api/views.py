@@ -541,39 +541,69 @@ class InventarioProductoGlobalSKUAPIView(APIView):
 
 class InventarioAnadirProductoLocalAPIView(AuditoriaMixin, APIView):
     """
-    Endpoint (POST) para crear un Producto local en la estación activa.
-    Utiliza Serializers para validación de entrada, 
-    Manejo de Excepciones granular y Transacciones atómicas.
+    Endpoint API (POST) para la gestión de inventario local.
+    
+    Permite instanciar un 'Producto' local en la estación activa basándose en un
+    'ProductoGlobal' existente. Implementa validación estricta vía Serializers,
+    control transaccional de integridad y auditoría de eventos.
     """
+    
+    # --- Configuración de Seguridad y Permisos ---
+    # IsAuthenticated: Requiere sesión válida.
+    # IsEstacionActiva: Valida que el usuario tenga una estación seleccionada en su contexto.
+    # CanGestionarCatalogoLocal: Verifica privilegios específicos sobre el inventario.
     permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarCatalogoLocal]
     required_permission = "gestion_usuarios.accion_gestion_inventario_crear_producto_global"
 
     def post(self, request, format=None):
-        # Validación de Entrada con Serializer
+        """
+        Procesar la solicitud de creación de un producto local.
+        
+        Flujo de ejecución:
+        1. Validar integridad de datos (Input Serializer).
+        2. Verificar existencia del recurso padre (Producto Global).
+        3. Persistir la nueva entidad Producto vinculada a la estación.
+        4. Gestionar conflictos de integridad (SKUs duplicados).
+        """
+        
+        # 1. Validación de Entrada
+        # Deserializar y validar el payload de la solicitud.
         serializer = ProductoLocalInputSerializer(data=request.data)
+        
         if not serializer.is_valid():
+            # Retornar error 400 Bad Request con detalles de validación si el esquema es incorrecto.
             return Response(
                 {'error': 'Datos inválidos', 'details': serializer.errors}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Datos ya validados y limpios
+        # 2. Obtención de Contexto y Datos Saneados
+        # Extraer datos validados y recuperar la estación activa inyectada por el middleware.
         data = serializer.validated_data
         estacion = request.estacion_activa
 
-        # Obtención de Producto Global
+        # 3. Verificación de Dependencias (Producto Global)
         try:
+            # Intentar recuperar el Producto Global base.
             producto_global = ProductoGlobal.objects.get(pk=data['productoglobal_id'])
         except ProductoGlobal.DoesNotExist:
+            # Retornar 404 Not Found si el ID referenciado no existe en el catálogo global.
             return Response(
                 {'error': 'El producto global especificado no existe.'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+        except Exception as e:
+            return Response(
+                {'error': 'Error inesperado.'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        # 4. Creación del Registro (Con manejo de integridad)
+
+        # 4. Persistencia y Auditoría (Bloque Atómico)
         try:
-            # Usamos transaction.atomic por si en el futuro añades más lógica aquí
+            # Iniciar transacción para garantizar que la creación y la auditoría sean indivisibles.
             with transaction.atomic():
+                # Crear la instancia del Producto Local vinculándola a la estación y al global.
                 nuevo_producto = Producto.objects.create(
                     producto_global=producto_global,
                     estacion=estacion,
@@ -582,7 +612,8 @@ class InventarioAnadirProductoLocalAPIView(AuditoriaMixin, APIView):
                     es_expirable=data['es_expirable']
                 )
 
-                # --- AUDITORÍA ---
+                # --- Registro de Auditoría ---
+                # Documentar la incorporación del producto al inventario de la compañía.
                 self.auditar(
                     verbo="agregó a la compañía el producto",
                     objetivo=nuevo_producto,
@@ -591,21 +622,25 @@ class InventarioAnadirProductoLocalAPIView(AuditoriaMixin, APIView):
                 )
             
             # 5. Respuesta Exitosa
+            # Retornar estado 201 Created con identificadores clave para confirmación en frontend.
             return Response({
                 'success': True,
                 'message': f'Producto "{nuevo_producto.producto_global.nombre_oficial}" añadido a tu estación.',
                 'productoglobal_id': nuevo_producto.producto_global_id,
-                'producto_local_id': nuevo_producto.id # Dato útil para el frontend
+                'producto_local_id': nuevo_producto.id 
             }, status=status.HTTP_201_CREATED)
 
         except IntegrityError:
-            # Captura el error unique_together (Estación + SKU o Estación + ProductoGlobal)
+            # 6. Manejo de Conflictos de Integridad
+            # Capturar errores de base de datos como 'unique_together' (ej. SKU duplicado en la misma estación).
             return Response(
                 {'error': f'Error de integridad: Ya existe un producto con el SKU "{data["sku"]}" o este producto global ya fue añadido.'}, 
                 status=status.HTTP_409_CONFLICT
             )
         except Exception as e:
-            # Loguear error real en servidor
+            # 7. Manejo de Errores No Controlados
+            # Capturar cualquier otra excepción para evitar caída del servicio y retornar error 500.
+            # (Se recomienda integración con sistema de logs como Sentry/CloudWatch).
             return Response(
                 {'error': f'Error interno inesperado: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -2568,99 +2603,127 @@ class MantenimientoTogglePlanActivoAPIView(AuditoriaMixin, APIView):
 
 class MantenimientoCambiarEstadoOrdenAPIView(OrdenValidacionMixin, AuditoriaMixin, APIView):
     """
-    API DRF: Cambia el estado global de la orden.
-    Valida estrictamente que todos los activos tengan registro antes de finalizar.
+    Endpoint API (DRF) encargado de la orquestación del ciclo de vida de una Orden de Mantenimiento.
+    
+    Responsabilidades Técnicas:
+    - Gestión de la máquina de estados de la orden (Iniciar, Finalizar, Cancelar, Asumir).
+    - Validación estricta de integridad referencial antes del cierre (cobertura total de activos).
+    - Sincronización automática del estado de los activos vinculados (ej. pasar a 'EN REPARACIÓN').
+    - Control de seguridad multi-tenant (aislamiento por estación).
     """
+    
+    # --- Configuración de Seguridad ---
     permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarOrdenes]
 
     def post(self, request, pk):
+        """
+        Procesar la transición de estado solicitada.
+        
+        Flujo de Ejecución:
+        1. Establecer contexto de auditoría (puente sesión-API).
+        2. Recuperar y validar la orden dentro del alcance de la estación activa.
+        3. Validar reglas de negocio específicas para la asignación de responsabilidad.
+        4. Ejecutar la transición de estado dentro de un bloque transaccional atómico.
+        5. Disparar efectos secundarios en los activos (cambio de estado masivo).
+        """
         try:
             estacion = request.estacion_activa
             
-            # --- PUENTE AUDITORÍA ---
+            # --- Puente de Auditoría ---
+            # Inyectar el ID de la estación en la sesión si no existe, garantizando
+            # que el mixin AuditoriaMixin tenga el contexto necesario para registrar el evento.
             if not request.session.get('active_estacion_id'):
                 request.session['active_estacion_id'] = estacion.id
 
-            # Obtenemos orden filtrando por estación (Seguridad Multi-tenant)
+            # Recuperación Segura (Tenant Isolation)
+            # Garantizar que solo se manipulen órdenes pertenecientes a la estación del request.
             orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=estacion)
+            
             accion = request.data.get('accion')
             verbo_auditoria = ""
 
-            # Pasamos 'accion' para permitir el caso 'asumir'
+            # Validación de Reglas de Negocio (Mixin)
+            # Verificar si el usuario tiene privilegios para realizar la acción (especialmente 'asumir').
             self.validar_responsabilidad_orden(orden, request.user, accion=accion)
 
+            # Inicio de Transacción Atómica
             with transaction.atomic():
-                # 1. ACCIÓN: ASUMIR
+                
+                # CASO 1: ASUMIR RESPONSABILIDAD
                 if accion == 'asumir':
                     orden.responsable = request.user
-                    # Si está pendiente, pasa a EN_CURSO automáticamente para agilizar
+                    # Transición implícita: Si está pendiente, iniciar automáticamente para agilizar flujo UX.
                     if orden.estado == OrdenMantenimiento.EstadoOrden.PENDIENTE:
                         orden.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
                     
                     orden.save()
                     verbo_auditoria = "asumió la responsabilidad de la orden"
 
-                # 2. ACCIÓN: INICIAR
+                # CASO 2: INICIAR EJECUCIÓN
                 elif accion == 'iniciar':
+                    # Validación de Precondiciones
                     if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
-                        return Response({'message': 'La orden no está pendiente.'}, status=status.HTTP_400_BAD_REQUEST)
+                        return Response({'message': 'La orden no está en estado pendiente.'}, status=status.HTTP_400_BAD_REQUEST)
 
                     if orden.activos_afectados.count() == 0:
                         return Response({'message': 'No se puede iniciar una orden sin activos asignados.'}, status=status.HTTP_400_BAD_REQUEST)
 
+                    # Actualización de la Orden
                     orden.estado = OrdenMantenimiento.EstadoOrden.EN_CURSO
                     orden.save()
-                    verbo_auditoria = "Inició la ejecución de la Orden de Mantenimiento"
+                    verbo_auditoria = "inició la ejecución de la Orden de Mantenimiento"
 
-                    # Cambiar estado de activos a "EN REPARACIÓN"
+                    # Efecto Secundario: Bloqueo de Activos
+                    # Marcar masivamente todos los activos involucrados como 'EN REPARACIÓN'
                     try:
                         estado_reparacion = Estado.objects.get(nombre__iexact="EN REPARACIÓN")
                         orden.activos_afectados.update(estado=estado_reparacion)
                     except Estado.DoesNotExist:
-                        pass
+                        pass # Opcional: Loguear advertencia de configuración faltante
 
-                # 3. ACCIÓN: FINALIZAR (Aquí está tu validación)
+                # CASO 3: FINALIZAR ORDEN (Cierre Técnico)
                 elif accion == 'finalizar':
                     if orden.estado != OrdenMantenimiento.EstadoOrden.EN_CURSO:
                         return Response({'message': 'Solo se pueden finalizar órdenes en curso.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                    # --- VALIDACIÓN DE INTEGRIDAD ---
+                    # --- Validación de Integridad Operativa ---
+                    # Regla Crítica: No permitir cierre si existen activos sin registro de trabajo asociado.
                     total_activos = orden.activos_afectados.count()
 
-                    # Contamos cuántos activos únicos tienen registros asociados a esta orden
-                    # (Usamos distinct por si un activo tuviera más de un registro, aunque lo usual es 1)
+                    # Contar activos únicos que poseen al menos un registro de intervención.
                     activos_con_trabajo = orden.registros.values('activo_id').distinct().count()
 
                     if activos_con_trabajo < total_activos:
                         pendientes = total_activos - activos_con_trabajo
                         return Response({
                             'status': 'error', 
-                            'message': f'No se puede finalizar. Faltan registros de mantenimiento en {pendientes} activo(s). Todos deben ser atendidos.'
+                            'message': f'Imposible finalizar: Faltan registros de mantenimiento en {pendientes} activo(s). Todos los activos deben ser procesados.'
                         }, status=status.HTTP_400_BAD_REQUEST)
                     # --------------------------------
 
+                    # Cierre de la Orden
                     orden.estado = OrdenMantenimiento.EstadoOrden.REALIZADA
                     orden.fecha_cierre = timezone.now()
                     orden.save()
-                    verbo_auditoria = "Finalizó exitosamente la Orden de Mantenimiento"
+                    verbo_auditoria = "finalizó exitosamente la Orden de Mantenimiento"
 
-                    # Los activos vuelven a estar operativos (o lo que indique el registro individual, 
-                    # pero generalmente al cerrar la orden se liberan)
+                    # Efecto Secundario: Liberación de Activos
+                    # Retornar los activos al estado operativo 'DISPONIBLE'.
+                    # Nota: En implementaciones complejas, esto podría depender del resultado individual de cada activo.
                     try:
                         estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
-                        # Opcional: Solo liberar los que no quedaron marcados como "DAÑADO" en su registro individual
                         orden.activos_afectados.update(estado=estado_disponible)
                     except Estado.DoesNotExist:
                         pass
 
-                # 4. ACCIÓN: CANCELAR
+                # CASO 4: CANCELAR ORDEN
                 elif accion == 'cancelar':
                     orden.estado = OrdenMantenimiento.EstadoOrden.CANCELADA
                     orden.fecha_cierre = timezone.now()
                     orden.save()
-                    verbo_auditoria = "Canceló la Orden de Mantenimiento"
+                    verbo_auditoria = "canceló la Orden de Mantenimiento"
 
-                    # Liberar activos
+                    # Efecto Secundario: Liberación de Activos (Revertir bloqueo)
                     try:
                         estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
                         orden.activos_afectados.update(estado=estado_disponible)
@@ -2670,54 +2733,81 @@ class MantenimientoCambiarEstadoOrdenAPIView(OrdenValidacionMixin, AuditoriaMixi
                 else:
                     return Response({'message': 'Acción no válida (use iniciar, finalizar, cancelar, asumir).'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # --- AUDITORÍA ---
+                # --- Registro de Auditoría ---
                 self.auditar(
                     verbo=verbo_auditoria,
                     objetivo=orden,
                     objetivo_repr=f"Orden #{orden.id} ({orden.tipo_orden})",
                     detalles={
                         'nuevo_estado': orden.estado,
-                        'origen_accion': 'APP MÓVIL'
+                        'origen_accion': 'APP MÓVIL / API'
                     }
                 )
 
             return Response({'status': 'ok', 'message': 'Estado actualizado correctamente.'})
         
         except Exception as e:
+            # Captura de errores críticos del servidor
             return Response({'error': f'Error procesando la orden: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class MantenimientoRegistrarTareaAPIView(OrdenValidacionMixin, APIView):
     """
-    API para registrar el resultado de una tarea de mantenimiento.
-    Maneja concurrencia: Si el activo tiene OTRAS órdenes pendientes, no lo libera a 'DISPONIBLE'.
+    Endpoint API encargado del registro granular de actividades de mantenimiento.
+    
+    Permite a los técnicos reportar el resultado (éxito/fallo) de la intervención
+    sobre un activo específico dentro de una Orden de Mantenimiento.
+    
+    Lógica de Negocio Crítica:
+    - Gestión de Concurrencia de Estados: Implementa un mecanismo de "bloqueo compartido"
+      lógico. Un activo solo retorna al estado 'DISPONIBLE' si no existen otras órdenes
+      de trabajo activas pendientes sobre el mismo recurso.
+    - Sincronización con Planes Preventivos: Actualiza los contadores de mantenimiento
+      (fecha, horómetro) para el recálculo de próximas fechas de vencimiento.
     """
+    
     permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarOrdenes]
 
     def post(self, request, pk):
+        """
+        Procesar el reporte de una tarea de mantenimiento.
+        
+        Flujo de Ejecución:
+        1. Validación de contexto (Estación, Responsabilidad del Técnico, Estado de la Orden).
+        2. Validación de pertenencia del activo a la orden.
+        3. Persistencia del registro de trabajo (Upsert).
+        4. Evaluación y transición del estado del activo (Lógica de liberación condicional).
+        5. Actualización de metadatos de planificación (si aplica).
+        6. Auditoría incremental del avance.
+        """
         try:
             estacion = request.estacion_activa
             orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=estacion)
 
-            # 1. Seguridad: Validar que sea el responsable
+            # 1. Validación de Seguridad y Reglas de Negocio
+            # Verificar que el usuario solicitante sea el responsable asignado a la orden.
             self.validar_responsabilidad_orden(orden, request.user)
 
-            # 2. Validar estado de la orden
+            # Verificar que la orden se encuentre en etapa de ejecución.
             if orden.estado != OrdenMantenimiento.EstadoOrden.EN_CURSO:
                 return Response({'message': 'Debe INICIAR la orden antes de registrar tareas.'}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Extracción de datos del payload
             activo_id = request.data.get('activo_id')
             notas = request.data.get('notas')
-            exitoso_raw = request.data.get('exitoso', True)
+            # Default a True si no se especifica, asumiendo éxito por defecto en flujo rápido
             fue_exitoso = request.data.get('exitoso', True)
 
             activo = get_object_or_404(Activo, pk=activo_id, estacion=estacion)
 
-            # 3. Validar pertenencia
+            # 2. Validación de Integridad Referencial
+            # Asegurar que el activo reportado sea parte del alcance original de la orden.
             if not orden.activos_afectados.filter(pk=activo_id).exists():
                 return Response({'status': 'error', 'message': 'El activo no pertenece a esta orden.'}, status=400)
 
-            # 4. Guardar Registro (Upsert)
+            # 3. Persistencia del Registro (Upsert)
+            # Utilizar update_or_create para permitir correcciones sobre un reporte existente
+            # o la creación de uno nuevo.
             registro, created = RegistroMantenimiento.objects.update_or_create(
                 orden_mantenimiento=orden,
                 activo=activo,
@@ -2729,10 +2819,12 @@ class MantenimientoRegistrarTareaAPIView(OrdenValidacionMixin, APIView):
                 }
             )
 
-            # Actualizar estado del activo
+            # 4. Gestión de Estado del Activo (State Machine)
             if fue_exitoso:
-                # Verificamos si este activo está en OTRAS órdenes activas (Pendientes o En Curso)
-                # Excluimos la orden actual (id=orden.id) porque esa tarea ya la acabamos de hacer ok.
+                # Lógica de Liberación Condicional (Concurrencia):
+                # Antes de liberar el activo a 'DISPONIBLE', consultar si existen OTRAS órdenes
+                # de mantenimiento activas (Pendientes o En Curso) que involucren este mismo recurso,
+                # excluyendo la orden actual que se está procesando.
                 otras_ordenes_activas = OrdenMantenimiento.objects.filter(
                     estacion=estacion,
                     activos_afectados=activo,
@@ -2743,27 +2835,34 @@ class MantenimientoRegistrarTareaAPIView(OrdenValidacionMixin, APIView):
                 ).exclude(id=orden.id).exists()
 
                 if otras_ordenes_activas:
-                    # NO cambiamos el estado. Se asume que sigue 'EN REPARACIÓN' por las otras órdenes.
+                    # CONCURRENCIA DETECTADA:
+                    # No cambiar el estado. Se asume que el activo debe permanecer 'EN REPARACIÓN'
+                    # o bloqueado hasta que se resuelvan las órdenes restantes.
                     pass 
                 else:
-                    # Si no hay nada más pendiente, lo liberamos.
+                    # LIBERACIÓN:
+                    # Si no hay dependencias pendientes, restaurar la operatividad del activo.
                     try:
                         estado_disponible = Estado.objects.get(nombre__iexact="DISPONIBLE")
                         activo.estado = estado_disponible
                     except Estado.DoesNotExist:
-                        pass
+                        pass # Manejo silencioso si la configuración de estados es inconsistente
             else:
-                # Si falló la mantención, queda 'EN REVISIÓN' o 'DAÑADO' sin importar otras órdenes.
+                # MANEJO DE FALLO:
+                # Si la mantención no fue exitosa, el activo queda inoperativo ('EN REVISIÓN' o 'DAÑADO')
+                # independientemente de otras órdenes, ya que su integridad física no está garantizada.
                 try:
-                    # O 'DAÑADO', según tu flujo
                     estado_malo = Estado.objects.get(nombre__iexact="EN REVISIÓN") 
                     activo.estado = estado_malo
                 except Estado.DoesNotExist:
                     pass
             
+            # Persistir cambio de estado del activo
             activo.save()
 
-            # Actualizar Plan si aplica
+            # 5. Sincronización de Planificación
+            # Si la orden deriva de un plan preventivo y la ejecución fue exitosa, actualizar
+            # la fecha de última mantención y el horómetro registrado para reiniciar el ciclo de programación.
             if fue_exitoso and orden.plan_origen:
                 PlanActivoConfig.objects.filter(
                     plan=orden.plan_origen, 
@@ -2773,100 +2872,145 @@ class MantenimientoRegistrarTareaAPIView(OrdenValidacionMixin, APIView):
                     horas_uso_en_ultima_mantencion=activo.horas_uso_totales
                 )
 
-            # --- AUDITORÍA INCREMENTAL (Avance de Tareas) ---
-            # Agrupamos el progreso: "Registró tareas en la Orden X"
+            # 6. Auditoría Incremental
+            # Registrar el avance específico sin saturar el log principal de la orden,
+            # utilizando una descripción concisa de la acción.
             accion_txt = "Tarea exitosa" if fue_exitoso else "Falla reportada"
 
             auditar_modificacion_incremental(
                 request=request,
-                plan=orden, # El objetivo es la Orden
+                plan=orden, # Asociar el evento a la Orden como entidad padre
                 accion_detalle=f"{accion_txt} en {activo.codigo_activo}"
             )
 
             return Response({'status': 'ok', 'message': 'Registro guardado.'})
         
         except Exception as e:
+            # Captura de errores no controlados para respuesta estándar API
             return Response({'error': f'Error guardando tarea: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 class MantenimientoBuscarActivoParaOrdenAPIView(APIView):
     """
-    API DRF: Busca activos para agregar a una ORDEN específica.
+    Endpoint de búsqueda especializado para identificar y seleccionar activos candidatos
+    a ser incorporados en una Orden de Mantenimiento.
+    
+    Características de Filtrado:
+    - Contexto: Solo busca activos dentro de la estación activa.
+    - Estado Operativo: Filtra activos elegibles (Disponibles, En Préstamo o Pendientes de Revisión).
+    - Exclusión Lógica: Omite activos que ya están vinculados a la orden actual para evitar duplicidad.
+    - Búsqueda Textual: Coincidencia parcial por Código de Activo o Nombre del Producto Global.
     """
+    
     permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarOrdenes]
 
     def get(self, request, *args, **kwargs):
+        """
+        Procesar la solicitud de búsqueda de activos.
+        
+        Retorna una lista ligera (serialización manual optimizada) de los primeros 10 candidatos
+        que coincidan con el criterio de búsqueda, incluyendo metadatos de ubicación para desambiguación.
+        """
         query = request.GET.get('q', '').strip()
         orden_id = request.GET.get('orden_id')
         estacion = request.estacion_activa
 
+        # Validación de entrada mínima para evitar consultas costosas vacías
         if not query or len(query) < 2:
             return Response({'results': []})
 
+        # Recuperación segura de la orden contexto (Tenant Isolation)
         orden = get_object_or_404(OrdenMantenimiento, id=orden_id, estacion=estacion)
         
+        # Construcción de la consulta compleja
         activos = Activo.objects.filter(
             estacion=estacion,
+            # Regla de Negocio: Solo ciertos estados son válidos para iniciar mantenimiento
             estado__nombre__in=['DISPONIBLE', 'EN PRÉSTAMO EXTERNO', 'PENDIENTE REVISIÓN']
         ).filter(
+            # Búsqueda OR: Código interno O Nombre comercial
             Q(codigo_activo__icontains=query) | 
             Q(producto__producto_global__nombre_oficial__icontains=query)
         ).exclude(
+            # Excluir activos que ya forman parte de la relación ManyToMany de esta orden
             ordenes_mantenimiento=orden
         ).select_related(
+            # Optimización Eager Loading
             'producto__producto_global', 
             'compartimento__ubicacion'
-        )[:10]
+        )[:10] # Límite estricto para rendimiento de UI (Typeahead)
 
+        # Serialización manual para respuesta JSON ligera
         results = []
         for activo in activos:
+            # Formateo de ubicación jerárquica
             ubicacion_str = f"{activo.compartimento.ubicacion.nombre} > {activo.compartimento.nombre}" if activo.compartimento else "Sin ubicación"
+            
             results.append({
                 'id': activo.id,
                 'codigo': activo.codigo_activo,
                 'nombre': activo.producto.producto_global.nombre_oficial,
                 'ubicacion': ubicacion_str,
+                # Manejo seguro de URL de imagen con fallback implícito (None)
                 'imagen_url': activo.producto.producto_global.imagen_thumb_small.url if activo.producto.producto_global.imagen_thumb_small else None
             })
 
         return Response({'results': results})
 
 
+
+
 class MantenimientoAnadirActivoOrdenAPIView(OrdenValidacionMixin, APIView):
     """
-    API DRF: Añade un activo a la lista de 'activos_afectados' de una orden.
+    Endpoint para vincular un activo existente a una Orden de Mantenimiento en estado PENDIENTE.
+    
+    Validaciones Críticas:
+    1. El usuario debe tener responsabilidad sobre la orden.
+    2. La orden debe ser editable (Estado PENDIENTE).
+    3. El activo debe encontrarse en un estado operativo compatible con la intervención.
     """
+    
     permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarOrdenes]
 
     def post(self, request, pk):
+        """
+        Procesar la vinculación de un activo a la orden.
+        
+        Realiza validaciones de estado cruzadas (Orden vs Activo) y registra el evento
+        en la auditoría incremental de la orden.
+        """
         try:
             estacion = request.estacion_activa
             orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=estacion)
 
-            # Validar Responsabilidad
+            # 1. Validación de Permisos y Responsabilidad
             self.validar_responsabilidad_orden(orden, request.user)
 
+            # 2. Validación de Ciclo de Vida de la Orden
             if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
                 return Response({'message': 'Solo se pueden agregar activos a órdenes PENDIENTES.'}, status=status.HTTP_400_BAD_REQUEST)
 
             activo_id = request.data.get('activo_id')
             activo = get_object_or_404(Activo, pk=activo_id, estacion=estacion)
 
-            # --- NUEVA VALIDACIÓN DE ESTADO ---
+            # 3. Validación de Estado del Activo
+            # Impedir agregar activos dados de baja o en estados no operativos (ej. EXTRAVIADO)
             estados_permitidos = ['DISPONIBLE', 'EN PRÉSTAMO EXTERNO', 'PENDIENTE REVISIÓN']
             
-            # Verificamos que el activo tenga un estado válido
             if not activo.estado or activo.estado.nombre not in estados_permitidos:
                 estado_actual = activo.estado.nombre if activo.estado else "SIN ESTADO"
                 return Response({
-                    'status': 'error', # Agregamos status para que el frontend pueda manejarlo
+                    'status': 'error',
                     'message': f'No se puede agregar el activo. Su estado es "{estado_actual}". Solo se permiten: {", ".join(estados_permitidos)}.'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            # ----------------------------------
 
+            # 4. Persistencia (Relación Many-to-Many)
             orden.activos_afectados.add(activo)
 
-            # --- AUDITORÍA INCREMENTAL ---
+            # 5. Auditoría Incremental
+            # Registrar la modificación del alcance de la orden.
             auditar_modificacion_incremental(
                 request=request,
                 plan=orden, 
@@ -2880,27 +3024,38 @@ class MantenimientoAnadirActivoOrdenAPIView(OrdenValidacionMixin, APIView):
 
 class MantenimientoQuitarActivoOrdenAPIView(OrdenValidacionMixin, APIView):
     """
-    API DRF: Quita un activo de la orden.
+    Endpoint para desvincular un activo de una Orden de Mantenimiento.
+    
+    Permite corregir el alcance de la orden antes de su inicio.
+    Restringido exclusivamente a órdenes en estado PENDIENTE para asegurar la integridad
+    de los registros de trabajo una vez iniciada la ejecución.
     """
+    
     permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarOrdenes]
 
     def post(self, request, pk):
+        """
+        Procesar la desvinculación de un activo.
+        """
         try:
             estacion = request.estacion_activa
             orden = get_object_or_404(OrdenMantenimiento, pk=pk, estacion=estacion)
 
-            # Validar Responsabilidad
+            # 1. Validación de Permisos
             self.validar_responsabilidad_orden(orden, request.user)
 
+            # 2. Validación de Ciclo de Vida
+            # Una vez iniciada la orden, el alcance se congela para mantener trazabilidad histórica.
             if orden.estado != OrdenMantenimiento.EstadoOrden.PENDIENTE:
                 return Response({'message': 'Solo se pueden quitar activos de órdenes PENDIENTES.'}, status=status.HTTP_400_BAD_REQUEST)
 
             activo_id = request.data.get('activo_id')
             activo = get_object_or_404(Activo, pk=activo_id, estacion=estacion)
 
+            # 3. Persistencia (Eliminación de Relación)
             orden.activos_afectados.remove(activo)
 
-            # --- AUDITORÍA INCREMENTAL ---
+            # 4. Auditoría Incremental
             auditar_modificacion_incremental(
                 request=request,
                 plan=orden, 

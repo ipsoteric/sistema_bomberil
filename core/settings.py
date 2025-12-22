@@ -428,6 +428,16 @@ if not DEBUG:
 
 
 if not DEBUG:
+    # Le dice a Django que confíe en que Nginx (el proxy) ya verificó el HTTPS
     SECURE_PROXY_SSL_HEADER = env.list('SECURE_PROXY_SSL_HEADER')
+    # Cookies seguras (Solo viajan por HTTPS)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+    # Redirección forzada a HTTPS (Django ayuda a Nginx)
+    SECURE_SSL_REDIRECT = True
+
+    # HSTS: Le dice al navegador "No intentes entrar por HTTP nunca más a este sitio"
+    SECURE_HSTS_SECONDS = 31536000  # 1 año
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True

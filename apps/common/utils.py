@@ -2,7 +2,8 @@ from itertools import cycle
 from django.core.files.base import ContentFile
 from django.core.exceptions import ValidationError
 from io import BytesIO
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+from .validators import validar_extension_imagen
 
 
 # 5000 x 5000 = 25 Millones de píxeles
@@ -44,49 +45,62 @@ def procesar_imagen_en_memoria(
     if not image_field:
         return None
     
-    with Image.open(image_field) as image:
-        # Verificar dimensiones antes de procesar.
-        width, height = image.size
-        
-        # 1. Validación de Área (Pixel Flood)
-        if (width * height) > MAX_PIXELS:
-             raise ValidationError(
-                f"La imagen es demasiado densa ({width}x{height} píxeles). "
-                "El sistema permite un máximo de 25 Megapíxeles (aprox 5000x5000)."
-            )
+    # Intentamos abrir la imagen. Si el archivo está corrupto, Pillow lanzará error aquí.
+    try:
+        with Image.open(image_field) as image:
+            # Validar extensión de imagen
+            validar_extension_imagen(image)
 
-        # 2. Validación de Lado (Evita imágenes 'fideo' ej: 10px x 20000px)
-        if width > MAX_DIMENSION or height > MAX_DIMENSION:
-             raise ValidationError(
-                 f"Las dimensiones de la imagen no pueden superar los {MAX_DIMENSION}px por lado."
-             )
-        
-        # GESTIÓN DE TRANSPARENCIA Y MODO
-        image = _preparar_imagen_para_jpeg(image)
-        
-        # 2. RECORTAR (CROP) 1:1
-        if crop_to_square:
+            # Verificar dimensiones antes de procesar.
             width, height = image.size
-            min_dim = min(width, height)
-            image = image.crop((
-                (width - min_dim) // 2,
-                (height - min_dim) // 2,
-                (width + min_dim) // 2,
-                (height + min_dim) // 2
-            ))
-        
-        # 3. REDIMENSIONAR (RESIZE)
-        # Solo redimensiona si la imagen es más grande que el objetivo
-        if image.width > max_dimensions[0] or image.height > max_dimensions[1]:
-            image.thumbnail(max_dimensions, Image.Resampling.LANCZOS)
-        
-        # 4. GUARDAR EN BUFFER
-        buffer = BytesIO()
-        image.save(buffer, format='JPEG', quality=90, optimize=True)
-        buffer.seek(0)
-        
-        # Devolver el ContentFile con el nuevo nombre de archivo basado en UUID
-        return ContentFile(buffer.getvalue(), name=new_filename)
+
+            # 1. Validación de Área (Pixel Flood)
+            if (width * height) > MAX_PIXELS:
+                 raise ValidationError(
+                    f"La imagen es demasiado densa ({width}x{height} píxeles). "
+                    "El sistema permite un máximo de 25 Megapíxeles (aprox 5000x5000)."
+                )
+
+            # 2. Validación de Lado (Evita imágenes 'fideo' ej: 10px x 20000px)
+            if width > MAX_DIMENSION or height > MAX_DIMENSION:
+                 raise ValidationError(
+                     f"Las dimensiones de la imagen no pueden superar los {MAX_DIMENSION}px por lado."
+                 )
+
+            # GESTIÓN DE TRANSPARENCIA Y MODO
+            image = _preparar_imagen_para_jpeg(image)
+
+            # 2. RECORTAR (CROP) 1:1
+            if crop_to_square:
+                width, height = image.size
+                min_dim = min(width, height)
+                image = image.crop((
+                    (width - min_dim) // 2,
+                    (height - min_dim) // 2,
+                    (width + min_dim) // 2,
+                    (height + min_dim) // 2
+                ))
+
+            # 3. REDIMENSIONAR (RESIZE)
+            # Solo redimensiona si la imagen es más grande que el objetivo
+            if image.width > max_dimensions[0] or image.height > max_dimensions[1]:
+                image.thumbnail(max_dimensions, Image.Resampling.LANCZOS)
+
+            # 4. GUARDAR EN BUFFER
+            buffer = BytesIO()
+            image.save(buffer, format='JPEG', quality=90, optimize=True)
+            buffer.seek(0)
+
+            # Devolver el ContentFile con el nuevo nombre de archivo basado en UUID
+            return ContentFile(buffer.getvalue(), name=new_filename)
+    
+    except UnidentifiedImageError:
+        # Esto captura archivos corruptos o archivos que no son imágenes
+        raise ValidationError("El archivo subido no es una imagen válida o está dañado.")
+    
+    except Exception as e:
+        # Captura cualquier otro error de Pillow
+        raise ValidationError(f"Error al procesar la imagen: {str(e)}")
 
 
 

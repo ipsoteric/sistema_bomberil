@@ -54,41 +54,79 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // GRÁFICO 2: ESTADOS
-    const ctxEst = document.getElementById('graficoEstados')?.getContext('2d');
-    if (ctxEst) {
-        fetch(urlGraficoEstado)
-            .then(r => r.json())
-            .then(data => {
-                new Chart(ctxEst, {
-                    type: 'doughnut',
-                    data: {
-                        labels: data.labels,
-                        datasets: [{
-                            data: data.values,
-                            backgroundColor: [
-                                '#2ecc71', 
-                                '#e74c3c', 
-                                '#f1c40f', 
-                                '#95a5a6', 
-                                '#3498db', 
-                                '#9b59b6'
-                            ],
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: { color: labelColor, padding: 15, usePointStyle: true, font: { size: 11 } }
-                            }
-                        },
-                        cutout: '65%'
-                    }
-                });
-            })
-            .catch(e => console.error("Error loading status chart:", e));
+    function getData(id) {
+        return JSON.parse(document.getElementById(id).textContent);
+    }
+
+    // 2. Obtenemos los valores pasados desde Django
+    var dataDisponible = getData('data-disponible');
+    var dataPrestamo = getData('data-prestamo');
+    var dataPreparacion = getData('data-preparacion');
+    var dataTransito = getData('data-transito');
+    var dataRevision = getData('data-revision');
+    var dataReparacion = getData('data-reparacion');
+
+    // Configuración del Gráfico (Doughnut Chart)
+    var ctx = document.getElementById("myPieChart");
+
+    // Verificar si existe el canvas para evitar errores en otras páginas
+    if (ctx) {
+    var myPieChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: [
+                "Disponible", 
+                "En Préstamo", 
+                "En Preparación", 
+                "En Tránsito", 
+                "Pendiente Revisión", 
+                "En Reparación"
+            ],
+            datasets: [{
+                data: [
+                  dataDisponible, 
+                  dataPrestamo, 
+                  dataPreparacion, 
+                  dataTransito, 
+                  dataRevision, 
+                  dataReparacion
+                ],
+                backgroundColor: [
+                  '#1cc88a', // Disponible (Verde)
+                  '#4e73df', // Préstamo (Azul)
+                  '#36b9cc', // Preparación (Cyan/Teal)
+                  '#f6c23e', // Tránsito (Amarillo/Naranja)
+                  '#858796', // Revisión (Gris)
+                  '#e74a3b'  // Reparación (Rojo)
+                ],
+                hoverBackgroundColor: [
+                  '#17a673', 
+                  '#2e59d9', 
+                  '#2c9faf', 
+                  '#dda20a', 
+                  '#60616f', 
+                  '#be2617'
+                ],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: false,
+                caretPadding: 10,
+            },
+            legend: {
+                display: false // Ocultamos la leyenda por defecto para usar la HTML personalizada si quieres
+            },
+            cutoutPercentage: 80,
+        },
+    });
     }
 });
