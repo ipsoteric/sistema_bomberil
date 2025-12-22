@@ -112,21 +112,23 @@
                                          alt="Avatar" style="width: 32px; height: 32px;">
                                 {% endif %}
                                 
-                                <div>
-                                    <strong class="d-block">{{ membresia.usuario.get_full_name }}</strong>
+                                <div class="d-flex align-items-center flex-wrap">
+                                    <strong class="me-2">{{ membresia.usuario.get_full_name }}</strong>
                                     
                                     {# --- ICONOS REQUERIDOS --- #}
-                                    <small class="text-muted text-xs"> {# Ajuste fino para iconos #}
+                                    <span class="text-xs d-flex align-items-center"> 
                                         {% if membresia.usuario.is_verified %}
-                                            <i class="fas fa-check-circle color_azul me-1" title="Usuario verificado"></i>
+                                            <i class="fas fa-check-circle color_azul me-1" title="Usuario verificado" style="font-size: 0.9em;"></i>
                                         {% endif %}
+                                                            
                                         {% if membresia.usuario.is_superuser %}
-                                            <i class="fas fa-shield-alt text-danger me-1" title="Super Administrador"></i>
+                                            <i class="fas fa-shield-alt text-danger me-1" title="Super Administrador" style="font-size: 0.9em;"></i>
                                         {% endif %}
+                                                            
                                         {% if membresia.usuario.is_staff %}
-                                            <i class="fas fa-clipboard-user text-warning me-1" title="Acceso al Admin"></i>
+                                            <i class="fas fa-clipboard-user text-warning me-1" title="Acceso al Admin" style="font-size: 0.9em;"></i>
                                         {% endif %}
-                                    </small>
+                                    </span>
                                     {# --- FIN ICONOS --- #}
                                 </div>
                             </div>
