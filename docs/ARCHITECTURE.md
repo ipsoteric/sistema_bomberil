@@ -1,3 +1,4 @@
+## Diagrama de arquitectura
 ```mermaid
 graph TD
     subgraph Clientes
@@ -42,3 +43,13 @@ graph TD
     Worker --> RDS
     Worker --> S3
 ```
+
+## Modelo Relacional
+
+<details>
+  <summary>Haz clic aquí para ver el diagrama de la base de datos</summary>
+  <br>
+  <p align="center">
+    <img src="./img/modelo_relacional.png" alt="Modelo Relacional Bomberil System">
+  </p>
+</details>
