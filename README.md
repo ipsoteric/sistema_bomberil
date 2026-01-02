@@ -18,6 +18,25 @@ Bomberil System permite que cada compañía sea autónoma en su gestión, compar
 
 
 
+## Vista Previa del Sistema
+
+| Dashboard Principal (Portal) | Administración Multi-tenant (Core Admin) |
+|:---:|:---:|
+| ![Portal](./docs/img/captura-portal.png) | ![Core Admin](./docs/img/captura-panel_global.png) |
+
+| Detalle de Existencia (Inventario) | Hoja de Vida |
+|:---:|:---:|
+| ![Inventario](./docs/img/captura-detalle_existencia.png) | ![Hoja de Vida](./docs/img/captura-hoja_de_vida.png) |
+
+| Ficha Médica | Documentación de API (Swagger) |
+|:---:|:---:|
+| ![Ficha Médica](./docs/img/captura-ficha_medica.png) | ![Swagger](./docs/img/captura-schema_swagger_ui.png) |
+
+> **Nota:** El logotipo de la Segunda Compañía de Bomberos de Iquique es propiedad de dicha institución y se muestra en las capturas únicamente con fines demostrativos del diseño del sistema.
+
+
+
+
 ## Funcionalidades Clave
 
 El sistema está estructurado en módulos especializados:
