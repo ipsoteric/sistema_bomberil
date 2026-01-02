@@ -1,0 +1,1949 @@
+openapi: 3.0.3
+info:
+  title: Bomberil System API
+  version: 1.0.0
+  description: Sistema de gestión integral para compañías de bomberos
+paths:
+  /api/v1/alternar-tema-oscuro/:
+    post:
+      operationId: alternar_tema_oscuro_create
+      description: |-
+        API robusta para alternar el modo oscuro.
+        Requiere autenticación y usa POST para cambios de estado seguros.
+      summary: Alternar tema oscuro
+      tags:
+      - alternar-tema-oscuro
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemaOscuroResponse'
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: Invalida el Refresh Token del usuario, impidiendo que genere nuevos
+        tokens de acceso.
+      summary: Cerrar sesión
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '205':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      description: Devuelve perfil, estación activa y permisos.
+      summary: Obtener datos del usuario actual
+      tags:
+      - auth
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/password_reset/:
+    post:
+      operationId: auth_password_reset_create
+      description: |-
+        Endpoint para solicitar restablecimiento de contraseña desde la App Móvil.
+        Recibe un email, valida que exista y envía el correo usando las mismas
+        plantillas que la versión Web.
+      summary: Solicitar recuperación de contraseña
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomTokenRefresh'
+          description: ''
+  /api/v1/gestion_documental/documentos/:
+    get:
+      operationId: gestion_documental_documentos_retrieve
+      description: |-
+        Lista los documentos históricos de la estación para la biblioteca digital móvil.
+        Incluye filtros por texto y tipo de documento.
+
+        URL: /api/v1/documental/documentos/?q=acta&tipo=1
+      tags:
+      - gestion_documental
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/anadir-producto-local/:
+    post:
+      operationId: gestion_inventario_anadir_producto_local_create
+      description: |-
+        Procesar la solicitud de creación de un producto local.
+
+        Flujo de ejecución:
+        1. Validar integridad de datos (Input Serializer).
+        2. Verificar existencia del recurso padre (Producto Global).
+        3. Persistir la nueva entidad Producto vinculada a la estación.
+        4. Gestionar conflictos de integridad (SKUs duplicados).
+      summary: Añadir producto al catálogo local
+      tags:
+      - gestion_inventario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoLocalInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductoLocalInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductoLocalInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/catalogo/stock/:
+    get:
+      operationId: gestion_inventario_catalogo_stock_retrieve
+      description: |-
+        Endpoint para listar el catálogo local FILTRADO por existencias positivas.
+        Ideal para la vista principal de "Mi Inventario" en la App.
+
+        URL: /api/v1/inventario/catalogo/stock/
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/comunas-por-region/{region_id}/:
+    get:
+      operationId: gestion_inventario_comunas_por_region_list
+      description: Endpoint de API para obtener una lista de Comunas filtradas por
+        una Región.
+      summary: Obtener comunas por región
+      parameters:
+      - in: path
+        name: region_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comuna'
+          description: ''
+  /api/v1/gestion_inventario/core/compartimentos/:
+    get:
+      operationId: gestion_inventario_core_compartimentos_retrieve
+      description: |-
+        Lista los compartimentos pertenecientes a una ubicación específica.
+        Valida que la ubicación pertenezca a la estación activa por seguridad.
+        URL: /api/v1/gestion_inventario/core/compartimentos/?ubicacion={uuid}
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/core/proveedores/:
+    get:
+      operationId: gestion_inventario_core_proveedores_retrieve
+      description: |-
+        Lista proveedores disponibles para la estación.
+        Incluye:
+        1. Proveedores Globales (estacion_creadora IS NULL)
+        2. Proveedores Locales creados por esta estación.
+
+        URL: /api/v1/gestion_inventario/core/proveedores/?search=bomberos
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/core/ubicaciones/:
+    get:
+      operationId: gestion_inventario_core_ubicaciones_retrieve
+      description: |-
+        Lista las ubicaciones de la estación activa.
+        Soporta filtro para excluir administrativas (útil para Recepción de Stock).
+        URL: /api/v1/gestion_inventario/core/ubicaciones/?solo_fisicas=true
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/destinatarios/:
+    get:
+      operationId: gestion_inventario_destinatarios_retrieve
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/detalle-existencia/{id}/:
+    get:
+      operationId: gestion_inventario_detalle_existencia_retrieve
+      description: |-
+        Endpoint para obtener detalles de producto y sugerencia de SKU.
+        Uso: Fetch desde modal de inventario o App Móvil.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/existencias/:
+    get:
+      operationId: gestion_inventario_existencias_retrieve
+      description: |-
+        Lista las existencias físicas (Activos o Lotes) asociadas a un Producto del catálogo local.
+
+        URL: /api/v1/gestion_inventario/existencias/?producto={id}
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/existencias-por-categoria/:
+    get:
+      operationId: gestion_inventario_existencias_por_categoria_retrieve
+      description: |-
+        API Endpoint para obtener datos del gráfico de existencias por categoría.
+        Suma Activos y Lotes de Insumo de la estación activa.
+      summary: Obtener datos del gráfico de existencias por categoría
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/existencias-por-estado/:
+    get:
+      operationId: gestion_inventario_existencias_por_estado_retrieve
+      description: |-
+        API Endpoint para obtener datos del gráfico de estado general del inventario.
+        Agrupa por TipoEstado (OPERATIVO, NO OPERATIVO, ADMINISTRATIVO, etc.)
+      summary: Obtener datos del gráfico de estado general del inventario
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/existencias/buscar/:
+    get:
+      operationId: gestion_inventario_existencias_buscar_retrieve
+      description: |-
+        Endpoint para consultar el detalle de una existencia escaneando su código.
+        URL: /api/v1/inventario/existencias/detalle/?codigo=ABC-123
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/movimientos/ajustar/:
+    post:
+      operationId: gestion_inventario_movimientos_ajustar_create
+      description: |-
+        Endpoint para ajustar manualmente la cantidad de un Lote (Inventario Cíclico).
+
+        URL: /api/v1/inventario/movimientos/ajustar/
+        Method: POST
+        Payload:
+        {
+            "id": "uuid-del-lote",
+            "nueva_cantidad": 50,
+            "notas": "Conteo cíclico semanal"
+        }
+      summary: Ajuste Manual de Stock
+      tags:
+      - gestion_inventario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AjusteStockRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AjusteStockRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AjusteStockRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/movimientos/anular/:
+    post:
+      operationId: gestion_inventario_movimientos_anular_create
+      description: |-
+        Endpoint para anular una existencia (Corrección de error de ingreso).
+        Mueve el ítem a una ubicación administrativa 'ANULADO' y ajusta el stock a 0.
+
+        URL: /api/v1/inventario/movimientos/anular/
+        Method: POST
+        Payload:
+        {
+            "tipo": "ACTIVO" | "LOTE",
+            "id": "uuid-del-item",
+            "motivo": "Error de digitación..."
+        }
+      summary: Anular existencia por error
+      tags:
+      - gestion_inventario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnularExistenciaRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnularExistenciaRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnularExistenciaRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/movimientos/baja/:
+    post:
+      operationId: gestion_inventario_movimientos_baja_create
+      description: |-
+        Endpoint para Dar de Baja una existencia (Fin de vida útil, daño irreparable, etc.).
+
+        URL: /api/v1/inventario/movimientos/baja/
+        Method: POST
+        Payload:
+        {
+            "tipo": "ACTIVO" | "LOTE",
+            "id": "uuid-del-item",
+            "notas": "Motivo de la baja (Ej: Daño estructural en incendio)"
+        }
+      summary: Dar de baja existencia
+      tags:
+      - gestion_inventario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BajaExistenciaRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BajaExistenciaRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BajaExistenciaRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/movimientos/consumir/:
+    post:
+      operationId: gestion_inventario_movimientos_consumir_create
+      description: |-
+        Endpoint para registrar consumo de stock (Salida de lotes).
+
+        URL: /api/v1/inventario/movimientos/consumir/
+        Method: POST
+        Payload:
+        {
+            "id": "uuid-del-lote",
+            "cantidad": 5,
+            "notas": "Uso en ejercicio de la academia"
+        }
+      summary: Consumo Interno de Stock
+      tags:
+      - gestion_inventario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsumoStockRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConsumoStockRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConsumoStockRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/movimientos/extravio/:
+    post:
+      operationId: gestion_inventario_movimientos_extravio_create
+      description: |-
+        Endpoint para reportar un ACTIVO como extraviado.
+        Maneja la lógica compleja de cierre de préstamos si el activo estaba prestado.
+
+        URL: /api/v1/inventario/movimientos/extravio/
+        Method: POST
+        Payload:
+        {
+            "id": "uuid-del-activo",
+            "notas": "Se perdió en el incendio forestal..."
+        }
+      summary: Reportar extravío
+      tags:
+      - gestion_inventario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtravioActivoRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExtravioActivoRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExtravioActivoRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/movimientos/recepcion/:
+    post:
+      operationId: gestion_inventario_movimientos_recepcion_create
+      description: |-
+        Endpoint transaccional para procesar la recepción de stock (Activos y Lotes).
+        Replica la lógica de RecepcionStockView web.
+
+        URL: /api/v1/inventario/movimientos/recepcion/
+        Method: POST
+        Payload esperado:
+        {
+            "proveedor_id": 1,
+            "fecha_recepcion": "2023-10-27",
+            "notas": "Recepción móvil",
+            "detalles": [
+                {
+                    "producto_id": 10,
+                    "compartimento_destino_id": "uuid...",
+                    "cantidad": 1,
+                    "costo_unitario": 50000,
+                    "numero_serie": "SN-123", // Solo si es activo
+                    "fecha_fabricacion": "2023-01-01" // Opcional activo
+                },
+                {
+                    "producto_id": 15,
+                    "compartimento_destino_id": "uuid...",
+                    "cantidad": 50,
+                    "costo_unitario": 200,
+                    "numero_lote": "L-99", // Opcional lote
+                    "fecha_vencimiento": "2025-01-01" // Opcional lote
+                }
+            ]
+        }
+      summary: Recepcionar Stock
+      tags:
+      - gestion_inventario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecepcionStockRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecepcionStockRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecepcionStockRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/prestamo/buscar-prestables/:
+    get:
+      operationId: gestion_inventario_prestamo_buscar_prestables_retrieve
+      description: |-
+        Endpoint para búsqueda tipo 'Typeahead' de existencias.
+        Requiere autenticación y una estación activa (vía Sesión, Header o Membresía).
+      summary: Buscador Typeahead de existencias
+      parameters:
+      - in: query
+        name: exclude
+        schema:
+          type: string
+        description: IDs a excluir (csv)
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Término de búsqueda
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/prestamos/:
+    get:
+      operationId: gestion_inventario_prestamos_retrieve
+      description: |-
+        Lista el historial de préstamos de la estación.
+        Por defecto muestra solo los activos (Pendientes/Parciales).
+
+        URL: /api/v1/inventario/prestamos/
+        Params:
+          - ?todos=true (Muestra también completados/vencidos)
+          - ?search=NombreDestinatario
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/prestamos/{prestamo_id}/devolucion/:
+    get:
+      operationId: gestion_inventario_prestamos_devolucion_retrieve
+      description: |-
+        Endpoint para gestionar la devolución de un préstamo.
+        GET: Retorna el detalle del préstamo y el saldo pendiente de cada ítem.
+        POST: Procesa devoluciones y reportes de pérdida en lote.
+
+        URL: /api/v1/inventario/prestamos/<int:prestamo_id>/devolucion/
+      summary: Gestionar devolución
+      parameters:
+      - in: path
+        name: prestamo_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_inventario
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: gestion_inventario_prestamos_devolucion_create
+      description: |-
+        Endpoint para gestionar la devolución de un préstamo.
+        GET: Retorna el detalle del préstamo y el saldo pendiente de cada ítem.
+        POST: Procesa devoluciones y reportes de pérdida en lote.
+
+        URL: /api/v1/inventario/prestamos/<int:prestamo_id>/devolucion/
+      summary: Gestionar devolución
+      parameters:
+      - in: path
+        name: prestamo_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_inventario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GestionDevolucionRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GestionDevolucionRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GestionDevolucionRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_inventario/prestamos/crear/:
+    post:
+      operationId: gestion_inventario_prestamos_crear_create
+      description: |-
+        Endpoint transaccional para crear un Préstamo con múltiples ítems.
+        Replica la lógica de CrearPrestamoView (Web).
+
+        Payload:
+        {
+            "destinatario_id": 1,
+            "nuevo_destinatario_nombre": "Bomberos Iquique" (Opcional si no hay ID),
+            "notas": "Apoyo incendio",
+            "fecha_devolucion_esperada": "2023-12-31", // (Opcional) YYYY-MM-DD
+            "items": [
+                {"tipo": "activo", "id": "uuid...", "cantidad_prestada": 1},
+                {"tipo": "lote", "id": "uuid...", "cantidad_prestada": 5}
+            ]
+        }
+      summary: Crear Préstamo
+      tags:
+      - gestion_inventario
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrearPrestamoRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CrearPrestamoRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CrearPrestamoRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/ordenes/:
+    get:
+      operationId: gestion_mantenimiento_ordenes_retrieve
+      description: |-
+        Bandeja de entrada de Órdenes de Trabajo para la App.
+        Soporta pestañas de estado (Activos/Historial) y búsqueda.
+
+        URL: /api/v1/mantenimiento/ordenes/?estado=activos&q=camion
+      parameters:
+      - in: query
+        name: estado
+        schema:
+          type: string
+      - in: query
+        name: orden_id
+        schema:
+          type: integer
+      - in: query
+        name: plan_id
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - gestion_mantenimiento
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/ordenes/{id}/anadir-activo/:
+    post:
+      operationId: gestion_mantenimiento_ordenes_anadir_activo_create
+      description: |-
+        Procesar la vinculación de un activo a la orden.
+
+        Realiza validaciones de estado cruzadas (Orden vs Activo) y registra el evento
+        en la auditoría incremental de la orden.
+      summary: Añadir activo a orden
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_mantenimiento
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnadirActivoOrdenRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnadirActivoOrdenRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnadirActivoOrdenRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/ordenes/{id}/cambiar-estado/:
+    post:
+      operationId: gestion_mantenimiento_ordenes_cambiar_estado_create
+      description: |-
+        Procesar la transición de estado solicitada.
+
+        Flujo de Ejecución:
+        1. Establecer contexto de auditoría (puente sesión-API).
+        2. Recuperar y validar la orden dentro del alcance de la estación activa.
+        3. Validar reglas de negocio específicas para la asignación de responsabilidad.
+        4. Ejecutar la transición de estado dentro de un bloque transaccional atómico.
+        5. Disparar efectos secundarios en los activos (cambio de estado masivo).
+      summary: Cambiar estado de Orden
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_mantenimiento
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambioEstadoOrdenRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CambioEstadoOrdenRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CambioEstadoOrdenRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/ordenes/{id}/detalle/:
+    get:
+      operationId: gestion_mantenimiento_ordenes_detalle_retrieve
+      description: |-
+        Endpoint de detalle de una Orden de Trabajo.
+        Muestra el progreso y el estado de cada activo involucrado (Pendiente vs Realizado).
+
+        URL: /api/v1/mantenimiento/ordenes/<int:pk>/detalle/
+      summary: Ver detalle de orden
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_mantenimiento
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/ordenes/{id}/quitar-activo/:
+    post:
+      operationId: gestion_mantenimiento_ordenes_quitar_activo_create
+      description: Procesar la desvinculación de un activo.
+      summary: Quitar activo de orden
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_mantenimiento
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuitarActivoOrdenRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuitarActivoOrdenRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuitarActivoOrdenRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/ordenes/{id}/registrar-tarea/:
+    post:
+      operationId: gestion_mantenimiento_ordenes_registrar_tarea_create
+      description: |-
+        Procesar el reporte de una tarea de mantenimiento.
+
+        Flujo de Ejecución:
+        1. Validación de contexto (Estación, Responsabilidad del Técnico, Estado de la Orden).
+        2. Validación de pertenencia del activo a la orden.
+        3. Persistencia del registro de trabajo (Upsert).
+        4. Evaluación y transición del estado del activo (Lógica de liberación condicional).
+        5. Actualización de metadatos de planificación (si aplica).
+        6. Auditoría incremental del avance.
+      summary: Registrar tarea en orden
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_mantenimiento
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrarTareaRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegistrarTareaRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegistrarTareaRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/ordenes/buscar-activo/:
+    get:
+      operationId: gestion_mantenimiento_ordenes_buscar_activo_retrieve
+      description: |-
+        Procesar la solicitud de búsqueda de activos.
+
+        Retorna una lista ligera (serialización manual optimizada) de los primeros 10 candidatos
+        que coincidan con el criterio de búsqueda, incluyendo metadatos de ubicación para desambiguación.
+      parameters:
+      - in: query
+        name: estado
+        schema:
+          type: string
+      - in: query
+        name: orden_id
+        schema:
+          type: integer
+      - in: query
+        name: plan_id
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - gestion_mantenimiento
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/ordenes/crear/:
+    post:
+      operationId: gestion_mantenimiento_ordenes_crear_create
+      description: |-
+        Endpoint para crear una Orden de Mantenimiento Correctiva.
+
+        URL: /api/v1/mantenimiento/ordenes/crear/
+        Method: POST
+        Payload:
+        {
+            "descripcion": "Fuga de aceite en motor",
+            "fecha_programada": "2023-11-01" (Opcional, default hoy),
+            "responsable_id": 5 (Opcional)
+        }
+      summary: Crear orden correctiva
+      tags:
+      - gestion_mantenimiento
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrearOrdenCorrectivaRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CrearOrdenCorrectivaRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CrearOrdenCorrectivaRequestRequest'
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/planes/{id}/quitar-activo/:
+    delete:
+      operationId: gestion_mantenimiento_planes_quitar_activo_destroy
+      description: 'API DRF: Quita un activo de un plan.'
+      summary: Quitar activo de plan
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_mantenimiento
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/gestion_mantenimiento/planes/{id}/toggle-activo/:
+    post:
+      operationId: gestion_mantenimiento_planes_toggle_activo_create
+      description: |-
+        API DRF: Cambia el estado 'activo_en_sistema' de un plan (On/Off).
+        POST: plan_pk
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_mantenimiento
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanActivoRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlanActivoRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlanActivoRequestRequest'
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/planes/{plan_pk}/anadir-activo,/:
+    post:
+      operationId: gestion_mantenimiento_planes_anadir_activo,_create
+      description: 'API DRF: Añade un activo a un plan.'
+      summary: Añadir activo a plan
+      parameters:
+      - in: path
+        name: plan_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - gestion_mantenimiento
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnadirActivoPlanRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnadirActivoPlanRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnadirActivoPlanRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_mantenimiento/planes/buscar-activo/:
+    get:
+      operationId: gestion_mantenimiento_planes_buscar_activo_retrieve
+      description: |-
+        API DRF: Busca activos de la estación que NO estén ya en el plan actual.
+        GET params: q (búsqueda), plan_id
+      parameters:
+      - in: query
+        name: estado
+        schema:
+          type: string
+      - in: query
+        name: orden_id
+        schema:
+          type: integer
+      - in: query
+        name: plan_id
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - gestion_mantenimiento
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_usuarios/{id}/detalle/:
+    get:
+      operationId: gestion_usuarios_detalle_retrieve
+      description: |-
+        Obtiene el detalle de un usuario específico dentro de la estación.
+        Equivale a la vista 'ver_usuario.html'.
+        Busca la última membresía válida (Activa o Inactiva).
+
+        URL: /api/v1/usuarios/<uuid:pk>/detalle/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - gestion_usuarios
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_usuarios/{user_uuid}/ficha-medica/:
+    get:
+      operationId: gestion_usuarios_ficha_medica_retrieve
+      description: |-
+        Endpoint que retorna la Ficha Médica completa de un voluntario.
+
+        URL: /api/v1/usuarios/<uuid:user_uuid>/ficha-medica/
+      parameters:
+      - in: path
+        name: user_uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - gestion_usuarios
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_usuarios/{user_uuid}/hoja-vida/:
+    get:
+      operationId: gestion_usuarios_hoja_vida_retrieve
+      description: |-
+        Endpoint que retorna la Hoja de Vida completa de un voluntario.
+
+        URL: /api/v1/voluntarios/<uuid:user_uuid>/hoja-vida/
+
+        PAYLOAD DE RESPUESTA (Actualizado a models.py):
+        {
+            "perfil": {
+                "nombre_completo": "Juan Pérez",
+                "rut": "12.345.678-9",
+                "fecha_nacimiento": "1990-01-01",
+                "nacionalidad": "Chilena",  # Viene de Nacionalidad.gentilicio
+                "estado_civil": "Soltero(a)",
+                "profesion": "Ingeniero",
+                "genero": "Masculino",
+                "grupo_sanguineo": "Ver Ficha Médica" # No existe en modelo Voluntario
+            },
+            "contacto": {
+                "telefono": "912345678", # Prioridad Voluntario > Usuario
+                "email": "juan@example.com",
+                "direccion": "Av. Principal 123", # Concatenación Calle + Número
+                "comuna": "Iquique"
+            },
+            "institucional": {
+                "fecha_ingreso": "2020-05-15", # fecha_primer_ingreso
+                "estado_membresia": "ACTIVO",
+                "numero_registro": "BV-105",   # numero_registro_bomberil
+                "cargo_actual": "Teniente 1°"
+            },
+            "historial": {
+                "cargos": [
+                    {
+                        "cargo": "Ayudante",
+                        "inicio": "2021-01-01",
+                        "fin": "2022-01-01",
+                        "es_actual": false,
+                        "ambito": "Compañía"
+                    }
+                ],
+                "premios": [
+                    {
+                        "nombre": "5 Años de Servicio", # Tipo o Descripción Personalizada
+                        "fecha": "2023-05-15",
+                        "motivo": "Cuerpo de Bomberos" # Usamos 'ambito'
+                    }
+                ],
+                "sanciones": [
+                    {
+                        "tipo": "Suspensión",
+                        "fecha": "2021-08-20",
+                        "motivo": "Falta al reglamento..."
+                    }
+                ]
+            }
+        }
+      parameters:
+      - in: path
+        name: user_uuid
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - gestion_usuarios
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_usuarios/buscar-usuario-para-agregar:
+    post:
+      operationId: gestion_usuarios_buscar_usuario_para_agregar_create
+      description: |-
+        Busca un usuario por su RUT
+        y devuelve su estado de membresía.
+      summary: Buscar usuario por RUT
+      tags:
+      - gestion_usuarios
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuscarUsuarioRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BuscarUsuarioRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BuscarUsuarioRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_usuarios/lista/:
+    get:
+      operationId: gestion_usuarios_lista_retrieve
+      description: |-
+        Endpoint unificado para listar usuarios (Voluntarios) de la estación activa.
+        Útil para: Directorio de voluntarios, selectores de Ficha Médica, Asignaciones, etc.
+
+        Filtros:
+        - ?q= : Busca por Nombre, Apellido, Email o RUT.
+        - ?rol= : Filtra por ID de rol (opcional, útil si quieres buscar solo Oficiales).
+      tags:
+      - gestion_usuarios
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/gestion_usuarios/usuarios/{id}/editar-avatar/:
+    post:
+      operationId: gestion_usuarios_usuarios_editar_avatar_create
+      description: |-
+        Actualiza el avatar del usuario.
+        Permite acceso al dueño del perfil O a un administrador de la misma estación.
+        Usa IsSelfOrStationAdmin para validar la autorización.
+      summary: Actualizar Avatar
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - gestion_usuarios
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                nuevo_avatar:
+                  type: string
+                  format: binary
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/perfil/descargar-ficha-medica/:
+    get:
+      operationId: perfil_descargar_ficha_medica_retrieve
+      description: |-
+        [Opción Token-URL] Genera y descarga el PDF de la Ficha Médica.
+        Reutiliza la plantilla HTML de la web pero la convierte a PDF en el servidor.
+        URL: /api/v1/perfil/ficha-medica/descargar/?token=xxxxx
+      summary: Descargar PDF
+      parameters:
+      - in: query
+        name: token
+        schema:
+          type: string
+      tags:
+      - perfil
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/perfil/descargar-hoja-vida/:
+    get:
+      operationId: perfil_descargar_hoja_vida_retrieve
+      description: |-
+        [Opción Token-URL] Permite descargar PDF enviando el token como parámetro GET.
+        URL: /api/v1/.../?token=eyJhbGci...
+      summary: Descargar PDF
+      parameters:
+      - in: query
+        name: token
+        schema:
+          type: string
+      tags:
+      - perfil
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/test-connection/:
+    get:
+      operationId: test_connection_retrieve
+      summary: Test de conexión
+      tags:
+      - test-connection
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+components:
+  schemas:
+    AccionEnum:
+      enum:
+      - iniciar
+      - finalizar
+      - cancelar
+      - asumir
+      type: string
+      description: |-
+        * `iniciar` - iniciar
+        * `finalizar` - finalizar
+        * `cancelar` - cancelar
+        * `asumir` - asumir
+    AjusteStockRequestRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nueva_cantidad:
+          type: integer
+        notas:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - nueva_cantidad
+    AnadirActivoOrdenRequestRequest:
+      type: object
+      properties:
+        activo_id:
+          type: string
+          format: uuid
+      required:
+      - activo_id
+    AnadirActivoPlanRequestRequest:
+      type: object
+      properties:
+        activo_id:
+          type: string
+          format: uuid
+      required:
+      - activo_id
+    AnularExistenciaRequestRequest:
+      type: object
+      properties:
+        tipo:
+          $ref: '#/components/schemas/TipoEnum'
+        id:
+          type: string
+          format: uuid
+        motivo:
+          type: string
+          minLength: 1
+      required:
+      - id
+    BajaExistenciaRequestRequest:
+      type: object
+      properties:
+        tipo:
+          $ref: '#/components/schemas/TipoEnum'
+        id:
+          type: string
+          format: uuid
+        notas:
+          type: string
+          minLength: 1
+      required:
+      - id
+    BuscarUsuarioRequestRequest:
+      type: object
+      properties:
+        rut:
+          type: string
+          minLength: 1
+      required:
+      - rut
+    CambioEstadoOrdenRequestRequest:
+      type: object
+      properties:
+        accion:
+          $ref: '#/components/schemas/AccionEnum'
+      required:
+      - accion
+    Comuna:
+      type: object
+      description: |-
+        Serializador simple para el modelo Comuna.
+        Solo expone los campos 'id' y 'nombre', que es lo que necesita el frontend.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nombre:
+          type: string
+          description: Ingrese el nombre de la comuna
+          maxLength: 100
+      required:
+      - id
+      - nombre
+    ConsumoStockRequestRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        cantidad:
+          type: integer
+        notas:
+          type: string
+          minLength: 1
+      required:
+      - cantidad
+      - id
+    CrearOrdenCorrectivaRequestRequest:
+      type: object
+      properties:
+        descripcion:
+          type: string
+          minLength: 1
+        fecha_programada:
+          type: string
+          format: date
+        responsable_id:
+          type: integer
+    CrearPrestamoRequestRequest:
+      type: object
+      properties:
+        destinatario_id:
+          type: integer
+        nuevo_destinatario_nombre:
+          type: string
+          minLength: 1
+        notas:
+          type: string
+          minLength: 1
+        fecha_devolucion_esperada:
+          type: string
+          format: date
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - items
+    CustomTokenObtainPairRequest:
+      type: object
+      properties:
+        rut:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - rut
+    CustomTokenRefresh:
+      type: object
+      description: |-
+        Refresh Token que valida que el usuario siga teniendo membresía activa
+        y devuelve los permisos actualizados.
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    CustomTokenRefreshRequest:
+      type: object
+      description: |-
+        Refresh Token que valida que el usuario siga teniendo membresía activa
+        y devuelve los permisos actualizados.
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    DetalleRecepcionRequest:
+      type: object
+      properties:
+        producto_id:
+          type: integer
+        compartimento_destino_id:
+          type: string
+          format: uuid
+        cantidad:
+          type: integer
+        costo_unitario:
+          type: integer
+        numero_serie:
+          type: string
+          minLength: 1
+      required:
+      - cantidad
+      - compartimento_destino_id
+      - producto_id
+    ExtravioActivoRequestRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        notas:
+          type: string
+          minLength: 1
+      required:
+      - id
+    GestionDevolucionRequestRequest:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemDevolucionRequest'
+      required:
+      - items
+    ItemDevolucionRequest:
+      type: object
+      properties:
+        detalle_id:
+          type: integer
+        devolver:
+          type: integer
+        perder:
+          type: integer
+      required:
+      - detalle_id
+      - devolver
+      - perder
+    LogoutRequestRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    PasswordResetRequestRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
+    PlanActivoRequestRequest:
+      type: object
+      properties:
+        activo_id:
+          type: string
+          format: uuid
+    ProductoLocalInputRequest:
+      type: object
+      properties:
+        productoglobal_id:
+          type: integer
+        sku:
+          type: string
+          minLength: 1
+          maxLength: 100
+        es_serializado:
+          type: boolean
+          default: false
+        es_expirable:
+          type: boolean
+          default: false
+      required:
+      - productoglobal_id
+      - sku
+    QuitarActivoOrdenRequestRequest:
+      type: object
+      properties:
+        activo_id:
+          type: string
+          format: uuid
+      required:
+      - activo_id
+    RecepcionStockRequestRequest:
+      type: object
+      properties:
+        proveedor_id:
+          type: integer
+        fecha_recepcion:
+          type: string
+          format: date
+        notas:
+          type: string
+          minLength: 1
+        detalles:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetalleRecepcionRequest'
+      required:
+      - detalles
+      - fecha_recepcion
+      - proveedor_id
+    RegistrarTareaRequestRequest:
+      type: object
+      properties:
+        activo_id:
+          type: string
+          format: uuid
+        notas:
+          type: string
+          minLength: 1
+        exitoso:
+          type: boolean
+          default: true
+      required:
+      - activo_id
+    TemaOscuroResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        dark_mode:
+          type: boolean
+      required:
+      - dark_mode
+      - status
+    TipoEnum:
+      enum:
+      - ACTIVO
+      - LOTE
+      type: string
+      description: |-
+        * `ACTIVO` - ACTIVO
+        * `LOTE` - LOTE
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

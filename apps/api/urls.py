@@ -51,6 +51,7 @@ from .views import (
     DescargarFichaMedicaPropiaAPIView,
     TestConnectionView
 )
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 app_name = "api"
 
@@ -58,6 +59,12 @@ urlpatterns = [
     # Alternar tema oscuro
     path('alternar-tema-oscuro/', AlternarTemaOscuroAPIView.as_view(), name='api_alternar_tema'),
     path('test-connection/', TestConnectionView.as_view(), name='test_connection'),
+
+
+    # Documentación
+    path('schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='api:schema'), name='swagger-ui'),
+    path('schema/redoc/', SpectacularRedocView.as_view(url_name='api:schema'), name='redoc'),
 
 
 
