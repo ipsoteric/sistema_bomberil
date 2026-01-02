@@ -14,7 +14,7 @@ from django.conf import settings
 from PIL import Image
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.exceptions import AuthenticationFailed
@@ -76,8 +76,14 @@ from .permissions import (
     CanVerFichaMedica,
     IsSelfOrStationAdmin
 )
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, inline_serializer, OpenApiResponse
 
 
+@extend_schema(
+    summary="Obtener datos del usuario actual",
+    description="Devuelve perfil, estación activa y permisos.",
+    responses={200: OpenApiTypes.OBJECT}
+)
 class MeView(APIView):
     """
     Devuelve los datos actuales del usuario (perfil, estación, permisos)
@@ -120,6 +126,14 @@ class BomberilRefreshView(TokenRefreshView):
 
 
 
+@extend_schema(
+    summary="Cerrar sesión",
+    request=inline_serializer(
+        name='LogoutRequest',
+        fields={'refresh': serializers.CharField()}
+    ),
+    responses={205: OpenApiTypes.OBJECT}
+)
 class BomberilLogoutView(APIView):
     """
     Invalida el Refresh Token del usuario, impidiendo que genere nuevos tokens de acceso.
@@ -143,6 +157,14 @@ class BomberilLogoutView(APIView):
 
 
 
+@extend_schema(
+    summary="Solicitar recuperación de contraseña",
+    request=inline_serializer(
+        name='PasswordResetRequest',
+        fields={'email': serializers.EmailField()}
+    ),
+    responses={200: OpenApiTypes.OBJECT}
+)
 class PasswordResetRequestView(APIView):
     """
     Endpoint para solicitar restablecimiento de contraseña desde la App Móvil.
@@ -184,6 +206,10 @@ class PasswordResetRequestView(APIView):
 
 
 
+@extend_schema(
+    summary="Test de conexión",
+    responses={200: OpenApiTypes.OBJECT}
+)
 class TestConnectionView(APIView):
     permission_classes = [IsAuthenticated] # ¡Importante! Solo entra si el Token es válido
 
@@ -200,9 +226,17 @@ class TestConnectionView(APIView):
 
 
 
+@extend_schema(
+    summary="Alternar tema oscuro",
+    request=None,
+    responses={200: inline_serializer(
+        name='TemaOscuroResponse',
+        fields={'status': serializers.CharField(), 'dark_mode': serializers.BooleanField()}
+    )}
+)
 class AlternarTemaOscuroAPIView(APIView):
     """
-    API robusta para alternar el modo oscuro.
+    API para alternar el modo oscuro.
     Requiere autenticación y usa POST para cambios de estado seguros.
     """
     permission_classes = [IsAuthenticated]
@@ -225,6 +259,14 @@ class AlternarTemaOscuroAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Buscar usuario por RUT",
+    request=inline_serializer(
+        name='BuscarUsuarioRequest',
+        fields={'rut': serializers.CharField()}
+    ),
+    responses={200: OpenApiTypes.OBJECT}
+)
 class BuscarUsuarioAPIView(APIView):
     """
     Busca un usuario por su RUT
@@ -301,6 +343,18 @@ class BuscarUsuarioAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Actualizar Avatar",
+    request={
+        'multipart/form-data': {
+            'type': 'object',
+            'properties': {
+                'nuevo_avatar': {'type': 'string', 'format': 'binary'}
+            }
+        }
+    },
+    responses={200: OpenApiTypes.OBJECT}
+)
 class ActualizarAvatarUsuarioAPIView(APIView):
     """
     Actualiza el avatar del usuario.
@@ -358,6 +412,10 @@ class ActualizarAvatarUsuarioAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Obtener comunas por región",
+    responses={200: ComunaSerializer(many=True)}
+)
 class ComunasPorRegionAPIView(APIView):
     """
     Endpoint de API para obtener una lista de Comunas filtradas por una Región.
@@ -384,6 +442,10 @@ class ComunasPorRegionAPIView(APIView):
 
 
 # --- VISTAS DE GRÁFICOS (Requieren Estación Activa) ---
+@extend_schema(
+    summary="Obtener datos del gráfico de existencias por categoría",
+    responses=OpenApiTypes.OBJECT
+)
 class InventarioGraficoExistenciasCategoriaAPIView(APIView):
     """
     API Endpoint para obtener datos del gráfico de existencias por categoría.
@@ -453,6 +515,10 @@ class InventarioGraficoExistenciasCategoriaAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Obtener datos del gráfico de estado general del inventario",
+    responses=OpenApiTypes.OBJECT
+)
 class InventarioGraficoEstadosAPIView(APIView):
     """
     API Endpoint para obtener datos del gráfico de estado general del inventario.
@@ -502,6 +568,7 @@ class InventarioGraficoEstadosAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class InventarioProductoGlobalSKUAPIView(APIView):
     """
     Endpoint para obtener detalles de producto y sugerencia de SKU.
@@ -539,6 +606,11 @@ class InventarioProductoGlobalSKUAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Añadir producto al catálogo local",
+    request=ProductoLocalInputSerializer,
+    responses={201: OpenApiTypes.OBJECT}
+)
 class InventarioAnadirProductoLocalAPIView(AuditoriaMixin, APIView):
     """
     Endpoint API (POST) para la gestión de inventario local.
@@ -649,6 +721,14 @@ class InventarioAnadirProductoLocalAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(
+    summary="Buscador Typeahead de existencias",
+    parameters=[
+        OpenApiParameter("q", OpenApiTypes.STR, description="Término de búsqueda"),
+        OpenApiParameter("exclude", OpenApiTypes.STR, description="IDs a excluir (csv)")
+    ],
+    responses=OpenApiTypes.OBJECT
+)
 class InventarioBuscarExistenciasPrestablesAPI(APIView):
     """
     Endpoint para búsqueda tipo 'Typeahead' de existencias.
@@ -757,6 +837,20 @@ class InventarioBuscarExistenciasPrestablesAPI(APIView):
 
 
 
+@extend_schema(
+    summary="Crear Préstamo",
+    request=inline_serializer(
+        name='CrearPrestamoRequest',
+        fields={
+            'destinatario_id': serializers.IntegerField(required=False),
+            'nuevo_destinatario_nombre': serializers.CharField(required=False),
+            'notas': serializers.CharField(required=False),
+            'fecha_devolucion_esperada': serializers.DateField(required=False),
+            'items': serializers.ListField(child=serializers.DictField())
+        }
+    ),
+    responses={201: OpenApiTypes.OBJECT}
+)
 class InventarioCrearPrestamoAPIView(AuditoriaMixin, APIView):
     """
     Endpoint transaccional para crear un Préstamo con múltiples ítems.
@@ -925,6 +1019,7 @@ class InventarioCrearPrestamoAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class InventarioDestinatarioListAPIView(APIView):
     permission_classes = [IsAuthenticated, IsEstacionActiva, CanGestionarPrestamos]
     def get(self, request):
@@ -935,6 +1030,7 @@ class InventarioDestinatarioListAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class InventarioHistorialPrestamosAPIView(APIView):
     """
     Lista el historial de préstamos de la estación.
@@ -998,6 +1094,26 @@ class InventarioHistorialPrestamosAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Gestionar devolución",
+    # Definimos la estructura compleja del POST para evitar errores
+    request=inline_serializer(
+        name='GestionDevolucionRequest',
+        fields={
+            'items': serializers.ListField(
+                child=inline_serializer(
+                    name='ItemDevolucion',
+                    fields={
+                        'detalle_id': serializers.IntegerField(),
+                        'devolver': serializers.IntegerField(),
+                        'perder': serializers.IntegerField()
+                    }
+                )
+            )
+        }
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class InventarioGestionarDevolucionAPIView(AuditoriaMixin, APIView):
     """
     Endpoint para gestionar la devolución de un préstamo.
@@ -1246,6 +1362,7 @@ class InventarioGestionarDevolucionAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class InventarioDetalleExistenciaAPIView(APIView):
     """
     Endpoint para consultar el detalle de una existencia escaneando su código.
@@ -1422,6 +1539,7 @@ class InventarioDetalleExistenciaAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class InventarioCatalogoStockAPIView(APIView):
     """
     Endpoint para listar el catálogo local FILTRADO por existencias positivas.
@@ -1498,6 +1616,7 @@ class InventarioCatalogoStockAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class InventarioExistenciasPorProductoAPIView(APIView):
     """
     Lista las existencias físicas (Activos o Lotes) asociadas a un Producto del catálogo local.
@@ -1583,6 +1702,30 @@ class InventarioExistenciasPorProductoAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Recepcionar Stock",
+    request=inline_serializer(
+        name='RecepcionStockRequest',
+        fields={
+            'proveedor_id': serializers.IntegerField(),
+            'fecha_recepcion': serializers.DateField(),
+            'notas': serializers.CharField(required=False),
+            'detalles': serializers.ListField(
+                child=inline_serializer(
+                    name='DetalleRecepcion',
+                    fields={
+                        'producto_id': serializers.IntegerField(),
+                        'compartimento_destino_id': serializers.UUIDField(),
+                        'cantidad': serializers.IntegerField(),
+                        'costo_unitario': serializers.IntegerField(required=False),
+                        'numero_serie': serializers.CharField(required=False),
+                    }
+                )
+            )
+        }
+    ),
+    responses={201: OpenApiTypes.OBJECT}
+)
 class InventarioRecepcionStockAPIView(AuditoriaMixin, APIView):
     """
     Endpoint transaccional para procesar la recepción de stock (Activos y Lotes).
@@ -1791,6 +1934,7 @@ class InventarioRecepcionStockAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class InventarioUbicacionListAPIView(APIView):
     """
     Lista las ubicaciones de la estación activa.
@@ -1822,6 +1966,7 @@ class InventarioUbicacionListAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class InventarioCompartimentoListAPIView(APIView):
     """
     Lista los compartimentos pertenecientes a una ubicación específica.
@@ -1855,6 +2000,7 @@ class InventarioCompartimentoListAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class InventarioProveedorListAPIView(APIView):
     """
     Lista proveedores disponibles para la estación.
@@ -1892,6 +2038,18 @@ class InventarioProveedorListAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Anular existencia por error",
+    request=inline_serializer(
+        name='AnularExistenciaRequest',
+        fields={
+            'tipo': serializers.ChoiceField(choices=['ACTIVO', 'LOTE'], required=False),
+            'id': serializers.UUIDField(),
+            'motivo': serializers.CharField(required=False),
+        }
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class InventarioAnularExistenciaAPIView(AuditoriaMixin, APIView):
     """
     Endpoint para anular una existencia (Corrección de error de ingreso).
@@ -2001,6 +2159,18 @@ class InventarioAnularExistenciaAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(
+    summary="Dar de baja existencia",
+    request=inline_serializer(
+        name='BajaExistenciaRequest',
+        fields={
+            'tipo': serializers.ChoiceField(choices=['ACTIVO', 'LOTE'], required=False),
+            'id': serializers.UUIDField(),
+            'notas': serializers.CharField(required=False)
+        }
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class InventarioBajaExistenciaAPIView(AuditoriaMixin, APIView):
     """
     Endpoint para Dar de Baja una existencia (Fin de vida útil, daño irreparable, etc.).
@@ -2107,6 +2277,17 @@ class InventarioBajaExistenciaAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(
+    summary="Reportar extravío",
+    request=inline_serializer(
+        name='ExtravioActivoRequest',
+        fields={
+            'id': serializers.UUIDField(),
+            'notas': serializers.CharField(required=False)
+        }
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class InventarioExtraviarActivoAPIView(AuditoriaMixin, APIView):
     """
     Endpoint para reportar un ACTIVO como extraviado.
@@ -2227,6 +2408,18 @@ class InventarioExtraviarActivoAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(
+    summary="Ajuste Manual de Stock",
+    request=inline_serializer(
+        name='AjusteStockRequest',
+        fields={
+            'id': serializers.UUIDField(),
+            'nueva_cantidad': serializers.IntegerField(),
+            'notas': serializers.CharField(required=False)
+        }
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class InventarioAjustarStockAPIView(AuditoriaMixin, APIView):
     """
     Endpoint para ajustar manualmente la cantidad de un Lote (Inventario Cíclico).
@@ -2326,6 +2519,18 @@ class InventarioAjustarStockAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(
+    summary="Consumo Interno de Stock",
+    request=inline_serializer(
+        name='ConsumoStockRequest',
+        fields={
+            'id': serializers.UUIDField(),
+            'cantidad': serializers.IntegerField(),
+            'notas': serializers.CharField(required=False)
+        }
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class InventarioConsumirStockAPIView(AuditoriaMixin, APIView):
     """
     Endpoint para registrar consumo de stock (Salida de lotes).
@@ -2425,6 +2630,15 @@ class InventarioConsumirStockAPIView(AuditoriaMixin, APIView):
 
 
 # --- VISTAS DE GESTIÓN DE MANTENIMIENTO ---
+@extend_schema(
+    parameters=[
+        OpenApiParameter("q", OpenApiTypes.STR),
+        OpenApiParameter("estado", OpenApiTypes.STR, required=False),
+        OpenApiParameter("plan_id", OpenApiTypes.INT, required=False),
+        OpenApiParameter("orden_id", OpenApiTypes.INT, required=False),
+    ],
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoBuscarActivoParaPlanAPIView(APIView):
     """
     API DRF: Busca activos de la estación que NO estén ya en el plan actual.
@@ -2473,6 +2687,14 @@ class MantenimientoBuscarActivoParaPlanAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Añadir activo a plan",
+    request=inline_serializer(
+        name='AnadirActivoPlanRequest', # <--- Nombre único cambiado
+        fields={'activo_id': serializers.UUIDField()}
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoAnadirActivoEnPlanAPIView(APIView):
     """
     API DRF: Añade un activo a un plan.
@@ -2528,6 +2750,11 @@ class MantenimientoAnadirActivoEnPlanAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Quitar activo de plan",
+    request=None,
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoQuitarActivoDePlanAPIView(APIView):
     """
     API DRF: Quita un activo de un plan.
@@ -2561,6 +2788,13 @@ class MantenimientoQuitarActivoDePlanAPIView(APIView):
 
 
 
+@extend_schema(
+    request=inline_serializer(
+        name='PlanActivoRequest',
+        fields={'activo_id': serializers.UUIDField(required=False)} # required=False para Toggle/Quitar
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoTogglePlanActivoAPIView(AuditoriaMixin, APIView):
     """
     API DRF: Cambia el estado 'activo_en_sistema' de un plan (On/Off).
@@ -2601,6 +2835,14 @@ class MantenimientoTogglePlanActivoAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(
+    summary="Cambiar estado de Orden",
+    request=inline_serializer(
+        name='CambioEstadoOrdenRequest',
+        fields={'accion': serializers.ChoiceField(choices=['iniciar', 'finalizar', 'cancelar', 'asumir'])}
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoCambiarEstadoOrdenAPIView(OrdenValidacionMixin, AuditoriaMixin, APIView):
     """
     Endpoint API (DRF) encargado de la orquestación del ciclo de vida de una Orden de Mantenimiento.
@@ -2751,6 +2993,20 @@ class MantenimientoCambiarEstadoOrdenAPIView(OrdenValidacionMixin, AuditoriaMixi
             return Response({'error': f'Error procesando la orden: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+@extend_schema(
+    summary="Registrar tarea en orden",
+    request=inline_serializer(
+        name='RegistrarTareaRequest',
+        fields={
+            'activo_id': serializers.UUIDField(),
+            'notas': serializers.CharField(required=False),
+            'exitoso': serializers.BooleanField(default=True)
+        }
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoRegistrarTareaAPIView(OrdenValidacionMixin, APIView):
     """
     Endpoint API encargado del registro granular de actividades de mantenimiento.
@@ -2892,6 +3148,15 @@ class MantenimientoRegistrarTareaAPIView(OrdenValidacionMixin, APIView):
 
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("q", OpenApiTypes.STR),
+        OpenApiParameter("estado", OpenApiTypes.STR, required=False),
+        OpenApiParameter("plan_id", OpenApiTypes.INT, required=False),
+        OpenApiParameter("orden_id", OpenApiTypes.INT, required=False),
+    ],
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoBuscarActivoParaOrdenAPIView(APIView):
     """
     Endpoint de búsqueda especializado para identificar y seleccionar activos candidatos
@@ -2962,6 +3227,14 @@ class MantenimientoBuscarActivoParaOrdenAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Añadir activo a orden",
+    request=inline_serializer(
+        name='AnadirActivoOrdenRequest',
+        fields={'activo_id': serializers.UUIDField()}
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoAnadirActivoOrdenAPIView(OrdenValidacionMixin, APIView):
     """
     Endpoint para vincular un activo existente a una Orden de Mantenimiento en estado PENDIENTE.
@@ -3022,6 +3295,16 @@ class MantenimientoAnadirActivoOrdenAPIView(OrdenValidacionMixin, APIView):
             return Response({'error': f'Error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+@extend_schema(
+    summary="Quitar activo de orden",
+    request=inline_serializer(
+        name='QuitarActivoOrdenRequest', # <--- Nombre único cambiado
+        fields={'activo_id': serializers.UUIDField()}
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoQuitarActivoOrdenAPIView(OrdenValidacionMixin, APIView):
     """
     Endpoint para desvincular un activo de una Orden de Mantenimiento.
@@ -3069,6 +3352,15 @@ class MantenimientoQuitarActivoOrdenAPIView(OrdenValidacionMixin, APIView):
 
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter("q", OpenApiTypes.STR),
+        OpenApiParameter("estado", OpenApiTypes.STR, required=False),
+        OpenApiParameter("plan_id", OpenApiTypes.INT, required=False),
+        OpenApiParameter("orden_id", OpenApiTypes.INT, required=False),
+    ],
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoOrdenListAPIView(APIView):
     """
     Bandeja de entrada de Órdenes de Trabajo para la App.
@@ -3146,6 +3438,20 @@ class MantenimientoOrdenListAPIView(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
 
+
+
+@extend_schema(
+    summary="Crear orden correctiva",
+    request=inline_serializer(
+        name='CrearOrdenCorrectivaRequest',
+        fields={
+            'descripcion': serializers.CharField(required=False),
+            'fecha_programada': serializers.DateField(required=False),
+            'responsable_id': serializers.IntegerField(required=False)
+        }
+    ),
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoOrdenCorrectivaCreateAPIView(AuditoriaMixin, APIView):
     """
     Endpoint para crear una Orden de Mantenimiento Correctiva.
@@ -3217,6 +3523,10 @@ class MantenimientoOrdenCorrectivaCreateAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(
+    summary="Ver detalle de orden",
+    responses=OpenApiTypes.OBJECT
+)
 class MantenimientoOrdenDetalleAPIView(APIView):
     """
     Endpoint de detalle de una Orden de Trabajo.
@@ -3298,6 +3608,7 @@ class MantenimientoOrdenDetalleAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class UsuarioListAPIView(APIView):
     """
     Endpoint unificado para listar usuarios (Voluntarios) de la estación activa.
@@ -3366,6 +3677,7 @@ class UsuarioListAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class UsuarioDetalleAPIView(APIView):
     """
     Obtiene el detalle de un usuario específico dentro de la estación.
@@ -3425,6 +3737,7 @@ class UsuarioDetalleAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class VoluntarioHojaVidaAPIView(APIView):
     """
     Endpoint que retorna la Hoja de Vida completa de un voluntario.
@@ -3580,6 +3893,7 @@ class VoluntarioHojaVidaAPIView(APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class UsuarioFichaMedicaAPIView(AuditoriaMixin, APIView):
     """
     Endpoint que retorna la Ficha Médica completa de un voluntario.
@@ -3697,6 +4011,7 @@ class UsuarioFichaMedicaAPIView(AuditoriaMixin, APIView):
 
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 class DocumentoHistoricoListAPIView(APIView):
     """
     Lista los documentos históricos de la estación para la biblioteca digital móvil.
@@ -3771,6 +4086,11 @@ class DocumentoHistoricoListAPIView(APIView):
 
 
 
+@extend_schema(
+    summary="Descargar PDF",
+    parameters=[OpenApiParameter("token", OpenApiTypes.STR, location=OpenApiParameter.QUERY)],
+    responses={200: OpenApiTypes.BINARY}
+)
 class DescargarHojaVidaPropiaAPIView(AuditoriaMixin, APIView):
     """
     [Opción Token-URL] Permite descargar PDF enviando el token como parámetro GET.
@@ -3837,6 +4157,13 @@ class DescargarHojaVidaPropiaAPIView(AuditoriaMixin, APIView):
             return Response({'error': 'Sin perfil de voluntario.'}, status=status.HTTP_404_NOT_FOUND)
 
 
+
+
+@extend_schema(
+    summary="Descargar PDF",
+    parameters=[OpenApiParameter("token", OpenApiTypes.STR, location=OpenApiParameter.QUERY)],
+    responses={200: OpenApiTypes.BINARY}
+)
 class DescargarFichaMedicaPropiaAPIView(AuditoriaMixin, APIView):
     """
     [Opción Token-URL] Genera y descarga el PDF de la Ficha Médica.
