@@ -18,6 +18,27 @@ Bomberil System permite que cada compañía sea autónoma en su gestión, compar
 
 
 
+---
+
+## Ecosistema: Bomberil System Mobile
+
+Para el trabajo en terreno, este sistema central se integra con una **aplicación móvil nativa** que actúa como brazo ejecutor de las operaciones de la compañía:
+
+* **Repositorio del Cliente Móvil:** [Bomberil System Mobile](https://github.com/ipsoteric/bomberil-mobile)
+* **Tecnologías Clave:** ![React Native](https://img.shields.io/badge/React_Native-20232A?style=flat-square&logo=react&logoColor=61DAFB) 
+    ![Expo](https://img.shields.io/badge/expo-1C1E24?style=flat-square&logo=expo&logoColor=D04A37) 
+    ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+
+### Integración Móvil-Backend
+La aplicación móvil consume la API REST de este servidor para habilitar funciones críticas como:
+1.  **Escaneo QR:** Identificación de activos y lotes de inventario mediante la cámara.
+2.  **Fichas Médicas:** Acceso instantáneo a información vital del voluntario en caso de emergencia.
+3.  **Gestión de Préstamos:** Registro de salida y entrada de material menor con validación en tiempo real.
+4.  **Sincronización:** Autenticación robusta mediante **JWT** con renovación automática de tokens.
+
+
+
+
 ## Vista Previa del Sistema
 
 | Dashboard Principal (Portal) | Administración Multi-tenant (Core Admin) |
